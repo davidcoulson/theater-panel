@@ -319,7 +319,7 @@ canvas.fx { display: block; width: 100%; }
 .fx-row .none { width: 120px; height: 26px; border-radius: 8px; background: rgba(58,36,25,.12); flex-shrink: 0; }
 .fx-row .lbl { flex-grow: 1; min-width: 0; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lights-card { position: relative; overflow: hidden; }
-.fx-sheet { position: absolute; inset: 0; z-index: 5; background: var(--choc2); color: #F4ECE0; padding: 22px; display: flex; flex-direction: column; gap: 14px; animation: fx-in .18s ease-out; }
+.fx-sheet { position: absolute; inset: 0; z-index: 5; background: var(--choc2); color: #F4ECE0; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; animation: fx-in .18s ease-out; }
 @keyframes fx-in { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
 .fx-sheet .h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .fx-sheet .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; }
@@ -328,8 +328,8 @@ canvas.fx { display: block; width: 100%; }
 .fx-sheet .pill small { color: #A89484; font-size: 13px; }
 .fx-sheet .pill.on { background: var(--gold); border-color: var(--gold); color: var(--choc2); }
 .fx-sheet .pill.on small { color: rgba(42,25,17,.6); }
-.fx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex-grow: 1; align-content: start; }
-.fx-tile { border: 1.5px solid transparent; background: rgba(0,0,0,.25); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; color: #E9DCCB; font-size: 15px; font-weight: 600; text-align: left; height: max-content; }
+.fx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex-grow: 1; min-height: 0; align-content: start; }
+.fx-tile { border: 1.5px solid transparent; background: rgba(0,0,0,.25); border-radius: 12px; padding: 6px 8px 7px; display: flex; flex-direction: column; gap: 5px; color: #E9DCCB; font-size: 14px; font-weight: 600; text-align: left; height: max-content; }
 .fx-tile.on { border-color: var(--gold); }
 .fx-tile span { display: block; }
 
