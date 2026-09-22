@@ -31,6 +31,11 @@ hole_dia     = 3.00;    // through the PCB
 post_dia     = hole_dia - 0.25;
 
 /* [Pins] */
+// 2 x 10 header on 2.54 mm pitch, centred on the board. The lid has a rectangular hole over it so
+// Dupont jumpers can push straight onto the pins with the cover on.
+pin_cols     = 10;
+pin_pitch    = 2.54;
+pin_hole_pad = 1.8;     // clearance around the header in the lid's hole
 // The two rows of header pins stand 8.19 mm above the board, so the walls stay well below them
 // and nothing blocks a jumper going onto pin 13 (CEC) or 17 (ground).
 pin_h        = 8.19;
@@ -138,6 +143,9 @@ module lid() {
         rotate([90, 0, 0])
           linear_extrude(height = cav_d * 0.72, center = true)
             polygon([[0, -catch_h], [side * 1.2, 0], [0, catch_h]]);
+    // hole over the 2 x 10 header, so jumpers reach the pins with the lid on
+    translate([0, 0, roof_z + lid_t / 2])
+      cube([(pin_cols - 1) * pin_pitch + 2 * pin_hole_pad, pin_pitch + 2 * pin_hole_pad, lid_t + 2], center = true);
     // wire notch at one end
     translate([0, -cav_d / 2, roof_z + lid_t / 2]) cube([wire_slot_w, 6, lid_t + 2], center = true);
     // ease the skirt's mouth so it slides on
