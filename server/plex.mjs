@@ -365,6 +365,18 @@ export async function search(query, size = 30) {
   return out.map((m) => mapItem(m));
 }
 
+// The server's machine identifier (Plezy's play links name the server by it).
+export const machineId = () => cached('identity', 3600e3, async () => (await plex('/identity')).machineIdentifier);
+
+// "Start over" for a client that always resumes: clear the saved position first. Only for items
+// not yet watched, so a rewatch never loses its watched state.
+export async function clearProgress(ratingKey) {
+  const m = (await plex(`/library/metadata/${ratingKey}`)).Metadata?.[0];
+  if (m?.viewOffset && !m.viewCount) {
+    await plex('/:/unscrobble', { key: String(ratingKey), identifier: 'com.plexapp.plugins.library' });
+  }
+}
+
 // Chosen audio/subtitle tracks are stored on the part, so the Apple TV picks them up when it
 // starts playing. subtitleStreamID=0 turns subtitles off.
 export async function setStreams(partId, { audioStreamID, subtitleStreamID }) {

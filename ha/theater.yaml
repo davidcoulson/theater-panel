@@ -208,6 +208,40 @@ script:
             plex://{{ {'plex_key': rating_key | int, 'offset': offset | default(0) | int} | to_json }}
       - action: script.theater_movie_time
 
+  # Play a Plex title on the projector's own Plex client (Plezy): wake the projector if it is off,
+  # wait for ADB, then open Plezy's play link (plezy://play?content_id=plezy_<server>_<ratingKey>),
+  # which resumes where it left off. The panel builds the link.
+  theater_play_projector:
+    alias: "Theater: play on the projector"
+    icon: mdi:projector
+    mode: restart
+    fields:
+      projector: { description: "Projector ADB media_player" }
+      apple_tv: { description: "Apple TV media_player (wakes the projector over HDMI-CEC)" }
+      package: { example: com.edde746.plezy }
+      uri: { example: "plezy://play?content_id=plezy_<machineIdentifier>_358614" }
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ not projector or not uri }}"
+        then:
+          - stop: Projector not configured
+      - if:
+          - condition: template
+            value_template: "{{ states(projector) in ['unavailable', 'unknown', 'off'] }}"
+        then:
+          - action: script.theater_projector_power_on
+            data: { projector: "{{ projector }}", apple_tv: "{{ apple_tv }}" }
+          - wait_template: "{{ states(projector) not in ['unavailable', 'unknown', 'off'] }}"
+            timeout: "00:01:30"
+            continue_on_timeout: false
+          - delay: "00:00:03"
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data:
+          command: "am start -a android.intent.action.VIEW -d '{{ uri }}' {{ package }}"
+      - action: script.theater_movie_time
+
   # ---------- projector ----------
   # Power: on goes through the Apple TV (HDMI-CEC wakes the projector; it has no network
   # standby, so ADB cannot turn it on). Off, input, apps and picture mode go over ADB

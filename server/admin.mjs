@@ -9,7 +9,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config, settings, saveSettings, effectiveVars } from './config.mjs';
 import { loadGames, loadGamesFile } from './games.mjs';
 
-// type: text | secret | entity | list (comma-separated) | libraries | bool | apps (Name=package list)
+// type: text | secret | entity | list (comma-separated) | libraries | select | bool | apps (Name=package list)
 export const FIELDS = [
   { group: 'Home Assistant', key: 'HA_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.3.6:8123' },
   { group: 'Home Assistant', key: 'HA_TOKEN', label: 'Long-lived access token', type: 'secret' },
@@ -17,7 +17,8 @@ export const FIELDS = [
   { group: 'Plex', key: 'PLEX_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.6.3:32400' },
   { group: 'Plex', key: 'PLEX_TOKEN', label: 'Token', type: 'secret' },
   { group: 'Plex', key: 'PLEX_LIBRARIES', label: 'Libraries, in tab order', type: 'libraries', help: 'Movie libraries are merged into one Movies tab. Blank shows every movie and TV library.' },
-  { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to pick the theater's session." },
+  { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV (its Plex app)'], ['projector', "Projector (its own Plex app)"]], help: 'Where Play and Resume start a movie or episode.' },
+  { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
   { group: 'Seerr', key: 'SEERR_API_KEY', label: 'API key', type: 'secret' },

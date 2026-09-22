@@ -25,6 +25,15 @@ export async function runAction(ha, body) {
         await plex.setStreams(body.partId, body).catch((err) => console.warn('[plex] setStreams', err.message));
       }
       plex.staleMovies(); // watched / in-progress state is about to change
+      if (config.playTarget === 'projector') {
+        // The projector's own Plex client (Plezy) resumes by itself; Start over clears the position.
+        if (!body.offset) await plex.clearProgress(body.ratingKey).catch((err) => console.warn('[plex] start over', err.message));
+        const id = `plezy_${await plex.machineId()}_${Number(body.ratingKey)}`;
+        return script(ha, 'play_projector', {
+          projector: e.projector, apple_tv: e.appleTv, package: config.projectorPlexPackage,
+          uri: `plezy://play?content_id=${id}`,
+        });
+      }
       return script(ha, 'play_plex', {
         rating_key: String(body.ratingKey),
         media_type: body.type === 'episode' ? 'episode' : 'movie',
