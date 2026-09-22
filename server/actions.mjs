@@ -43,6 +43,20 @@ export async function runAction(ha, body) {
       });
     }
 
+    // Light effects and their speed / intensity helpers (the picker on the Lights card).
+    case 'light_effect': {
+      if (!e.lights.includes(body.entity_id)) throw new Error('Unknown light');
+      const effect = String(body.effect || '').slice(0, 64);
+      if (!effect) throw new Error('No effect');
+      return ha.callService('light', 'turn_on', { effect }, { target: { entity_id: body.entity_id } });
+    }
+
+    case 'light_number': {
+      const allowed = [e.accentSpeed, e.accentIntensity].filter(Boolean);
+      if (!allowed.includes(body.entity_id)) throw new Error('Unknown helper');
+      return ha.callService('input_number', 'set_value', { value: clamp(Number(body.value), 0, 255) }, { target: { entity_id: body.entity_id } });
+    }
+
     case 'transport': {
       const target = { entity_id: e.appleTv };
       const map = { play_pause: 'media_play_pause', play: 'media_play', pause: 'media_pause', stop: 'media_stop', vol_up: 'volume_up', vol_down: 'volume_down' };

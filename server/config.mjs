@@ -76,6 +76,9 @@ function build(env) {
     temperature: env.ENTITY_TEMPERATURE || 'sensor.media_room_temperature',
     occupancy: env.ENTITY_OCCUPANCY || 'binary_sensor.media_room_occupancy',
     tautulli: env.ENTITY_TAUTULLI || 'sensor.tautulli_watching',
+    // Accent-light effect speed and intensity helpers (input_number), shown in the effect picker.
+    accentSpeed: env.ENTITY_ACCENT_SPEED || 'input_number.home_theater_accent_speed',
+    accentIntensity: env.ENTITY_ACCENT_INTENSITY || 'input_number.home_theater_accent_intensity',
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
   },
@@ -118,7 +121,7 @@ export function watchedEntities() {
   const e = config.entities;
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, ...e.musicPlayers, e.projector,
-    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode,
+    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
     'input_select.theater_scene',
   ].filter(Boolean);
 }

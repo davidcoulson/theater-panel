@@ -86,14 +86,18 @@ async function sections() {
 // where the first of them was. Plex keeps them apart so phones never get a 4K file to transcode;
 // on the projector each film should appear once, as its best copy.
 export const MERGED = 'movies';
+// Tab labels: Plex's own library names, tidied for the panel.
+const LABELS = { 'tv shows': 'Shows', 'tv series': 'Shows' };
+const label = (title) => LABELS[title.toLowerCase()] || title;
+
 export async function libraries() {
   const libs = await sections();
   const movies = libs.filter((l) => l.type === 'movie');
-  if (movies.length < 2) return libs;
+  if (movies.length < 2) return libs.map((l) => ({ ...l, title: label(l.title) }));
   const at = libs.indexOf(movies[0]);
   const rest = libs.filter((l) => l.type !== 'movie');
   rest.splice(at, 0, { id: MERGED, title: 'Movies', type: 'movie' });
-  return rest;
+  return rest.map((l) => ({ ...l, title: label(l.title) }));
 }
 
 // Copies of one film share Plex's agent guid (plex://movie/...). Higher resolution wins.
