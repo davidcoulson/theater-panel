@@ -16,6 +16,7 @@ import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
+import * as icons from './icons.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB = join(root, 'web');
@@ -185,6 +186,7 @@ async function adminApi(req, res, path) {
   if (path === '/api/admin/import' && method === 'POST') { const r = await admin.importContainer(); await applySettings(); return r; }
   if (path === '/api/admin/entities') return admin.haEntities(ha);
   if (path === '/api/admin/plex-libraries') return admin.plexLibraries();
+  if (path === '/api/admin/icons') return icons.search(ha, new URL(req.url, 'http://panel').searchParams.get('q'));
   if (path === '/api/admin/test' && method === 'POST') return admin.test(body.service, body.values);
   throw admin.httpError(404, 'Not found');
 }
@@ -214,6 +216,16 @@ const server = createServer(async (req, res) => {
       const pic = entities.includes(id) && ha.states[id]?.attributes?.entity_picture;
       if (!pic) { res.writeHead(404).end(); return; }
       res.writeHead(302, { location: extImage(pic.startsWith('http') ? pic : config.ha.url + pic), 'cache-control': 'no-store' }).end();
+      return;
+    }
+
+    // One icon as SVG, e.g. /api/icon/mdi/microsoft-xbox.svg. Never framed or scripted.
+    const ic = /^\/api\/icon\/([a-z0-9-]+)\/([a-z0-9-]+)\.svg$/.exec(path);
+    if (ic) {
+      const svg = await icons.iconSvg(ha, ic[1], ic[2]);
+      if (!svg) { res.writeHead(404, { 'cache-control': 'max-age=300' }).end(); return; }
+      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'x-content-type-options': 'nosniff' });
+      res.end(svg);
       return;
     }
 

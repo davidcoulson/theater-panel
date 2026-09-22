@@ -35,7 +35,7 @@ export function Games() {
     <${Header} title="Games" kicker="HDMI switcher · Gaming PC" />
     <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(sources.length || 5, 1)}, minmax(0, 1fr))`}>
       ${sources.map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} onClick=${() => pick(s)}>
-        <${Icon} name=${ICONS[s.icon] || 'pad'} size=${44} color=${current === s.id ? 'var(--gold)' : 'var(--acc)'} w=${1.8} />
+        <${Icon} name=${s.icon?.includes(':') ? s.icon : ICONS[s.icon] || 'pad'} size=${44} color=${current === s.id ? 'var(--gold)' : 'var(--acc)'} w=${1.8} />
         <span class="n">${s.name}</span><span class="d">${s.via === 'switcher' ? 'HDMI switcher' : 'Gaming PC'}</span>
       </button>`)}
     </div>

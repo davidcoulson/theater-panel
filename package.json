@@ -17,6 +17,7 @@
     "@fontsource/big-shoulders-display": "^5.1.0",
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
+    "@mdi/js": "^7.4.47",
     "htm": "^3.1.1",
     "preact": "^10.26.0"
   }

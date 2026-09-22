@@ -131,7 +131,26 @@ function Scenes() {
 // consoles on the HDMI switcher, all from games.json. Apps open on the projector's own Android.
 const SOURCE_ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'server', server: 'server', steam: 'playc' };
 const APP_ICONS = [[/plex|plezy/i, 'plex'], [/you ?tube|smarttube/i, 'youtube'], [/moonlight|parsec|steam link/i, 'pad']];
-const appIcon = (name) => APP_ICONS.find(([re]) => re.test(name))?.[1] || 'app';
+const appIcon = (a) => a.icon || APP_ICONS.find(([re]) => re.test(a.name))?.[1] || 'app';
+
+// What is on screen: the theater's Plex session (when PLEX_PLAYER_NAME pins it down), else the
+// Apple TV's own now-playing when it is the source.
+function useNowPlaying(on, current, tv) {
+  const sessions = useStore((s) => s.sessions);
+  const own = useStore((s) => s.ui?.theaterSessions);
+  if (!on) return null;
+  const s = own && sessions?.[0];
+  if (s) {
+    const left = (s.duration || 0) - (s.viewOffset || 0);
+    const name = s.type === 'episode' ? `${s.showTitle} S${s.season}·E${s.episode}` : s.title;
+    return `${s.state === 'paused' ? 'Paused' : 'Playing'} ${name}${left > 0 ? ` · ${runtime(left)} left` : ''}`;
+  }
+  if (current === 'appletv' && tv && ['playing', 'paused'].includes(tv.state) && tv.attributes?.media_title) {
+    const a = tv.attributes;
+    return `${tv.state === 'paused' ? 'Paused' : 'Playing'} ${a.media_series_title ? `${a.media_series_title} · ` : ''}${a.media_title}${a.app_name ? ` (${a.app_name})` : ''}`;
+  }
+  return null;
+}
 
 function Projector() {
   const ents = useStore((s) => s.entities);
@@ -147,9 +166,10 @@ function Projector() {
   const runningApp = apps.find((a) => a.package === appId);
 
   // In the order set on the admin page.
-  const sources = (games?.sources || []).map((s) => ({ ...s, icon: SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
+  const sources = (games?.sources || []).map((s) => ({ ...s, icon: s.icon?.includes(':') ? s.icon : SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
   const current = runningApp ? null : picked || games?.active;
-  const status = !on ? 'Standby' : runningApp ? runningApp.name : sources.find((s) => s.id === current)?.name || 'On';
+  const picture = useEntity(ents.pictureMode)?.state;
+  const nowPlaying = useNowPlaying(on, current, tv);
 
   async function pickSource(s) {
     setPicked(s.id);
@@ -164,21 +184,23 @@ function Projector() {
   }
 
   return html`<section class="card proj">
-    <${H2} title="Projector"><span class="aside"><span class=${`dot ${on ? 'on' : ''}`}></span>${status}</span><//>
+    <${H2} title="Projector">${on && picture && !['unknown', 'unavailable'].includes(picture)
+      ? html`<button type="button" class="aside mode" title="Next picture mode" onClick=${() => act({ action: 'picture_next' })}><span class="dot on"></span>${picture}</button>`
+      : html`<span class="aside"><span class=${`dot ${on ? 'on' : ''}`}></span>${on ? 'On' : 'Standby'}</span>`}<//>
     <div class="row">
       <button type="button" class=${`power ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
         onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}>
         <${Icon} name="power" size=${40} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} />
       </button>
       <div><div style="font-size:21px;font-weight:600">NexiGo Aurora Pro</div>
-      <div class="muted" style="font-size:16px">${on ? `Showing ${status}` : 'Tap a source or app to start'}</div></div>
+      <div class="muted ellipsis" style="font-size:16px">${!on ? 'Tap a source or app to start' : nowPlaying || 'Nothing playing'}</div></div>
     </div>
     <div class="label" style="margin:18px 0 8px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${28} /><span>${s.name}</span></button>`)}</div>
     ${apps.length > 0 && html`<div class="label" style="margin:16px 0 8px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
-      <${Icon} name=${appIcon(a.name)} size=${28} /><span>${a.name}</span></button>`)}</div>`}
+      <${Icon} name=${appIcon(a)} size=${28} /><span>${a.name}</span></button>`)}</div>`}
   </section>`;
 }
 

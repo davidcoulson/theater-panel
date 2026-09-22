@@ -71,6 +71,12 @@ export async function runAction(ha, body) {
       return script(ha, `projector_${body.cmd}`, vars);
     }
 
+    case 'picture_next': {
+      // Next picture mode; HA's automation applies it to the projector over ADB.
+      if (!e.pictureMode) throw new Error('No picture mode entity set');
+      return ha.callService('input_select', 'select_next', { cycle: true }, { target: { entity_id: e.pictureMode } });
+    }
+
     case 'projector_app': {
       // Only apps listed in PROJECTOR_APPS; HA wakes the projector first if it is off.
       const app = config.projectorApps.find((a) => a.package === body.package);

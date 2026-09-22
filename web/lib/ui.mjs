@@ -49,7 +49,13 @@ const PATHS = {
   playc: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5v7l6-3.5z',
 };
 
+// Built-in outline icons by name, or any "prefix:name" icon (mdi:, cbi:, fa7-brands: ...) served by
+// the panel from Home Assistant's icon sets, drawn in the current text colour with a CSS mask.
 export function Icon({ name, size = 24, color = 'currentColor', w = 2 }) {
+  if (name && name.includes(':')) {
+    const [prefix, icon] = name.split(':');
+    return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;color:${color};--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
+  }
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
 }
 export const Play = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill=${color} /></svg>`;
