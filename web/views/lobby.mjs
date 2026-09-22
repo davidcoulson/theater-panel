@@ -143,11 +143,11 @@ function useNowPlaying(on, current, tv) {
   if (s) {
     const left = (s.duration || 0) - (s.viewOffset || 0);
     const name = s.type === 'episode' ? `${s.showTitle} S${s.season}·E${s.episode}` : s.title;
-    return `${s.state === 'paused' ? 'Paused' : 'Playing'} ${name}${left > 0 ? ` · ${runtime(left)} left` : ''}`;
+    return `${s.state === 'paused' ? 'Paused · ' : ''}${name}${left > 0 ? ` · ${runtime(left)} left` : ''}`;
   }
   if (current === 'appletv' && tv && ['playing', 'paused'].includes(tv.state) && tv.attributes?.media_title) {
     const a = tv.attributes;
-    return `${tv.state === 'paused' ? 'Paused' : 'Playing'} ${a.media_series_title ? `${a.media_series_title} · ` : ''}${a.media_title}${a.app_name ? ` (${a.app_name})` : ''}`;
+    return `${tv.state === 'paused' ? 'Paused · ' : ''}${a.media_series_title ? `${a.media_series_title} · ` : ''}${a.media_title}`;
   }
   return null;
 }
@@ -192,7 +192,7 @@ function Projector() {
         onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}>
         <${Icon} name="power" size=${40} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} />
       </button>
-      <div><div style="font-size:21px;font-weight:600">NexiGo Aurora Pro</div>
+      <div style="min-width:0;flex:1"><div style="font-size:21px;font-weight:600">NexiGo Aurora Pro</div>
       <div class="muted ellipsis" style="font-size:16px">${!on ? 'Tap a source or app to start' : nowPlaying || 'Nothing playing'}</div></div>
     </div>
     <div class="label" style="margin:18px 0 8px">Source</div>

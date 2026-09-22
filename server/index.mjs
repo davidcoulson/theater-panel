@@ -59,7 +59,9 @@ ha.on('status', (connected) => broadcast('ha', { connected }));
 
 // Plex sessions: polled only while someone is looking, faster while something is playing.
 let sessions = [];
+let pollTimer = null;
 async function pollSessions() {
+  clearTimeout(pollTimer);
   let next = 30000;
   if (clients.size && config.plex.url) {
     try {
@@ -71,7 +73,7 @@ async function pollSessions() {
     const tv = ha.states[config.entities.appleTv]?.state;
     if (tv === 'playing' || tv === 'paused') next = 5000;
   }
-  setTimeout(pollSessions, next);
+  pollTimer = setTimeout(pollSessions, next);
 }
 
 // ---------- HTTP ----------
@@ -205,6 +207,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions })}\n\n`);
       clients.add(res);
+      if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll
       const ping = setInterval(() => res.write(': ping\n\n'), 25000);
       req.on('close', () => { clearInterval(ping); clients.delete(res); });
       return;
