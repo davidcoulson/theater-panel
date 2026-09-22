@@ -76,15 +76,18 @@ function build(env) {
     temperature: env.ENTITY_TEMPERATURE || 'sensor.media_room_temperature',
     occupancy: env.ENTITY_OCCUPANCY || 'binary_sensor.media_room_occupancy',
     tautulli: env.ENTITY_TAUTULLI || 'sensor.tautulli_watching',
+    // Picture mode helper (input_select) the projector card shows and cycles.
+    pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
   },
   // The Plex client's name as Plex reports it (Settings > Plex Web > Devices), used to pick the
   // theater's session out of /status/sessions. Empty = the first playing session.
   plexPlayerName: env.PLEX_PLAYER_NAME || '',
   // Apps the Projector card can open on the projector itself (Android, over ADB), as
-  // "Name=package" pairs. The projector is woken first if it is off.
+  // "Name=package" or "Name=package=icon" (e.g. YouTube=org.smarttube.stable=mdi:youtube). The projector is woken first if it is off.
   projectorApps: list(env.PROJECTOR_APPS, ['Plex=com.plexapp.android']).map((pair) => {
-    const [name, pkg] = pair.split('=').map((x) => x.trim());
-    return pkg && /^[\w.]+$/.test(pkg) ? { name, package: pkg } : null;
+    const [name, pkg, icon] = pair.split('=').map((x) => x.trim());
+    if (!pkg || !/^[\w.]+$/.test(pkg)) return null;
+    return { name, package: pkg, ...(icon && /^[a-z0-9-]+:[a-z0-9-]+$|^[a-z]+$/.test(icon) ? { icon } : {}) };
   }).filter(Boolean),
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
@@ -93,6 +96,8 @@ function build(env) {
   ui: {
     qualityBadges: env.SHOW_QUALITY_BADGES !== 'false',
     networkBadges: env.SHOW_NETWORK_BADGES === 'true',
+    // Plex sessions are only the theater's own when the player name is set.
+    theaterSessions: Boolean(env.PLEX_PLAYER_NAME),
   },
   // Extra origins allowed to embed the panel (the HA dashboard), space- or comma-separated.
   frameAncestors: (env.FRAME_ANCESTORS || '').split(/[\s,]+/).filter((o) => /^https?:\/\/[\w.-]+(:\d+)?$/.test(o)),
@@ -109,7 +114,7 @@ export function watchedEntities() {
   const e = config.entities;
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, ...e.musicPlayers, e.projector,
-    ...e.lights, e.temperature, e.occupancy, e.tautulli,
+    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode,
     'input_select.theater_scene',
   ].filter(Boolean);
 }

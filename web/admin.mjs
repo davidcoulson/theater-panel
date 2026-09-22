@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo } from 'preact/hooks';
 import htm from 'htm';
 
 const html = htm.bind(h);
-const ICONS = ['tv', 'server', 'monitor', 'pad', 'joystick', 'remote', 'steam'];
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
 
 async function api(path, body) {
@@ -241,18 +240,52 @@ function LibraryPicker({ value, base, onChange }) {
 
 function AppsEditor({ value, onChange }) {
   const rows = (value || '').split(',').map((p) => p.split('=').map((x) => x.trim())).filter((r) => r[0] || r[1]);
-  const put = (rs) => onChange(rs.filter((r) => r[0] && r[1]).map((r) => `${r[0]}=${r[1]}`).join(','));
+  const put = (rs) => onChange(rs.filter((r) => r[0] && r[1]).map((r) => (r[2] ? `${r[0]}=${r[1]}=${r[2]}` : `${r[0]}=${r[1]}`)).join(','));
   const [draft, setDraft] = useState(rows);
   useEffect(() => setDraft(rows), [value]);
   const edit = (i, k, v) => { const n = draft.map((r) => [...r]); n[i][k] = v; setDraft(n); put(n); };
   const move = (i, d) => { const n = [...draft]; [n[i], n[i + d]] = [n[i + d], n[i]]; setDraft(n); put(n); };
-  return html`<table class="grid"><thead><tr><th>Name</th><th>Android package</th><th></th></tr></thead><tbody>
+  return html`<table class="grid"><thead><tr><th>Name</th><th>Android package</th><th>Icon</th><th></th></tr></thead><tbody>
     ${draft.map((r, i) => html`<tr>
       <td><input type="text" value=${r[0]} onInput=${(e) => edit(i, 0, e.target.value)} /></td>
       <td><input type="text" spellcheck="false" value=${r[1]} placeholder="com.example.app" onInput=${(e) => edit(i, 1, e.target.value)} /></td>
+      <td><${IconPicker} value=${r[2] || ''} onChange=${(v) => edit(i, 2, v)} /></td>
       <td class="actions"><${RowActions} i=${i} n=${draft.length} move=${move} remove=${() => { const n = draft.filter((_, k) => k !== i); setDraft(n); put(n); }} /></td></tr>`)}
     </tbody></table>
     <button type="button" class="small" onClick=${() => setDraft([...draft, ['', '']])}>Add app</button>`;
+}
+
+// An icon: built-in names are listed, anything "prefix:name" comes from HA's icon sets via the panel.
+const BUILTIN = { tv: 'Built-in TV', server: 'Built-in server', monitor: 'Built-in monitor', pad: 'Built-in gamepad', joystick: 'Built-in joystick', remote: 'Built-in remote', steam: 'Built-in play' };
+function IconPreview({ name }) {
+  if (!name) return html`<span class="ipv empty"></span>`;
+  if (!name.includes(':')) return html`<span class="ipv builtin" title=${name}>${name.slice(0, 2)}</span>`;
+  const [p, n] = name.split(':');
+  return html`<span class="ipv" title=${name} style=${`--src:url('/api/icon/${p}/${n}.svg')`}></span>`;
+}
+
+// Search every icon set (mdi, Custom Brand Icons, Font Awesome brands...) and pick one.
+function IconPicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [res, setRes] = useState(null);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => api(`/api/admin/icons?q=${encodeURIComponent(q)}`).then(setRes).catch(() => setRes({ icons: [], sets: [] })), q ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [q, open]);
+  return html`<div class="ipick">
+    <button type="button" class="small ipbtn" onClick=${() => { setOpen(!open); setQ(value && value.includes(':') ? value.split(':')[1] : ''); }}><${IconPreview} name=${value} /><span>${value || 'Pick'}</span></button>
+    ${open && html`<div class="ipop" onKeyDown=${(e) => e.key === 'Escape' && setOpen(false)}>
+      <input type="text" autofocus spellcheck="false" placeholder="Search icons, e.g. xbox, apple tv, mdi:plex" value=${q} onInput=${(e) => setQ(e.target.value)} />
+      <div class="igrid">
+        ${!q && Object.keys(BUILTIN).map((b) => html`<button type="button" title=${BUILTIN[b]} onClick=${() => { onChange(b); setOpen(false); }}><${IconPreview} name=${b} /><small>${b}</small></button>`)}
+        ${res?.icons.map((id) => html`<button type="button" title=${id} aria-pressed=${id === value ? 'true' : 'false'} onClick=${() => { onChange(id); setOpen(false); }}><${IconPreview} name=${id} /><small>${id}</small></button>`)}
+        ${q && res && !res.icons.length && html`<p class="muted">No icons match.</p>`}
+      </div>
+      ${res?.sets?.length > 0 && html`<small>Searching ${res.sets.length} sets: ${res.sets.slice(0, 8).join(', ')}${res.sets.length > 8 ? '…' : ''}. Type "set:" to search one, e.g. cbi:plex.</small>`}
+    </div>`}
+  </div>`;
 }
 
 function RowActions({ i, n, move, remove }) {
@@ -283,7 +316,7 @@ function GamesEditor({ games, source, entities, onChange }) {
         <td>${s.via === 'switcher'
           ? html`<input type="text" value=${s.option || ''} placeholder=${s.name} onInput=${(e) => edit(i, { option: e.target.value })} />`
           : html`<select value=${s.projectorInput || 'HDMI 2'} onChange=${(e) => edit(i, { projectorInput: e.target.value })}>${INPUTS.map((x) => html`<option>${x}</option>`)}</select>`}</td>
-        <td><select value=${s.icon || 'pad'} onChange=${(e) => edit(i, { icon: e.target.value })}>${ICONS.map((x) => html`<option>${x}</option>`)}</select></td>
+        <td><${IconPicker} value=${s.icon || 'pad'} onChange=${(v) => edit(i, { icon: v })} /></td>
         <td class="center"><input type="checkbox" aria-label="Show on the Games screen" checked=${s.games !== false} onChange=${(e) => edit(i, { games: e.target.checked ? undefined : false })} /></td>
         <td class="actions"><${RowActions} i=${i} n=${g.sources.length} move=${move} remove=${() => put({ sources: g.sources.filter((_, k) => k !== i) })} /></td></tr>`)}
     </tbody></table>

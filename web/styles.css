@@ -33,6 +33,9 @@ img { display: block; }
 a { color: var(--acc); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* Icons from Home Assistant's icon sets (see Icon in lib/ui.mjs). */
+.xicon { display: inline-block; flex-shrink: 0; background: currentColor; -webkit-mask: var(--src) center / contain no-repeat; mask: var(--src) center / contain no-repeat; }
+
 /* ---------- stage: fixed 1920x1080, scaled to the viewport ---------- */
 #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; overflow: hidden; }
 
@@ -167,6 +170,8 @@ input.range.thin { height: 40px; }
 .scene[aria-pressed="true"] { background: var(--choc); color: #F4F0E8; border-color: #1E120B; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 .scene[aria-pressed="true"] .d { color: var(--on-choc2); }
 
+.proj .aside.mode { border: 1.5px solid var(--line); background: none; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 16px; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.proj .aside.mode:active { transform: scale(.97); }
 .proj .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .proj .tile { height: 76px; border: 0; border-radius: 14px; background: var(--track); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14px; font-weight: 600; padding: 0 4px; }
 .proj .tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
