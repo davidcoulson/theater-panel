@@ -33,7 +33,7 @@ services:
       traefik.http.routers.theater-panel.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-}
       traefik.http.services.theater-panel.loadbalancer.server.port: "8787"
       net.unraid.docker.icon: https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png
-      net.unraid.docker.webui: https://ht-kiosk.coulson.io
+      net.unraid.docker.webui: https://ht-kiosk.coulson.io/admin
 
 networks:
   traefik:

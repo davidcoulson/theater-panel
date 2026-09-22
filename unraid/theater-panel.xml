@@ -23,7 +23,7 @@
   <Project>https://github.com/davidcoulson/theater-panel</Project>
   <Overview>Home theater wall panel: Plex browse and play, Seerr requests, Music Assistant, lights, projector and games, served to Kiosk Satellite. Talks to Home Assistant over its websocket; everything it controls goes through HA.</Overview>
   <Category>MediaApp:Video HomeAutomation:</Category>
-  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <WebUI>http://[IP]:[PORT:8787]/admin</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/unraid/theater-panel.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png</Icon>
   <!-- Unraid's nobody:users, so the appdata folders stay writable. Autostart is the Docker page toggle. -->
