@@ -1,0 +1,53 @@
+# Sentences for the theater panel. Copy to /config/custom_sentences/en/theater.yaml.
+# Home Assistant reloads these with "Reload custom sentences" (Developer tools > YAML).
+language: en
+intents:
+  TheaterPlay:
+    data:
+      - sentences:
+          - "play {title} [in the theater|on the projector|in the theatre]"
+          - "put on {title} [in the theater|on the projector]"
+          - "watch {title} [in the theater|on the projector]"
+  TheaterScene:
+    data:
+      - sentences:
+          - "[it's|its] movie time"
+          - "start the movie"
+        response: done
+        slots:
+          scene: movie_time
+      - sentences:
+          - "lights up"
+          - "bring the lights up"
+          - "turn the theater lights up"
+        slots:
+          scene: lights_up
+      - sentences:
+          - "intermission"
+          - "take a break"
+        slots:
+          scene: intermission
+      - sentences:
+          - "pre show"
+          - "pre-show"
+          - "start the pre show"
+        slots:
+          scene: pre_show
+  TheaterScreen:
+    data:
+      - sentences:
+          - "show [me] the {screen} [screen] [on the panel]"
+          - "open {screen} [on the panel]"
+lists:
+  title:
+    wildcard: true
+  screen:
+    values:
+      - "lobby"
+      - "watch"
+      - "request"
+      - "music"
+      - "games"
+      - "stats"
+      - "showtime"
+      - "pick"

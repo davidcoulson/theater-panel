@@ -376,3 +376,43 @@ canvas.fx { display: block; width: 100%; }
 .wall .p.blown .h small { font-size: 48px; }
 .wall .p.blown .s { font-size: 26px; }
 .wall .p.blown .st-cores { height: 180px; }
+
+/* ---------- now showing (idle screen) ---------- */
+.showing { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #08060A; color: #F4ECE0; }
+.sh-art { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; transition: opacity 1.6s ease, transform 16s linear; transform: scale(1.06); }
+.sh-art.on { opacity: .55; transform: scale(1.14); }
+.sh-veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6,4,8,.92) 0 44%, rgba(6,4,8,.5) 70%, rgba(6,4,8,.75) 100%); }
+.sh-clock { position: absolute; top: 54px; right: 64px; font-family: var(--mono); font-size: 44px; font-weight: 600; color: #C7B39E; display: flex; align-items: baseline; gap: 10px; }
+.sh-clock small { font-size: 20px; }
+.sh-clock .t { font-size: 24px; color: #8C7866; }
+.sh-body { position: absolute; left: 90px; right: 90px; bottom: 130px; display: flex; gap: 48px; align-items: flex-end; animation: sh-in 1.2s ease-out; }
+@keyframes sh-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.sh-poster { width: 300px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(244,236,224,.12); flex-shrink: 0; }
+.sh-text { min-width: 0; max-width: 1050px; }
+.sh-label { font-size: 17px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.showing h1 { font-family: var(--disp); font-weight: 800; font-size: 104px; line-height: .92; text-transform: uppercase; margin: 0 0 12px; }
+.sh-meta { font-family: var(--mono); font-size: 22px; color: #C7B39E; margin-bottom: 14px; }
+.showing p { margin: 0; font-size: 26px; line-height: 1.4; color: #E9DCCB; max-width: 900px; }
+.sh-badges { display: flex; gap: 10px; margin-top: 18px; }
+.sh-dots { position: absolute; left: 90px; bottom: 74px; display: flex; gap: 8px; }
+.sh-dots i { width: 8px; height: 8px; border-radius: 4px; background: rgba(244,236,224,.25); }
+.sh-dots i.on { background: var(--gold); width: 26px; }
+.sh-hint { position: absolute; right: 64px; bottom: 70px; display: flex; align-items: center; gap: 8px; font-size: 16px; color: #8C7866; }
+.sh-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #8C7866; font-size: 28px; }
+
+/* ---------- movie night ---------- */
+.pick-body { display: flex; gap: 22px; flex-grow: 1; min-height: 0; }
+.pick-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; flex-grow: 1; min-width: 0; }
+.pick-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 0; border-radius: 22px; background: var(--card); box-shadow: 0 8px 20px rgba(58,36,25,.12); text-align: left; min-width: 0; }
+.pick-card.lead { outline: 3px solid var(--gold); outline-offset: -3px; }
+.pick-card .poster { flex-grow: 1; min-height: 0; }
+.pick-card .t { font-family: var(--disp); font-weight: 800; font-size: 32px; line-height: 1; text-transform: uppercase; }
+.pick-card .m { font-size: 16px; color: var(--muted); }
+.pick-card .e { font-family: var(--mono); font-size: 15px; color: var(--amb); }
+.pick-card .v { font-size: 17px; color: var(--muted); }
+.pick-card .v b { font-family: var(--disp); font-size: 30px; color: var(--ink); margin-right: 6px; }
+.pick-card .go { margin-top: 6px; height: 54px; border-radius: 27px; background: var(--acc); color: #fff; font-size: 19px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.vote-card { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+.vote-card .qr { width: 300px; height: 300px; align-self: center; margin-top: 10px; }
+.vote-card .url { text-align: center; font-family: var(--mono); font-size: 18px; color: var(--muted); }
+.vote-card .tally { text-align: center; font-size: 20px; font-weight: 600; }

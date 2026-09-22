@@ -21,6 +21,14 @@
 # Kiosk Satellite's own navigate service moves the HA dashboard around the panel, not the panel.
 # If PANEL_KEY is set, add ?key=<PANEL_KEY> to the URL (keep it in secrets.yaml).
 rest_command:
+  # Voice goes through the panel: it finds the title in Plex and starts it the same way the
+  # panel's own Play button does. See the sentences in custom_sentences/en/theater.yaml.
+  theater_panel_voice:
+    url: "https://ht-kiosk.coulson.io/api/voice"
+    method: post
+    content_type: "application/json"
+    payload: '{{ {"intent": intent, "query": query | default(""), "name": name | default(""), "route": route | default("")} | to_json }}'
+
   theater_panel_navigate:
     url: https://ht-kiosk.coulson.io/api/navigate
     method: POST
@@ -352,6 +360,34 @@ script:
         target: { entity_id: "{{ projector }}" }
         data:
           command: "monkey -p {{ package }} -c android.intent.category.LEANBACK_LAUNCHER 1"
+
+intent_script:
+  TheaterPlay:
+    description: "Play something from Plex in the theater"
+    action:
+      - action: rest_command.theater_panel_voice
+        data: { intent: play, query: "{{ title }}" }
+        response_variable: panel
+    speech:
+      text: >-
+        {% set spoken = (panel.content.spoken if panel is defined and panel.content is defined else none) %}
+        {{ "Starting " ~ spoken if spoken else "I could not find " ~ title ~ " in Plex" }}
+
+  TheaterScene:
+    description: "Run one of the theater's scenes"
+    action:
+      - action: rest_command.theater_panel_voice
+        data: { intent: scene, name: "{{ scene }}" }
+    speech:
+      text: "{{ scene | replace('_', ' ') | capitalize }}"
+
+  TheaterScreen:
+    description: "Move the theater panel to one of its screens"
+    action:
+      - action: rest_command.theater_panel_voice
+        data: { intent: navigate, route: "#/{{ screen }}" }
+    speech:
+      text: "Showing {{ screen }}"
 
 automation:
   # Lights follow playback on the Apple TV or on the projector's own Plex client (Plezy, seen by

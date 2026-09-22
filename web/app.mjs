@@ -15,8 +15,10 @@ import { Music } from './views/music.mjs';
 import { Showtime } from './views/showtime.mjs';
 import { Games } from './views/games.mjs';
 import { Stats } from './views/stats.mjs';
+import { Showing } from './views/showing.mjs';
+import { Pick } from './views/pick.mjs';
 
-const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats };
+const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
 
 // Hash routes, with optional query params: #/watch?lib=networks&brand=netflix
@@ -148,7 +150,8 @@ function App() {
   }, []);
 
   const View = VIEWS[r.name] || Lobby;
-  if (r.name === 'showtime') return html`<${View} key="showtime" />${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
+  // Showtime and the idle screen fill the panel on their own.
+  if (r.name === 'showtime' || r.name === 'showing') return html`<${View} key=${r.name} />${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />

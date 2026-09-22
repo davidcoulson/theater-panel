@@ -33,6 +33,7 @@ export function Lobby() {
       ${temp && html`<span class="chip"><${Icon} name="therm" size=${20} />${Math.round(Number(temp.state) * 10) / 10}°</span>`}
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
+      <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
       ${downloading > 0 && html`<button type="button" class="chip warn" onClick=${() => go('request')}><${Icon} name="dl" size=${20} />${downloading} downloading</button>`}
     <//>
     <div class="lobby-grid">

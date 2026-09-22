@@ -24,7 +24,7 @@ export async function act(data) {
 
 // ---------- live store ----------
 
-let state = { connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
+let state = { vote: null, connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
 const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
@@ -72,6 +72,8 @@ export async function startLive({ navigate } = {}) {
   es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data) }));
   // Saved on the admin page: pick up the new entities, apps and display options.
   es.addEventListener('settings', loadSettings);
+  // Movie night: the shortlist and the running tally.
+  es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
   // Home Assistant (or anything with access to the panel's API) can move the panel to a route.
   es.addEventListener('navigate', (e) => { const d = JSON.parse(e.data); onNavigate?.(d.route); });
   // EventSource reconnects by itself; only call it offline if that has not worked after 8 s.
