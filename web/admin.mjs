@@ -2,8 +2,9 @@
 // volume; the panel picks changes up live. Secrets are write-only.
 
 import { h, render } from 'preact';
-import { useState, useEffect, useMemo } from 'preact/hooks';
+import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import htm from 'htm';
+import { Icon } from '/lib/ui.mjs';
 
 const html = htm.bind(h);
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
@@ -266,7 +267,7 @@ function AppsEditor({ value, onChange }) {
 const BUILTIN = { tv: 'Built-in TV', server: 'Built-in server', monitor: 'Built-in monitor', pad: 'Built-in gamepad', joystick: 'Built-in joystick', remote: 'Built-in remote', steam: 'Built-in play' };
 function IconPreview({ name }) {
   if (!name) return html`<span class="ipv empty"></span>`;
-  if (!name.includes(':')) return html`<span class="ipv builtin" title=${name}>${name.slice(0, 2)}</span>`;
+  if (!name.includes(':')) return html`<span class="ipv builtin" title=${name}><${Icon} name=${name === 'monitor' ? 'screen' : name === 'steam' ? 'playc' : name} size=${22} /></span>`;
   const [p, n] = name.split(':');
   return html`<span class="ipv" title=${name} style=${`--src:url('/api/icon/${p}/${n}.svg')`}></span>`;
 }
@@ -276,12 +277,20 @@ function IconPicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [res, setRes] = useState(null);
+  const box = useRef();
+  // Click or tap anywhere outside the picker closes it without changing the icon.
+  useEffect(() => {
+    if (!open) return;
+    const away = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => api(`/api/admin/icons?q=${encodeURIComponent(q)}`).then(setRes).catch(() => setRes({ icons: [], sets: [] })), q ? 250 : 0);
     return () => clearTimeout(t);
   }, [q, open]);
-  return html`<div class="ipick">
+  return html`<div class="ipick" ref=${box}>
     <button type="button" class="small ipbtn" onClick=${() => { setOpen(!open); setQ(value && value.includes(':') ? value.split(':')[1] : ''); }}><${IconPreview} name=${value} /><span>${value || 'Pick'}</span></button>
     ${open && html`<div class="ipop" onKeyDown=${(e) => e.key === 'Escape' && setOpen(false)}>
       <input type="text" autofocus spellcheck="false" placeholder="Search icons, e.g. xbox, apple tv, mdi:plex" value=${q} onInput=${(e) => setQ(e.target.value)} />
