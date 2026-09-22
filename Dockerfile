@@ -1,5 +1,6 @@
 # Theater panel. Plain Node on Alpine, like Strimmer: no build step, no native modules.
 FROM node:26-alpine
+LABEL org.opencontainers.image.source=https://github.com/davidcoulson/theater-panel
 
 WORKDIR /app
 ENV NODE_ENV=production \
