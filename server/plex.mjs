@@ -69,7 +69,8 @@ export function mapItem(m, { poster = [300, 450] } = {}) {
   };
 }
 
-export async function libraries() {
+// The libraries picked in PLEX_LIBRARIES, as Plex has them.
+async function sections() {
   const mc = await plex('/library/sections');
   let libs = (mc.Directory || [])
     .filter((d) => d.type === 'movie' || d.type === 'show')
@@ -81,8 +82,101 @@ export async function libraries() {
   return libs;
 }
 
-// Everything from one brand across the panel's libraries, newest first. Movies that exist in
-// both a 4K and a regular library appear once, as the 4K copy.
+// The panel's tabs. Several movie libraries (4K Movies + Movies) become one "Movies" tab, placed
+// where the first of them was. Plex keeps them apart so phones never get a 4K file to transcode;
+// on the projector each film should appear once, as its best copy.
+export const MERGED = 'movies';
+export async function libraries() {
+  const libs = await sections();
+  const movies = libs.filter((l) => l.type === 'movie');
+  if (movies.length < 2) return libs;
+  const at = libs.indexOf(movies[0]);
+  const rest = libs.filter((l) => l.type !== 'movie');
+  rest.splice(at, 0, { id: MERGED, title: 'Movies', type: 'movie' });
+  return rest;
+}
+
+// Copies of one film share Plex's agent guid (plex://movie/...). Higher resolution wins.
+const RES_RANK = { '4k': 5, 1080: 4, 720: 3, 576: 2, 480: 1, sd: 0 };
+const resRank = (m) => RES_RANK[m.Media?.[0]?.videoResolution] ?? 0;
+function bestCopies(list) {
+  const best = new Map();
+  for (const m of list) {
+    const k = m.guid || `${m.type}:${m.title}:${m.year}`;
+    const prev = best.get(k);
+    if (!prev || resRank(m) > resRank(prev)) best.set(k, m);
+  }
+  return [...best.values()];
+}
+
+// Every film across the movie libraries, one row per film, rebuilt in the background every few
+// minutes (the full listing is ~35 MB, so it is not fetched per page). A film counts as watched
+// when any copy is.
+const INDEX_TTL = 5 * 60e3;
+let index = null; let indexAt = 0; let building = null;
+function buildIndex() {
+  building ??= (async () => {
+    const movies = (await sections()).filter((l) => l.type === 'movie');
+    const rows = new Map();
+    for (const lib of movies) {
+      const [mc, hdr] = await Promise.all([
+        plex(`/library/sections/${lib.id}/all`, { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }),
+        hdrKeys(lib.id).catch(() => new Set()),
+      ]);
+      for (const m of mc.Metadata || []) {
+        const k = m.guid || `movie:${m.title}:${m.year}`;
+        const prev = rows.get(k);
+        const watched = (m.viewCount || 0) > 0 || !!prev?.watched;
+        if (prev && resRank(m) <= prev.rank) { prev.watched = watched; continue; }
+        const it = mapItem(m);
+        if (it.quality) it.quality.hdr = hdr.has(m.ratingKey);
+        rows.set(k, { it, rank: resRank(m), watched, titleSort: (m.titleSort || m.title || '').toLowerCase(), released: m.originallyAvailableAt || '' });
+      }
+    }
+    for (const r of rows.values()) r.it.watched = r.watched;
+    index = [...rows.values()]; indexAt = Date.now();
+    return index;
+  })().finally(() => { building = null; });
+  return building;
+}
+async function movieIndex() {
+  if (!index) return buildIndex();
+  if (Date.now() - indexAt > INDEX_TTL) buildIndex().catch((e) => console.warn('[plex] movie index:', e.message));
+  return index;
+}
+// Warm the index at startup so the first visit to Watch is quick.
+export const warmMovies = () => movieIndex().catch((e) => console.warn('[plex] movie index:', e.message));
+// After playback: refresh in the background so watched state catches up.
+export const staleMovies = () => { indexAt = 0; };
+
+const MERGED_SORTS = {
+  added: (a, b) => (b.it.addedAt || 0) - (a.it.addedAt || 0),
+  title: (a, b) => a.titleSort.localeCompare(b.titleSort),
+  year: (a, b) => (b.it.year || 0) - (a.it.year || 0),
+  rating: (a, b) => (b.it.rating ?? -1) - (a.it.rating ?? -1),
+  released: (a, b) => b.released.localeCompare(a.released),
+};
+
+async function listMerged({ filters = [], brand, sort = 'added', start = 0, size = 60 }) {
+  let rows = await movieIndex();
+  if (filters.includes('unwatched')) rows = rows.filter((r) => !r.watched);
+  if (filters.includes('short')) rows = rows.filter((r) => r.it.duration && r.it.duration < 7200000);
+  if (filters.includes('family')) rows = rows.filter((r) => FAMILY_RATINGS.includes(r.it.contentRating));
+  if (filters.includes('4k')) rows = rows.filter((r) => r.it.is4k);
+  if (filters.includes('hdr')) rows = rows.filter((r) => r.it.quality?.hdr);
+  if (brand) rows = rows.filter((r) => r.it.brand === brand);
+  rows = sort === 'random' ? shuffle(rows) : [...rows].sort(MERGED_SORTS[sort] || MERGED_SORTS.added);
+  return { total: rows.length, items: rows.slice(start, start + size).map((r) => r.it) };
+}
+
+function shuffle(list) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// Everything from one brand across the panel's tabs, newest first. Movies come from the merged
+// Movies tab, so each film appears once, as its best copy.
 export async function brandBrowse(brandId, { filters = [], size = 60 } = {}) {
   const libs = await libraries();
   const lists = await Promise.all(libs.map((l) => listLibrary(l.id, { filters: filters.filter((f) => f === 'unwatched'), brand: brandId, sort: 'added', size })
@@ -130,7 +224,7 @@ async function brandFilter(sectionId, brandId) {
 // Which items in a movie section are HDR (Plex can filter on it but doesn't list it).
 function hdrKeys(sectionId) {
   return cached(`hdr:${sectionId}`, 1800e3, async () => {
-    const mc = await plex(`/library/sections/${sectionId}/all`, { hdr: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '6000' });
+    const mc = await plex(`/library/sections/${sectionId}/all`, { hdr: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' });
     return new Set((mc.Metadata || []).map((m) => m.ratingKey));
   });
 }
@@ -163,6 +257,7 @@ async function decorate(sectionId, items) {
 
 // filters: unwatched, short (movies under 2h), family (G/PG/TV-G...), 4k, hdr, genre=<id>, brand=<id>
 export async function listLibrary(sectionId, { filters = [], genre, brand, sort = 'added', start = 0, size = 60 } = {}) {
+  if (sectionId === MERGED) return listMerged({ filters, brand, sort, start, size });
   const p = {
     sort: SORTS[sort] || SORTS.added,
     'X-Plex-Container-Start': String(start),
@@ -250,11 +345,11 @@ export async function onDeck(size = 12) {
 }
 
 export async function recentlyAdded(size = 16) {
-  const libs = await libraries();
+  const libs = await sections();
   const lists = await Promise.all(libs.map((l) =>
     plex(`/library/sections/${l.id}/recentlyAdded`, { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(size) })
       .then((mc) => mc.Metadata || []).catch(() => [])));
-  return lists.flat()
+  return bestCopies(lists.flat())
     .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
     .slice(0, size)
     .map((m) => mapItem(m));
@@ -265,9 +360,9 @@ export async function search(query, size = 30) {
   const out = [];
   for (const hub of mc.Hub || []) {
     if (!['movie', 'show', 'episode'].includes(hub.type)) continue;
-    for (const m of hub.Metadata || []) out.push(mapItem(m));
+    out.push(...(hub.type === 'movie' ? bestCopies(hub.Metadata || []) : hub.Metadata || []));
   }
-  return out;
+  return out.map((m) => mapItem(m));
 }
 
 // Chosen audio/subtitle tracks are stored on the part, so the Apple TV picks them up when it

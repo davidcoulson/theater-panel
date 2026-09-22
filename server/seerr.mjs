@@ -40,6 +40,7 @@ function mapResult(r) {
     poster: tmdbImage(r.posterPath, 'w342'),
     backdrop: tmdbImage(r.backdropPath, 'w780'),
     status: STATUS[r.mediaInfo?.status] || 'none',
+    status4k: STATUS[r.mediaInfo?.status4k] || 'none',
     plexKey: r.mediaInfo?.ratingKey || null,
   };
 }
@@ -112,11 +113,26 @@ export async function details(mediaType, id) {
 }
 
 // seasons: 'all' or [1, 2]; is4k needs a 4K Radarr/Sonarr configured in Seerr.
-export async function request({ mediaType, mediaId, seasons, is4k = false }) {
+async function requestOne({ mediaType, mediaId, seasons, is4k = false }) {
   const body = { mediaType, mediaId: Number(mediaId), is4k: Boolean(is4k) };
   if (mediaType === 'tv') body.seasons = seasons || 'all';
   const r = await seerr('/request', { method: 'POST', body });
+  detailCache.delete(`${mediaType}:${mediaId}`);
   return { id: r.id, status: REQUEST_STATUS[r.status] || 'pending' };
+}
+
+// Movies are requested in both qualities at once (the 1080p copy for phones, the 4K one for the
+// projector), skipping whichever Seerr already has. Fails only if every request fails.
+export async function request(opts) {
+  if (opts.mediaType !== 'movie') return requestOne(opts);
+  const d = await details('movie', opts.mediaId).catch(() => null);
+  const wanted = [false, true].filter((is4k) => !d || (is4k ? d.status4k : d.status) === 'none' || (is4k ? d.status4k : d.status) === 'unknown');
+  if (!wanted.length) throw new Error('Already requested in 1080p and 4K');
+  const results = await Promise.allSettled(wanted.map((is4k) => requestOne({ ...opts, is4k })));
+  const ok = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  if (!ok.length) throw results[0].reason;
+  results.forEach((r, i) => r.status === 'rejected' && console.warn(`[seerr] ${wanted[i] ? '4K' : '1080p'} request:`, r.reason.message));
+  return { ...ok[0], qualities: wanted.filter((_, i) => results[i].status === 'fulfilled').map((k) => (k ? '4K' : '1080p')) };
 }
 
 export async function requests(take = 8) {

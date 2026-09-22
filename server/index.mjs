@@ -114,7 +114,7 @@ get(/^\/api\/state$/, () => ({
 }));
 
 get(/^\/api\/plex\/libraries$/, () => plex.libraries());
-get(/^\/api\/plex\/library\/(\d+)$/, (m, q) => plex.listLibrary(m[1], {
+get(/^\/api\/plex\/library\/(\d+|movies)$/, (m, q) => plex.listLibrary(m[1], {
   filters: (q.get('filters') || '').split(',').filter(Boolean), genre: q.get('genre') || undefined,
   brand: q.get('brand') || undefined,
   sort: q.get('sort') || 'added', start: Number(q.get('start') || 0), size: Math.min(Number(q.get('size') || 60), 120),
@@ -216,6 +216,7 @@ const server = createServer(async (req, res) => {
 await initImageCache();
 ha.start();
 pollSessions();
+if (config.plex.url) plex.warmMovies();
 server.listen(config.port, () => {
   console.log(`[panel] listening on :${config.port}`);
   console.log(`[panel] HA ${config.ha.url || '(not set)'} | Plex ${config.plex.url || '(not set)'} | Seerr ${config.seerr.url || '(not set)'}`);
