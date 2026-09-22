@@ -42,6 +42,14 @@ export async function loadGames() {
   return loadGamesFile();
 }
 
+// A switcher source names its input by number (1-4); the option name is whatever the switcher's
+// select calls that input in HA right now, so renaming it there needs no change here. Older
+// configs name the option directly.
+function switcherOption(ha, g, src) {
+  if (src.input) return ha.states[g.switcher?.entity]?.attributes?.options?.[src.input - 1] || null;
+  return src.option || null;
+}
+
 // Entities the Games screen shows live: the switcher's select, PC power and sensors.
 export async function gameEntities() {
   const g = await loadGames();
@@ -57,7 +65,7 @@ export async function gamesState() {
     // The panel reads the switcher's live input from this HA entity's state.
     switcher: g.switcher?.entity ? { entity: g.switcher.entity } : null,
     // games: false keeps a source (the Apple TV) off the Games screen; it stays on the projector card.
-    sources: (g.sources || []).map(({ id, name, icon, via, option, games }) => ({ id, name, icon, via, option, games: games !== false })),
+    sources: (g.sources || []).map(({ id, name, icon, via, option, input, games }) => ({ id, name, icon, via, option, input, games: games !== false })),
     pc: g.pc ? { name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [], canLaunch: Boolean(g.pc.launchScript) } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
@@ -71,9 +79,10 @@ export async function selectSource(ha, id) {
   const src = g?.sources?.find((s) => s.id === id);
   if (!src) throw new Error('Unknown game source');
   if (src.via === 'switcher') {
-    if (!g.switcher?.entity || !src.option) throw new Error(`Set switcher.entity and ${src.name}'s option in games.json`);
+    const option = switcherOption(ha, g, src);
+    if (!g.switcher?.entity || !option) throw new Error(`Set the HDMI switcher and ${src.name}'s input on the settings page`);
     // Switch first: if the console is off the switch refuses, and the projector stays put.
-    await ha.callService('select', 'select_option', { option: src.option }, { target: { entity_id: g.switcher.entity } });
+    await ha.callService('select', 'select_option', { option }, { target: { entity_id: g.switcher.entity } });
   }
   const input = src.via === 'switcher' ? g.switcher.projectorInput : src.projectorInput;
   if (input) {

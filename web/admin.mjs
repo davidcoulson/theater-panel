@@ -97,8 +97,11 @@ function Settings() {
       if (f.type === 'secret') { if (clear[f.key]) values[f.key] = null; else if (draft[f.key]) values[f.key] = draft[f.key]; }
       else if (draft[f.key] !== data.values[f.key].saved) values[f.key] = draft[f.key];
     }
+    // Switcher rows that still name an option are saved as its input number.
+    const opts = entities.find((e) => e.id === games?.switcher?.entity)?.options || [];
+    const outGames = games && { ...games, sources: games.sources.map((s) => (s.via === 'switcher' && !s.input && opts.includes(s.option) ? { ...s, input: opts.indexOf(s.option) + 1, option: undefined } : s)) };
     try {
-      await api('/api/admin/settings', { rev: data.rev, values, ...(gamesDirty ? { games } : {}) });
+      await api('/api/admin/settings', { rev: data.rev, values, ...(gamesDirty ? { games: outGames } : {}) });
       await load();
       setStatus({ ok: true, text: 'Saved. The panel picks it up right away.' });
     } catch (e) { setStatus({ ok: false, text: e.message }); }
@@ -317,6 +320,9 @@ function GamesEditor({ games, source, entities, onChange }) {
   const put = (patch) => onChange({ ...g, ...patch });
   const edit = (i, patch) => put({ sources: g.sources.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
   const move = (i, d) => { const n = [...g.sources]; [n[i], n[i + d]] = [n[i + d], n[i]]; put({ sources: n }); };
+  // The switcher's inputs as HA names them; older rows that stored a name map to its number.
+  const switchOptions = entities.find((e) => e.id === g.switcher?.entity)?.options || [];
+  const inputOf = (s) => s.input || (s.option && switchOptions.indexOf(s.option) + 1) || 0;
   return html`<div class="games">
     <h3>Sources</h3>
     ${source === 'file' && html`<small>Loaded from games.json. Saving here stores them with the other settings, and games.json is then ignored.</small>`}
@@ -325,19 +331,22 @@ function GamesEditor({ games, source, entities, onChange }) {
       <${EntityOptions} id="dl-select" domain="select" entities=${entities} />
       <label>Switcher's projector input<select value=${g.switcher?.projectorInput || 'HDMI 3'} onChange=${(e) => put({ switcher: { ...g.switcher, projectorInput: e.target.value } })}>${INPUTS.map((x) => html`<option>${x}</option>`)}</select></label>
     </div>
-    <table class="grid"><thead><tr><th>Name</th><th>Connected to</th><th>Input / switcher option</th><th>Icon</th><th title="Show on the Games screen">Games</th><th></th></tr></thead><tbody>
+    <table class="grid"><thead><tr><th>Name</th><th>Connected to</th><th>Input</th><th>Icon</th><th title="Show on the Games screen">Games</th><th></th></tr></thead><tbody>
       ${g.sources.map((s, i) => html`<tr>
         <td><input type="text" value=${s.name} onInput=${(e) => edit(i, { name: e.target.value })} /></td>
         <td><select value=${s.via} onChange=${(e) => edit(i, { via: e.target.value })}><option value="projector">Projector</option><option value="switcher">HDMI switcher</option></select></td>
         <td>${s.via === 'switcher'
-          ? html`<input type="text" value=${s.option || ''} placeholder=${s.name} onInput=${(e) => edit(i, { option: e.target.value })} />`
+          ? html`<select value=${String(inputOf(s) || '')} onChange=${(e) => edit(i, { input: Number(e.target.value), option: undefined })}>
+              ${!inputOf(s) && html`<option value="">${s.option ? `"${s.option}" (pick its input)` : 'Pick an input'}</option>`}
+              ${[1, 2, 3, 4].map((n) => html`<option value=${n}>Input ${n}${switchOptions[n - 1] ? ` · ${switchOptions[n - 1]}` : ''}</option>`)}
+            </select>`
           : html`<select value=${s.projectorInput || 'HDMI 2'} onChange=${(e) => edit(i, { projectorInput: e.target.value })}>${INPUTS.map((x) => html`<option>${x}</option>`)}</select>`}</td>
         <td><${IconPicker} value=${s.icon || 'pad'} onChange=${(v) => edit(i, { icon: v })} /></td>
         <td class="center"><input type="checkbox" aria-label="Show on the Games screen" checked=${s.games !== false} onChange=${(e) => edit(i, { games: e.target.checked ? undefined : false })} /></td>
         <td class="actions"><${RowActions} i=${i} n=${g.sources.length} move=${move} remove=${() => put({ sources: g.sources.filter((_, k) => k !== i) })} /></td></tr>`)}
     </tbody></table>
     <button type="button" class="small" onClick=${() => put({ sources: [...g.sources, { name: '', via: 'switcher', icon: 'pad' }] })}>Add source</button>
-    <small>Every source is on the projector card, in this order; untick Games to keep one off the Games screen. Switcher option names must match the options of the switcher's select entity.</small>
+    <small>Every source is on the projector card, in this order; untick Games to keep one off the Games screen. Switcher inputs are by number; their names come from the switcher's select in Home Assistant.</small>
   </div>`;
 }
 

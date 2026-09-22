@@ -10,13 +10,15 @@ export function Games() {
   const [steam] = useLoad(() => get('/api/steam/library').catch(() => ({ configured: false, games: [] })), []);
   const [active, setActive] = useState(null);
   // Live from HA: the switcher select's state names the console on screen.
-  const switcherState = useEntity(g?.switcher?.entity)?.state;
+  const switcher = useEntity(g?.switcher?.entity);
+  const switcherState = switcher?.state;
+  const switchOptions = switcher?.attributes?.options || [];
 
   if (err) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><div class="empty" style="flex-grow:1">${err.message}</div></main>`;
   if (g && !g.configured) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><${Setup} /></main>`;
 
   const sources = (g?.sources || []).filter((s) => s.games !== false);
-  const fromSwitcher = g?.sources?.find((s) => s.via === 'switcher' && s.option === switcherState)?.id;
+  const fromSwitcher = g?.sources?.find((s) => s.via === 'switcher' && (s.input ? switchOptions[s.input - 1] : s.option) === switcherState)?.id;
   const current = active || fromSwitcher || g?.active;
   async function pick(src) {
     setActive(src.id);
