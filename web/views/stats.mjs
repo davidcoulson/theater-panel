@@ -1,152 +1,192 @@
-// Gaming PC stats (MOCKUP): three layouts to choose from, fed by simulated sensors until the
-// VM's HASS.Agent / LibreHardwareMonitor entities exist. #/stats?v=cockpit|hero|wall&mode=game|idle
+// Gaming PC stats: six live panels (frames, GPU, CPU, memory, network, cooling) from the PC's
+// Home Assistant sensors — LibreHardwareMonitor's integration or HASS.Agent, mapped to roles in
+// games.json (pc.stats). Tap a panel to blow it up; swipe to go back. Swipe left/right moves
+// between Games and Stats. #/stats?demo=1 fills it with made-up numbers to see the layout.
 
-import { useState, useEffect } from 'preact/hooks';
-import { html, Header } from '../lib/ui.mjs';
-import { route } from '../app.mjs';
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { html, Header, Icon } from '../lib/ui.mjs';
+import { get, useStore, useLoad, runtime } from '../lib/api.mjs';
+import { route, go } from '../app.mjs';
 
-// ---------- simulated sensors (random walks, 2 s updates like HASS.Agent) ----------
-const HIST = 90;
-function useSim(mode) {
-  const game = mode !== 'idle';
-  const base = game
-    ? { fps: 118, low: 92, cpu: 46, cpuT: 71, gpu: 94, gpuT: 74, gpuClk: 2610, memClk: 10501, vram: 13.1, vramMax: 16, ram: 21.4, ramMax: 32, gpuW: 318, fan: 62, up: 3.1, down: 28, cores: 16 }
-    : { fps: 0, low: 0, cpu: 4, cpuT: 42, gpu: 2, gpuT: 38, gpuClk: 210, memClk: 405, vram: 1.2, vramMax: 16, ram: 9.8, ramMax: 32, gpuW: 21, fan: 0, up: 0.2, down: 0.6, cores: 16 };
-  // Start with 3 minutes of made-up history so the graphs aren't empty.
-  const fake = (b, spread) => { let v = b; return Array.from({ length: HIST }, () => (v = Math.max(0, v + (b - v) * 0.25 + (Math.random() - 0.5) * spread))); };
-  const [s, setS] = useState(() => ({ ...base, coreLoads: Array.from({ length: base.cores }, (_, i) => (i < 2 && game ? 88 : base.cpu)),
-    hist: { fps: fake(base.fps, 14), gpuT: fake(base.gpuT, 1.5), cpuT: fake(base.cpuT, 2), gpu: fake(base.gpu, 6), cpu: fake(base.cpu, 12), gpuW: fake(base.gpuW, 18), down: fake(base.down, 10) } }));
-  useEffect(() => {
-    const walk = (v, b, spread, lo, hi) => Math.min(hi, Math.max(lo, v + (b - v) * 0.25 + (Math.random() - 0.5) * spread));
-    const t = setInterval(() => setS((p) => {
-      const n = {
-        ...p,
-        fps: game ? walk(p.fps, base.fps, 14, 60, 165) : 0,
-        cpu: walk(p.cpu, base.cpu, game ? 12 : 3, 1, 100),
-        gpu: walk(p.gpu, base.gpu, game ? 6 : 2, 0, 100),
-        cpuT: walk(p.cpuT, base.cpuT, 2, 30, 95), gpuT: walk(p.gpuT, base.gpuT, 1.5, 30, 90),
-        gpuClk: walk(p.gpuClk, base.gpuClk, game ? 40 : 30, 180, 2800),
-        gpuW: walk(p.gpuW, base.gpuW, game ? 18 : 3, 10, 450),
-        vram: walk(p.vram, base.vram, 0.2, 0.5, 16), ram: walk(p.ram, base.ram, 0.2, 4, 32),
-        down: walk(p.down, base.down, game ? 10 : 0.5, 0, 120), up: walk(p.up, base.up, 1, 0, 40),
-        coreLoads: p.coreLoads.map((c, i) => walk(c, i < 2 && game ? 88 : base.cpu, game ? 20 : 4, 0, 100)),
-      };
-      n.low = game ? Math.min(n.fps - 8, walk(p.low || 90, base.low, 10, 40, 160)) : 0;
-      const push = (k) => [...p.hist[k], n[k]].slice(-HIST);
-      n.hist = Object.fromEntries(Object.keys(p.hist).map((k) => [k, push(k)]));
-      return n;
-    }), 2000);
-    return () => clearInterval(t);
-  }, [mode]);
-  return s;
-}
-
-// ---------- pieces ----------
+const HIST = 90;           // samples kept per metric (5 s each ≈ 7 minutes)
+const SAMPLE = 5000;
+const r0 = (v) => (Number.isFinite(v) ? Math.round(v) : null);
 const heat = (t) => (t >= 85 ? 'var(--hot)' : t >= 75 ? 'var(--warm)' : 'var(--cool)');
-const r0 = (v) => Math.round(v);
 
-function Gauge({ value, max = 100, size = 380, label, big, unit, sub, color = 'var(--gold)' }) {
-  // 270° arc, value as the sweep.
-  const r = size / 2 - 22, c = size / 2, sweep = 270, start = 135;
-  const pt = (a) => [c + r * Math.cos((a * Math.PI) / 180), c + r * Math.sin((a * Math.PI) / 180)];
-  const arc = (a0, a1) => { const [x0, y0] = pt(a0); const [x1, y1] = pt(a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
-  const f = Math.max(0.001, Math.min(1, value / max));
-  return html`<div class="st-gauge" style=${`width:${size}px;height:${size}px`}>
-    <svg viewBox=${`0 0 ${size} ${size}`} width=${size} height=${size}>
-      <path d=${arc(start, start + sweep)} stroke="rgba(244,236,224,.10)" stroke-width="22" fill="none" stroke-linecap="round" />
-      <path d=${arc(start, start + sweep * f)} stroke=${color} stroke-width="22" fill="none" stroke-linecap="round" style="transition:all 1.8s ease" />
-    </svg>
-    <div class="in"><div class="l">${label}</div><div class="n">${big}<small>${unit}</small></div><div class="s">${sub}</div></div>
-  </div>`;
+// ---------- values ----------
+
+// Current numbers for every mapped role, plus a rolling history for the graphs.
+function useStats(stats, demo) {
+  const states = useStore((s) => s.states);
+  const [hist, setHist] = useState({});
+  const latest = useRef({});
+
+  const num = (role) => {
+    const id = stats?.[role];
+    const v = id && Number(states[id]?.state);
+    return Number.isFinite(v) ? v : null;
+  };
+  const vals = demo ? demoValues() : {
+    fps: num('fps'), fpsLow: num('fpsLow'),
+    gpuLoad: num('gpuLoad'), gpuTemp: num('gpuTemp'), gpuClock: num('gpuClock'), gpuPower: num('gpuPower'), gpuFan: num('gpuFan'),
+    cpuLoad: num('cpuLoad'), cpuTemp: num('cpuTemp'), cpuClock: num('cpuClock'),
+    ramUsed: num('ramUsed'), ramTotal: num('ramTotal'), vramUsed: num('vramUsed'), vramTotal: num('vramTotal'),
+    netDown: num('netDown'), netUp: num('netUp'),
+    cores: (stats?.cores || []).map((id) => Number(states[id]?.state)).filter(Number.isFinite),
+    game: gameName(states[stats?.game]?.state),
+    uptime: states[stats?.uptime]?.state,
+  };
+  latest.current = vals;
+
+  // Demo mode starts with a few minutes of made-up history so the graphs aren't empty.
+  useEffect(() => {
+    if (!demo) return;
+    const fake = (b, spread) => { let v = b; return Array.from({ length: HIST }, () => (v = Math.max(0, v + (b - v) * 0.25 + (Math.random() - 0.5) * spread))); };
+    setHist({ fps: fake(118, 16), gpuLoad: fake(94, 8), gpuTemp: fake(74, 2), cpuLoad: fake(42, 14), cpuTemp: fake(71, 2), netDown: fake(28, 12), gpuPower: fake(318, 30), ramUsed: fake(21, 1), vramUsed: fake(13, 1) });
+  }, [demo]);
+
+  useEffect(() => {
+    const tick = () => setHist((h) => {
+      const next = { ...h };
+      for (const k of ['fps', 'gpuLoad', 'gpuTemp', 'cpuLoad', 'cpuTemp', 'netDown', 'gpuPower', 'ramUsed', 'vramUsed']) {
+        const v = latest.current[k];
+        if (v != null) next[k] = [...(h[k] || []), v].slice(-HIST);
+      }
+      return next;
+    });
+    tick();
+    const t = setInterval(tick, SAMPLE);
+    return () => clearInterval(t);
+  }, [demo]);
+
+  return { ...vals, hist };
 }
 
-function Spark({ data, w = 300, h = 60, max, color = 'var(--gold)', fill = true }) {
-  if (data.length < 2) return html`<svg width=${w} height=${h}></svg>`;
+// HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
+function gameName(v) {
+  if (!v || ['unknown', 'unavailable', 'idle', ''].includes(String(v).toLowerCase())) return null;
+  return String(v).split(/\s+[-–|]\s+/)[0].slice(0, 40);
+}
+
+// Demo numbers: a slow random walk, so the layout can be judged before the VM is wired up.
+let demoState = null;
+function demoValues() {
+  const walk = (v, b, s, lo, hi) => Math.min(hi, Math.max(lo, v + (b - v) * 0.25 + (Math.random() - 0.5) * s));
+  const b = { fps: 118, fpsLow: 92, gpuLoad: 94, gpuTemp: 74, gpuClock: 2610, gpuPower: 318, gpuFan: 62, cpuLoad: 42, cpuTemp: 71, cpuClock: 4900, ramUsed: 21.4, ramTotal: 32, vramUsed: 13.1, vramTotal: 16, netDown: 28, netUp: 3.1 };
+  demoState ??= { ...b, cores: Array.from({ length: 16 }, (_, i) => (i < 2 ? 88 : 40)) };
+  const d = demoState;
+  for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, b[k] * 2);
+  d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
+  d.ramTotal = 32; d.vramTotal = 16;
+  return { ...d, game: 'Cyberpunk 2077', uptime: null };
+}
+
+// ---------- drawing ----------
+
+function Spark({ data = [], w = 560, h = 120, max, color = 'var(--gold)' }) {
+  if (data.length < 2) return html`<div class="st-empty">waiting for data…</div>`;
   const m = max || Math.max(...data) * 1.15 || 1;
-  const pts = data.map((v, i) => [(i / (HIST - 1)) * w, h - (v / m) * h]);
+  const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - Math.min(1, v / m) * h]);
   const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
-  return html`<svg class="spark" width=${w} height=${h} viewBox=${`0 0 ${w} ${h}`} preserveAspectRatio="none">
-    ${fill && html`<path d=${`${d} L${pts[pts.length - 1][0]} ${h} L${pts[0][0]} ${h} Z`} fill=${color} opacity=".14" />`}
+  return html`<svg class="spark" viewBox=${`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+    <path d=${`${d} L${w} ${h} L0 ${h} Z`} fill=${color} opacity=".14" />
     <path d=${d} stroke=${color} stroke-width="2.5" fill="none" /></svg>`;
 }
 
-function Bar({ label, value, max, text, color = 'var(--gold)' }) {
-  return html`<div class="st-bar"><div class="t"><span>${label}</span><b>${text}</b></div><div class="b"><i style=${`width:${Math.min(100, (value / max) * 100)}%;background:${color}`}></i></div></div>`;
+const Cores = ({ loads }) => html`<div class="st-cores">${loads.map((l) => html`<i style=${`height:${Math.max(4, l)}%;background:${l > 85 ? 'var(--warm)' : 'var(--gold)'}`}></i>`)}</div>`;
+
+const Bar = ({ label, value, max, text, color = 'var(--gold)' }) => html`<div class="st-bar">
+  <div class="t"><span>${label}</span><b>${text}</b></div>
+  <div class="b"><i style=${`width:${Math.min(100, (value / max) * 100)}%;background:${color}`}></i></div></div>`;
+
+// ---------- the panels ----------
+
+// Each panel: what it shows small, and what it becomes when blown up.
+function panels(s) {
+  const has = (v) => v != null;
+  const out = [];
+  if (has(s.fps)) out.push({
+    id: 'frames', title: 'Frames', value: `${r0(s.fps)}`, unit: 'fps',
+    sub: has(s.fpsLow) ? `1% low ${r0(s.fpsLow)}` : 'frames per second',
+    hist: s.hist.fps, max: 180, big: true,
+  });
+  if (has(s.gpuLoad) || has(s.gpuTemp)) out.push({
+    id: 'gpu', title: 'GPU', value: has(s.gpuLoad) ? `${r0(s.gpuLoad)}%` : `${r0(s.gpuTemp)}°`,
+    sub: [has(s.gpuTemp) && `${r0(s.gpuTemp)}°`, has(s.gpuClock) && `${r0(s.gpuClock)} MHz`, has(s.gpuPower) && `${r0(s.gpuPower)} W`].filter(Boolean).join(' · '),
+    hist: s.hist.gpuLoad || s.hist.gpuTemp, max: 100, color: has(s.gpuTemp) ? heat(s.gpuTemp) : undefined, big: true,
+  });
+  if (has(s.cpuLoad) || has(s.cpuTemp)) out.push({
+    id: 'cpu', title: 'CPU', value: has(s.cpuLoad) ? `${r0(s.cpuLoad)}%` : `${r0(s.cpuTemp)}°`,
+    sub: [has(s.cpuTemp) && `${r0(s.cpuTemp)}°`, has(s.cpuClock) && `${r0(s.cpuClock)} MHz`, s.cores.length && `${s.cores.length} cores`].filter(Boolean).join(' · '),
+    hist: s.hist.cpuLoad || s.hist.cpuTemp, max: 100, color: has(s.cpuTemp) ? heat(s.cpuTemp) : undefined,
+    body: s.cores.length ? html`<${Cores} loads=${s.cores} />` : null,
+  });
+  if (has(s.ramUsed) || has(s.vramUsed)) out.push({
+    id: 'memory', title: 'Memory', value: has(s.ramUsed) ? `${s.ramUsed.toFixed(1)} GB` : `${s.vramUsed.toFixed(1)} GB`,
+    sub: has(s.vramUsed) ? `VRAM ${s.vramUsed.toFixed(1)}${has(s.vramTotal) ? ` / ${r0(s.vramTotal)} GB` : ' GB'}` : 'system memory',
+    hist: s.hist.ramUsed, max: s.ramTotal || undefined,
+    body: html`<div class="stack">
+      ${has(s.ramUsed) && has(s.ramTotal) && html`<${Bar} label="RAM" value=${s.ramUsed} max=${s.ramTotal} text=${`${r0((s.ramUsed / s.ramTotal) * 100)}%`} />`}
+      ${has(s.vramUsed) && has(s.vramTotal) && html`<${Bar} label="VRAM" value=${s.vramUsed} max=${s.vramTotal} text=${`${r0((s.vramUsed / s.vramTotal) * 100)}%`} />`}
+    </div>`,
+  });
+  if (has(s.netDown) || has(s.netUp)) out.push({
+    id: 'network', title: 'Network', value: `↓ ${r0(s.netDown ?? 0)}`, unit: 'Mb/s',
+    sub: has(s.netUp) ? `↑ ${s.netUp.toFixed(1)} Mb/s` : 'download',
+    hist: s.hist.netDown,
+  });
+  if (has(s.gpuFan) || has(s.gpuTemp) || has(s.cpuTemp)) out.push({
+    id: 'cooling', title: 'Cooling', value: has(s.gpuFan) ? `${r0(s.gpuFan)}%` : `${r0(s.gpuTemp ?? s.cpuTemp)}°`,
+    sub: has(s.gpuFan) ? 'GPU fans' : 'temperatures',
+    body: html`<div class="stack">
+      ${has(s.cpuTemp) && html`<${Bar} label="CPU" value=${s.cpuTemp} max=${100} text=${`${r0(s.cpuTemp)}°`} color=${heat(s.cpuTemp)} />`}
+      ${has(s.gpuTemp) && html`<${Bar} label="GPU" value=${s.gpuTemp} max=${100} text=${`${r0(s.gpuTemp)}°`} color=${heat(s.gpuTemp)} />`}
+    </div>`,
+  });
+  return out;
 }
 
-function Cores({ loads }) {
-  return html`<div class="st-cores">${loads.map((l) => html`<i style=${`height:${Math.max(4, l)}%;background:${l > 85 ? 'var(--warm)' : 'var(--gold)'}`}></i>`)}</div>`;
-}
-
-// ---------- the three layouts ----------
-function Cockpit({ s, game }) {
-  return html`<div class="st cockpit">
-    <${Gauge} label="CPU" value=${s.cpu} big=${r0(s.cpuT)} unit="°" sub=${`${r0(s.cpu)}% load`} color=${heat(s.cpuT)} />
-    <div class="mid">
-      ${game ? html`<div class="fps"><div class="l">FPS</div><div class="n">${r0(s.fps)}</div><div class="s">1% low ${r0(s.low)}</div></div>
-        <${Spark} data=${s.hist.fps} w=${520} h=${110} max=${180} />`
-        : html`<div class="fps idle"><div class="l">Idle</div><div class="n">${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div><div class="s">Unraid VM · up 3 d 4 h</div></div>`}
-      <${Cores} loads=${s.coreLoads} />
-    </div>
-    <${Gauge} label="GPU" value=${s.gpu} big=${r0(s.gpuT)} unit="°" sub=${`${r0(s.gpu)}% · ${r0(s.gpuClk)} MHz`} color=${heat(s.gpuT)} />
-    <div class="strip">
-      <div><span>VRAM</span><b>${s.vram.toFixed(1)}<small>/${s.vramMax} GB</small></b></div>
-      <div><span>RAM</span><b>${s.ram.toFixed(1)}<small>/${s.ramMax} GB</small></b></div>
-      <div><span>GPU power</span><b>${r0(s.gpuW)}<small> W</small></b></div>
-      <div><span>Mem clock</span><b>${r0(s.memClk)}<small> MHz</small></b></div>
-      <div><span>Fans</span><b>${r0(s.fan)}<small>%</small></b></div>
-      <div><span>Network</span><b>↓${r0(s.down)}<small> Mb/s</small></b></div>
-    </div>
-  </div>`;
-}
-
-function Hero({ s, game }) {
-  const heroVal = game ? r0(s.fps) : r0(s.gpuT);
-  return html`<div class="st hero">
-    <div class="big">
-      <div class="bg"><${Spark} data=${game ? s.hist.fps : s.hist.gpuT} w=${1000} h=${520} max=${game ? 180 : 100} /></div>
-      <div class="l">${game ? 'Frames per second' : 'GPU temperature'}</div>
-      <div class="n">${heroVal}<small>${game ? '' : '°'}</small></div>
-      <div class="s">${game ? `1% low ${r0(s.low)} · avg ${r0(s.hist.fps.reduce((a, b) => a + b, 0) / Math.max(1, s.hist.fps.length))}` : 'Idle · nothing running'}</div>
-    </div>
-    <div class="col">
-      ${[
-        ['GPU', `${r0(s.gpu)}%`, `${r0(s.gpuT)}° · ${r0(s.gpuClk)} MHz`, s.gpu, 100, heat(s.gpuT), s.hist.gpu],
-        ['CPU', `${r0(s.cpu)}%`, `${r0(s.cpuT)}°`, s.cpu, 100, heat(s.cpuT), s.hist.cpu],
-        ['VRAM', `${s.vram.toFixed(1)} GB`, `of ${s.vramMax} GB`, s.vram, s.vramMax, 'var(--gold)', null],
-        ['RAM', `${s.ram.toFixed(1)} GB`, `of ${s.ramMax} GB`, s.ram, s.ramMax, 'var(--gold)', null],
-        ['Power', `${r0(s.gpuW)} W`, 'GPU board power', s.gpuW, 450, 'var(--gold)', s.hist.gpuW],
-      ].map(([l, v, sub, val, max, col, hist]) => html`<div class="row">
-        <div><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></div>
-        ${hist ? html`<${Spark} data=${hist} w=${220} h=${56} max=${max} color=${col} />` : html`<div class="mini"><i style=${`width:${(val / max) * 100}%`}></i></div>`}
-      </div>`)}
-    </div>
-  </div>`;
-}
-
-function Wall({ s, game }) {
-  const panel = (title, value, sub, body, cls = '') => html`<section class=${`p ${cls}`}><div class="h"><span>${title}</span><b>${value}</b></div><div class="s">${sub}</div>${body}</section>`;
-  return html`<div class=${`st wall ${game ? 'game' : ''}`}>
-    ${panel('Frames', game ? r0(s.fps) : '—', game ? `1% low ${r0(s.low)}` : 'No game running', html`<${Spark} data=${s.hist.fps} w=${560} h=${120} max=${180} />`, 'frames')}
-    ${panel('GPU', `${r0(s.gpu)}%`, `${r0(s.gpuT)}° · ${r0(s.gpuClk)} MHz · ${r0(s.gpuW)} W`, html`<${Spark} data=${s.hist.gpuT} w=${560} h=${120} max=${100} color=${heat(s.gpuT)} />`, 'gpu')}
-    ${panel('CPU', `${r0(s.cpu)}%`, `${r0(s.cpuT)}° · 16 threads`, html`<${Cores} loads=${s.coreLoads} />`)}
-    ${panel('Memory', `${s.ram.toFixed(1)} GB`, `VRAM ${s.vram.toFixed(1)} / ${s.vramMax} GB`, html`<div class="stack"><${Bar} label="RAM" value=${s.ram} max=${s.ramMax} text=${`${r0((s.ram / s.ramMax) * 100)}%`} /><${Bar} label="VRAM" value=${s.vram} max=${s.vramMax} text=${`${r0((s.vram / s.vramMax) * 100)}%`} /></div>`)}
-    ${panel('Network', `↓ ${r0(s.down)} Mb/s`, `↑ ${s.up.toFixed(1)} Mb/s`, html`<${Spark} data=${s.hist.down} w=${400} h=${90} />`)}
-    ${panel('Cooling', `${r0(s.fan)}%`, 'GPU fans', html`<div class="stack"><${Bar} label="CPU" value=${s.cpuT} max=${100} text=${`${r0(s.cpuT)}°`} color=${heat(s.cpuT)} /><${Bar} label="GPU" value=${s.gpuT} max=${100} text=${`${r0(s.gpuT)}°`} color=${heat(s.gpuT)} /></div>`)}
-  </div>`;
-}
-
-const LAYOUTS = { cockpit: ['Cockpit', Cockpit], hero: ['Big number', Hero], wall: ['Telemetry wall', Wall] };
+// ---------- the page ----------
 
 export function Stats() {
-  const v = LAYOUTS[route.params.v] ? route.params.v : 'cockpit';
-  const mode = route.params.mode === 'idle' ? 'idle' : 'game';
-  const s = useSim(mode);
-  const [name, View] = LAYOUTS[v];
-  return html`<main class="view stats-view dark tx-suede">
-    <${Header} title="Gaming PC" kicker=${`Mockup · ${name} · ${mode === 'game' ? 'In game' : 'Idle'}`}>
-      <span class="chip dark-chip"><span class="dot on"></span>${mode === 'game' ? 'Cyberpunk 2077' : 'Idle'}</span>
+  const [g] = useLoad(() => get('/api/games').catch(() => null), []);
+  const demo = route.params.demo === '1' || (g && !g.pc?.stats);
+  const s = useStats(g?.pc?.stats, demo);
+  const [open, setOpen] = useState(null);
+  const swipe = useRef(null);
+
+  // Swipe: left/right between Games and Stats, any swipe closes a blown-up panel.
+  const down = (e) => { swipe.current = { x: e.clientX, y: e.clientY }; };
+  const up = (e) => {
+    const st = swipe.current; swipe.current = null;
+    if (!st) return;
+    const dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (Math.abs(dx) < 70 && Math.abs(dy) < 70) return;   // a tap, not a swipe
+    if (open) { setOpen(null); return; }
+    if (dx > 70 && Math.abs(dx) > Math.abs(dy)) go('games');
+  };
+
+  const list = panels(s);
+  const shown = open ? list.filter((p) => p.id === open) : list;
+
+  return html`<main class="view stats-view dark tx-suede" onPointerDown=${down} onPointerUp=${up}>
+    <${Header} title=${g?.pc?.name || 'Gaming PC'} kicker=${demo ? 'Demo numbers · set pc.stats in games.json' : 'Live from Home Assistant'}>
+      <span class="chip dark-chip"><span class=${`dot ${s.game ? 'on' : ''}`}></span>${s.game || 'Idle'}</span>
+      <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
     <//>
-    <${View} s=${s} game=${mode === 'game'} />
+    ${!list.length ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">No PC sensors yet. Add them under pc.stats in games.json.</div>`
+      : html`<div class=${`st wall ${open ? 'one' : ''}`}>
+        ${shown.map((p) => html`<${Panel} p=${p} open=${Boolean(open)} onClick=${() => setOpen(open ? null : p.id)} />`)}
+      </div>`}
+    ${open && html`<div class="st-hint">Swipe to go back</div>`}
   </main>`;
+}
+
+function Panel({ p, open, onClick }) {
+  return html`<section class=${`p ${p.big ? 'wide' : ''} ${open ? 'blown' : ''}`} role="button" tabindex="0" onClick=${onClick}>
+    <div class="h"><span>${p.title}</span><b>${p.value}${p.unit && html`<small>${p.unit}</small>`}</b></div>
+    <div class="s">${p.sub}</div>
+    ${p.body}
+    ${p.hist && html`<${Spark} data=${p.hist} max=${p.max} color=${p.color} h=${open ? 320 : 120} />`}
+  </section>`;
 }

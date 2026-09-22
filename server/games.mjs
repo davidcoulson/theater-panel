@@ -53,7 +53,16 @@ function switcherOption(ha, g, src) {
 // Entities the Games screen shows live: the switcher's select, PC power and sensors.
 export async function gameEntities() {
   const g = await loadGames();
-  return [g?.switcher?.entity, g?.pc?.power, ...(g?.pc?.sensors || []).map((s) => s.entity)].filter(Boolean);
+  return [g?.switcher?.entity, g?.pc?.power, ...(g?.pc?.sensors || []).map((s) => s.entity), ...statEntities(g)].filter(Boolean);
+}
+
+// The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
+// Anything left out simply doesn't appear on the page.
+export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuPower', 'gpuFan',
+  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime'];
+function statEntities(g) {
+  const st = g?.pc?.stats || {};
+  return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
 }
 
 export async function gamesState() {
@@ -66,7 +75,11 @@ export async function gamesState() {
     switcher: g.switcher?.entity ? { entity: g.switcher.entity } : null,
     // games: false keeps a source (the Apple TV) off the Games screen; it stays on the projector card.
     sources: (g.sources || []).map(({ id, name, icon, via, option, input, games }) => ({ id, name, icon, via, option, input, games: games !== false })),
-    pc: g.pc ? { name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [], canLaunch: Boolean(g.pc.launchScript) } : null,
+    pc: g.pc ? {
+      name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [],
+      canLaunch: Boolean(g.pc.launchScript),
+      stats: g.pc.stats || null,
+    } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
 }

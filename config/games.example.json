@@ -87,6 +87,31 @@
         "label": "Disk C:",
         "kind": "percent"
       }
-    ]
+    ],
+    "stats": {
+      "_comment": "Stats page roles -> HA entities (LibreHardwareMonitor integration or HASS.Agent). Leave a role out and its panel hides.",
+      "game": "sensor.gaming_pc_active_window",
+      "fps": "sensor.gaming_pc_fps",
+      "fpsLow": "sensor.gaming_pc_fps_1_low",
+      "gpuLoad": "sensor.gaming_pc_gpu_core_load",
+      "gpuTemp": "sensor.gaming_pc_gpu_core_temperature",
+      "gpuClock": "sensor.gaming_pc_gpu_core_clock",
+      "gpuPower": "sensor.gaming_pc_gpu_package_power",
+      "gpuFan": "sensor.gaming_pc_gpu_fan",
+      "cpuLoad": "sensor.gaming_pc_cpu_total_load",
+      "cpuTemp": "sensor.gaming_pc_cpu_package_temperature",
+      "cpuClock": "sensor.gaming_pc_cpu_core_clock",
+      "cores": [
+        "sensor.gaming_pc_cpu_core_1_load",
+        "sensor.gaming_pc_cpu_core_2_load"
+      ],
+      "ramUsed": "sensor.gaming_pc_memory_used",
+      "ramTotal": "sensor.gaming_pc_memory_total",
+      "vramUsed": "sensor.gaming_pc_gpu_memory_used",
+      "vramTotal": "sensor.gaming_pc_gpu_memory_total",
+      "netDown": "sensor.gaming_pc_network_download",
+      "netUp": "sensor.gaming_pc_network_upload",
+      "uptime": "sensor.gaming_pc_uptime"
+    }
   }
 }

@@ -42,6 +42,7 @@ const PATHS = {
   joystick: 'M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 9v7M4 16h16v5H4zM17 16v-2',
   remote: 'M9 2h6a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM12 5v3M10.5 6.5h3M12 12h.01M12 15h.01M11 19h2',
   tv: 'M3 5h18v12H3zM8 21h8M12 17v4',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   server: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01M12 7h4M12 17h4',
   plex: 'M6 3h5l7 9-7 9H6l7-9z',
   youtube: 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9v6l5-3z',
