@@ -1,6 +1,6 @@
 // Lobby: continue watching, scenes, projector, lights, just added and the pre-show music bar.
 
-import { useState } from 'preact/hooks';
+import { useState, useRef } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
@@ -45,37 +45,65 @@ export function Lobby() {
 function Continue() {
   const [deck] = useLoad(() => get('/api/plex/ondeck?size=8'), []);
   const [i, setI] = useState(0);
+  const [drag, setDrag] = useState(0);
+  const swipe = useRef(null);
+  const swallowUntil = useRef(0);
   if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
   if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   const it = deck[i % deck.length];
   const pct = it.duration ? Math.round((it.viewOffset / it.duration) * 100) : 0;
   const left = (it.duration || 0) - (it.viewOffset || 0);
   const name = it.showTitle || it.title;
-  return html`<section class="hero dark tx-suede">
+  const n = deck.length;
+  const at = i % n;
+
+  // Swipe left/right to move through the deck. A swipe never counts as a tap on the buttons.
+  const down = (e) => { if (n > 1) swipe.current = { x: e.clientX, y: e.clientY, moved: false }; };
+  const move = (e) => {
+    const s = swipe.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    if (!s.moved && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(e.clientY - s.y)) s.moved = true;
+    if (s.moved) setDrag(dx);
+  };
+  const up = (e) => {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s?.moved) return;
+    const dx = e.clientX - s.x;
+    if (dx < -70) setI((at + 1) % n);
+    else if (dx > 70) setI((at - 1 + n) % n);
+    setDrag(0);
+    swallowUntil.current = Date.now() + 400; // the click that ends a drag is not a tap
+  };
+  const guard = (e) => { if (Date.now() < swallowUntil.current) { e.stopPropagation(); e.preventDefault(); } };
+  const cancel = () => { swipe.current = null; setDrag(0); };
+
+  return html`<section class="hero dark tx-suede swipe" onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${cancel} onPointerLeave=${cancel} onClickCapture=${guard}>
+    <div class="slide" key=${it.id} style=${drag ? `transform:translateX(${drag * 0.6}px);opacity:${Math.max(0.35, 1 - Math.abs(drag) / 500)};transition:none` : ''}>
     <div class="art">
-      <img src=${it.art || it.still} alt="" />
+      <img src=${it.art || it.still} alt="" draggable="false" />
+      ${n > 1 && html`<span class="count">${at + 1} / ${n}</span>`}
       <div class="name">${name}</div>
     </div>
     <div class="body">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="eyebrow" style="white-space:nowrap">Continue watching${deck.length > 1 ? ` · ${(i % deck.length) + 1}/${deck.length}` : ''}</div>
-        ${deck.length > 1 && html`<div class="deck">
-          <button type="button" aria-label="Previous" onClick=${() => setI((i - 1 + deck.length) % deck.length)}><${Icon} name="left" size=${20} /></button>
-          <button type="button" aria-label="Next" onClick=${() => setI(i + 1)}><${Icon} name="chev" size=${20} /></button>
-        </div>`}
+        <div class="eyebrow" style="white-space:nowrap">Continue watching</div>
+
       </div>
       <div class="title">${it.title}</div>
-      <div class="sub">${it.showTitle ? `Season ${it.season}, Episode ${it.episode}` : it.year}${it.year && it.showTitle ? ` · ${it.year}` : ''}</div>
+      ${it.showTitle && html`<div class="sub">Season ${it.season}, Episode ${it.episode}</div>`}
       <p>${it.summary}</p>
       <div style="flex-grow:1"></div>
       <div>
         <div class="bar"><i style=${`width:${pct}%`}></i></div>
-        <div class="times"><span>${it.viewOffset ? `${runtime(it.viewOffset)} watched` : 'Not started'}</span><span>${runtime(left)} left · ends ${endsAt(left)}</span></div>
+        <div class="times"><span>${[it.year, it.viewOffset ? `${runtime(left)} left` : runtime(left)].filter(Boolean).join(' · ')}</span><span>ends ${endsAt(left)}</span></div>
       </div>
       <div style="display:flex;gap:12px">
-        <button type="button" class="btn primary" style="height:66px" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume on projector' : 'Play on projector'}</button>
-        ${it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px" onClick=${() => play(it, false)}>Start over</button>`}
+        <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>
+        ${it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Start over" title="Start over" onClick=${() => play(it, false)}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>`}
       </div>
+    </div>
     </div>
   </section>`;
 }
@@ -89,8 +117,7 @@ function Scenes() {
   const scene = useEntity('input_select.theater_scene')?.state;
   const map = { 'Pre-show': 'pre_show', 'Movie time': 'movie_time', Intermission: 'intermission', 'Lights up': 'lights_up' };
   const active = map[scene];
-  return html`<section class="scenes tx-maple">
-    <${H2} title="Scenes">${scene && html`<span class="aside">${scene}</span>`}<//>
+  return html`<section class="scenes tx-maple" aria-label="Scenes">
     <div class="grid">
       ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${() => act({ action: 'scene', name: s.name })}>
         <${Icon} name=${s.icon} size=${30} color=${s.name === active ? 'var(--gold)' : 'var(--acc)'} />

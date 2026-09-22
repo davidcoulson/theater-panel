@@ -24,6 +24,7 @@ export async function runAction(ha, body) {
       if (body.partId && (body.audioStreamID != null || body.subtitleStreamID != null)) {
         await plex.setStreams(body.partId, body).catch((err) => console.warn('[plex] setStreams', err.message));
       }
+      plex.staleMovies(); // watched / in-progress state is about to change
       return script(ha, 'play_plex', {
         rating_key: String(body.ratingKey),
         media_type: body.type === 'episode' ? 'episode' : 'movie',

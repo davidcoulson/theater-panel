@@ -103,14 +103,15 @@ function Sheet({ r, onClose, onDone }) {
   const [is4k, set4k] = useState(false);
   const [busy, setBusy] = useState(false);
   const info = d || r;
-  const requestable = info.status === 'none' || info.status === 'unknown' || (r.mediaType === 'tv' && info.status === 'partial');
+  const missingQ = (st) => st === 'none' || st === 'unknown';
+  const requestable = missingQ(info.status) || (r.mediaType === 'tv' ? info.status === 'partial' : missingQ(info.status4k));
   const missing = (d?.seasons || []).filter((s) => s.status === 'none' || s.status === 'unknown').map((s) => s.number);
 
   async function send() {
     setBusy(true);
     try {
       await post('/api/seerr/request', {
-        mediaType: r.mediaType, mediaId: r.id, is4k,
+        mediaType: r.mediaType, mediaId: r.id, is4k: r.mediaType === 'tv' ? is4k : undefined,
         seasons: r.mediaType === 'tv' ? (allSeasons ? (missing.length ? missing : 'all') : [1]) : undefined,
       });
       toast(`Requested ${r.title}`);
@@ -133,10 +134,11 @@ function Sheet({ r, onClose, onDone }) {
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           ${r.mediaType === 'tv' && html`<button type="button" class="pill" aria-pressed=${allSeasons ? 'true' : 'false'} onClick=${() => setAllSeasons(true)}>${missing.length && info.status === 'partial' ? `Missing seasons (${missing.length})` : 'All seasons'}</button>
             <button type="button" class="pill" aria-pressed=${!allSeasons ? 'true' : 'false'} onClick=${() => setAllSeasons(false)}>Season 1</button>`}
-          <button type="button" class="pill" aria-pressed=${!is4k ? 'true' : 'false'} onClick=${() => set4k(false)}>1080p</button>
-          <button type="button" class="pill" aria-pressed=${is4k ? 'true' : 'false'} onClick=${() => set4k(true)}>4K</button>
+          ${r.mediaType === 'tv' && html`<button type="button" class="pill" aria-pressed=${!is4k ? 'true' : 'false'} onClick=${() => set4k(false)}>1080p</button>
+            <button type="button" class="pill" aria-pressed=${is4k ? 'true' : 'false'} onClick=${() => set4k(true)}>4K</button>`}
         </div>
-        <button type="button" class="btn primary" style="height:66px" disabled=${busy} onClick=${send}><${Icon} name="dl" />${busy ? 'Requesting…' : `Request in ${is4k ? '4K' : '1080p'}`}</button>
+        ${r.mediaType === 'movie' && html`<div style="font-size:15px;color:var(--on-choc2)">Requests ${missingQ(info.status) && missingQ(info.status4k) ? '1080p and 4K' : missingQ(info.status) ? '1080p (4K is already in Plex or on its way)' : '4K (1080p is already in Plex or on its way)'}</div>`}
+        <button type="button" class="btn primary" style="height:66px" disabled=${busy} onClick=${send}><${Icon} name="dl" />${busy ? 'Requesting…' : r.mediaType === 'tv' ? `Request in ${is4k ? '4K' : '1080p'}` : 'Request'}</button>
       ` : html`<div class="chip" style="align-self:flex-start">${STATUS_LABEL[info.status] || info.status}</div>`}
     </div>
   </div>`;
