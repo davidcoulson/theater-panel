@@ -129,7 +129,7 @@ function Scenes() {
 
 // Sources: the Apple TV, then what is wired straight to the projector (the Unraid VM), then the
 // consoles on the HDMI switcher, all from games.json. Apps open on the projector's own Android.
-const SOURCE_ICONS = { pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'server', server: 'server', steam: 'playc' };
+const SOURCE_ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'server', server: 'server', steam: 'playc' };
 const APP_ICONS = [[/plex|plezy/i, 'plex'], [/you ?tube|smarttube/i, 'youtube'], [/moonlight|parsec|steam link/i, 'pad']];
 const appIcon = (name) => APP_ICONS.find(([re]) => re.test(name))?.[1] || 'app';
 
@@ -146,18 +146,14 @@ function Projector() {
   const appId = on ? proj?.attributes?.app_id : null;
   const runningApp = apps.find((a) => a.package === appId);
 
-  const srcs = games?.sources || [];
-  const sources = [
-    { id: 'appletv', name: 'Apple TV', icon: 'tv' },
-    ...srcs.filter((s) => s.via !== 'switcher').map((s) => ({ ...s, icon: SOURCE_ICONS[s.icon] || 'screen' })),
-    ...srcs.filter((s) => s.via === 'switcher').map((s) => ({ ...s, icon: SOURCE_ICONS[s.icon] || 'pad' })),
-  ];
+  // In the order set on the admin page.
+  const sources = (games?.sources || []).map((s) => ({ ...s, icon: SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
   const current = runningApp ? null : picked || games?.active;
   const status = !on ? 'Standby' : runningApp ? runningApp.name : sources.find((s) => s.id === current)?.name || 'On';
 
   async function pickSource(s) {
     setPicked(s.id);
-    const ok = s.id === 'appletv' ? await act({ action: 'projector', cmd: 'source', source: 'Apple TV' }) : await act({ action: 'game_source', id: s.id });
+    const ok = await act({ action: 'game_source', id: s.id });
     if (ok) toast(`Projector: ${s.name}`);
     setPicked(null);
     reload();
@@ -179,10 +175,10 @@ function Projector() {
     </div>
     <div class="label" style="margin:18px 0 8px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
-      <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
+      <${Icon} name=${s.icon} size=${28} /><span>${s.name}</span></button>`)}</div>
     ${apps.length > 0 && html`<div class="label" style="margin:16px 0 8px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
-      <${Icon} name=${appIcon(a.name)} size=${30} /><span>${a.name}</span></button>`)}</div>`}
+      <${Icon} name=${appIcon(a.name)} size=${28} /><span>${a.name}</span></button>`)}</div>`}
   </section>`;
 }
 

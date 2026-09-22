@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'preact/hooks';
 import htm from 'htm';
 
 const html = htm.bind(h);
-const ICONS = ['pad', 'joystick', 'remote', 'server', 'monitor', 'steam'];
+const ICONS = ['tv', 'server', 'monitor', 'pad', 'joystick', 'remote', 'steam'];
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
 
 async function api(path, body) {
@@ -276,7 +276,7 @@ function GamesEditor({ games, source, entities, onChange }) {
       <${EntityOptions} id="dl-select" domain="select" entities=${entities} />
       <label>Switcher's projector input<select value=${g.switcher?.projectorInput || 'HDMI 3'} onChange=${(e) => put({ switcher: { ...g.switcher, projectorInput: e.target.value } })}>${INPUTS.map((x) => html`<option>${x}</option>`)}</select></label>
     </div>
-    <table class="grid"><thead><tr><th>Name</th><th>Connected to</th><th>Input / switcher option</th><th>Icon</th><th></th></tr></thead><tbody>
+    <table class="grid"><thead><tr><th>Name</th><th>Connected to</th><th>Input / switcher option</th><th>Icon</th><th title="Show on the Games screen">Games</th><th></th></tr></thead><tbody>
       ${g.sources.map((s, i) => html`<tr>
         <td><input type="text" value=${s.name} onInput=${(e) => edit(i, { name: e.target.value })} /></td>
         <td><select value=${s.via} onChange=${(e) => edit(i, { via: e.target.value })}><option value="projector">Projector</option><option value="switcher">HDMI switcher</option></select></td>
@@ -284,10 +284,11 @@ function GamesEditor({ games, source, entities, onChange }) {
           ? html`<input type="text" value=${s.option || ''} placeholder=${s.name} onInput=${(e) => edit(i, { option: e.target.value })} />`
           : html`<select value=${s.projectorInput || 'HDMI 2'} onChange=${(e) => edit(i, { projectorInput: e.target.value })}>${INPUTS.map((x) => html`<option>${x}</option>`)}</select>`}</td>
         <td><select value=${s.icon || 'pad'} onChange=${(e) => edit(i, { icon: e.target.value })}>${ICONS.map((x) => html`<option>${x}</option>`)}</select></td>
+        <td class="center"><input type="checkbox" aria-label="Show on the Games screen" checked=${s.games !== false} onChange=${(e) => edit(i, { games: e.target.checked ? undefined : false })} /></td>
         <td class="actions"><${RowActions} i=${i} n=${g.sources.length} move=${move} remove=${() => put({ sources: g.sources.filter((_, k) => k !== i) })} /></td></tr>`)}
     </tbody></table>
     <button type="button" class="small" onClick=${() => put({ sources: [...g.sources, { name: '', via: 'switcher', icon: 'pad' }] })}>Add source</button>
-    <small>The Apple TV is always first on the projector card. Switcher option names must match the options of the switcher's select entity.</small>
+    <small>Every source is on the projector card, in this order; untick Games to keep one off the Games screen. Switcher option names must match the options of the switcher's select entity.</small>
   </div>`;
 }
 

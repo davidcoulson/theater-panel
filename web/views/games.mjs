@@ -15,6 +15,7 @@ export function Games() {
   if (err) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><div class="empty" style="flex-grow:1">${err.message}</div></main>`;
   if (g && !g.configured) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><${Setup} /></main>`;
 
+  const sources = (g?.sources || []).filter((s) => s.games !== false);
   const fromSwitcher = g?.sources?.find((s) => s.via === 'switcher' && s.option === switcherState)?.id;
   const current = active || fromSwitcher || g?.active;
   async function pick(src) {
@@ -25,15 +26,15 @@ export function Games() {
     reload();
   }
   async function launch(game) {
-    const pcSource = g.sources.find((s) => s.id === 'steam' || s.via === 'projector');
+    const pcSource = sources.find((s) => s.id === 'steam' || s.via === 'projector');
     if (pcSource && current !== pcSource.id) await pick(pcSource);
     if (await act({ action: 'game_launch', appid: game.appid })) toast(`Launching ${game.name}`);
   }
 
   return html`<main class="view">
     <${Header} title="Games" kicker="HDMI switcher · Gaming PC" />
-    <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(g?.sources?.length || 5, 1)}, minmax(0, 1fr))`}>
-      ${(g?.sources || []).map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} onClick=${() => pick(s)}>
+    <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(sources.length || 5, 1)}, minmax(0, 1fr))`}>
+      ${sources.map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} onClick=${() => pick(s)}>
         <${Icon} name=${ICONS[s.icon] || 'pad'} size=${44} color=${current === s.id ? 'var(--gold)' : 'var(--acc)'} w=${1.8} />
         <span class="n">${s.name}</span><span class="d">${s.via === 'switcher' ? 'HDMI switcher' : 'Gaming PC'}</span>
       </button>`)}
@@ -52,7 +53,7 @@ export function Games() {
   </main>`;
 }
 
-const ICONS = { pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
+const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
 
 function PcPanel({ pc }) {
   const power = useEntity(pc.power);

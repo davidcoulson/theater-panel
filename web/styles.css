@@ -167,8 +167,8 @@ input.range.thin { height: 40px; }
 .scene[aria-pressed="true"] { background: var(--choc); color: #F4F0E8; border-color: #1E120B; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 .scene[aria-pressed="true"] .d { color: var(--on-choc2); }
 
-.proj .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.proj .tile { height: 84px; border: 0; border-radius: 16px; background: var(--track); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; padding: 0 6px; }
+.proj .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.proj .tile { height: 76px; border: 0; border-radius: 14px; background: var(--track); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14px; font-weight: 600; padding: 0 4px; }
 .proj .tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proj .tile svg { color: var(--acc); }
 .proj .tile[aria-pressed="true"] { background: var(--choc); color: #F4F0E8; }

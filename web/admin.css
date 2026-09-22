@@ -86,3 +86,4 @@ td.actions { white-space: nowrap; width: 1%; }
 .card.import { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-color: var(--acc); }
 .card.missing { border-color: var(--err); }
 .card.missing code { color: var(--err); font-size: 13px; }
+td.center { text-align: center; }

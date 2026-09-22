@@ -14,18 +14,32 @@ import { config, settings } from './config.mjs';
 const file = process.env.GAMES_CONFIG || './config/games.json';
 let active = null;          // id of the last projector-input source picked from the panel
 
-// Games saved on the admin page win over the games.json file.
-export async function loadGamesFile() {
-  try { return JSON.parse(await readFile(file, 'utf8')); } catch { return null; }
+// The Apple TV on HDMI 1 used to be built into the Projector card; older configs get it as an
+// ordinary source (first, projector card only) so it can be edited like the others.
+const APPLE_TV = { id: 'appletv', name: 'Apple TV', icon: 'tv', via: 'projector', projectorInput: 'HDMI 1', games: false };
+function withAppleTv(g) {
+  if (!g || g.sources?.some((s) => s.via === 'projector' && s.projectorInput === 'HDMI 1')) return g;
+  const direct = (g.sources || []).filter((s) => s.via !== 'switcher');
+  const switched = (g.sources || []).filter((s) => s.via === 'switcher');
+  return { ...g, sources: [APPLE_TV, ...direct, ...switched] };
 }
 
-export async function loadGames() {
-  if (settings().games) return settings().games;
+async function readGamesFile() {
   try { return JSON.parse(await readFile(file, 'utf8')); }
   catch (e) {
     if (e.code !== 'ENOENT') console.warn(`[games] ${file}: ${e.message}`);
     return null;
   }
+}
+
+export async function loadGamesFile() { return withAppleTv(await readGamesFile()); }
+
+// Games saved on the admin page win over the games.json file. Ones saved since every source
+// became editable (v 2) are used as they are.
+export async function loadGames() {
+  const saved = settings().games;
+  if (saved) return saved.v >= 2 ? saved : withAppleTv(saved);
+  return loadGamesFile();
 }
 
 // Entities the Games screen shows live: the switcher's select, PC power and sensors.
@@ -42,7 +56,8 @@ export async function gamesState() {
     active,
     // The panel reads the switcher's live input from this HA entity's state.
     switcher: g.switcher?.entity ? { entity: g.switcher.entity } : null,
-    sources: (g.sources || []).map(({ id, name, icon, via, option }) => ({ id, name, icon, via, option })),
+    // games: false keeps a source (the Apple TV) off the Games screen; it stays on the projector card.
+    sources: (g.sources || []).map(({ id, name, icon, via, option, games }) => ({ id, name, icon, via, option, games: games !== false })),
     pc: g.pc ? { name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [], canLaunch: Boolean(g.pc.launchScript) } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };

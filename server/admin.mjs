@@ -150,7 +150,7 @@ export async function importContainer() {
 const ID = /^[a-z0-9_-]{1,32}$/;
 const ENTITY = /^[a-z_]+\.[a-z0-9_]+$/;
 function cleanGames(g) {
-  const out = { switcher: {}, sources: [] };
+  const out = { v: 2, switcher: {}, sources: [] };
   if (g.switcher?.entity) {
     if (!ENTITY.test(g.switcher.entity)) throw httpError(400, `Bad switcher entity: ${g.switcher.entity}`);
     out.switcher = { entity: g.switcher.entity, projectorInput: String(g.switcher.projectorInput || 'HDMI 3') };
@@ -161,6 +161,7 @@ function cleanGames(g) {
     const src = { id, name: String(s.name).slice(0, 24), icon: String(s.icon || 'pad'), via: s.via === 'switcher' ? 'switcher' : 'projector' };
     if (src.via === 'switcher') src.option = String(s.option || s.name);
     else src.projectorInput = String(s.projectorInput || 'HDMI 2');
+    if (s.games === false) src.games = false;
     if (s.haScript) src.haScript = String(s.haScript);
     out.sources.push(src);
   }
