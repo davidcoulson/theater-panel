@@ -52,7 +52,7 @@ export function Games() {
   </main>`;
 }
 
-const ICONS = { pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', steam: 'playc' };
+const ICONS = { pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
 
 function PcPanel({ pc }) {
   const power = useEntity(pc.power);

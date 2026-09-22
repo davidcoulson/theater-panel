@@ -67,7 +67,16 @@ export async function runAction(ha, body) {
       if (!(body.cmd in allowed)) throw new Error('Unknown projector command');
       const vars = { projector: e.projector, apple_tv: e.appleTv };
       for (const k of allowed[body.cmd]) vars[k] = String(body[k] || '');
+      if (body.cmd === 'source' && vars.source === 'Apple TV') games.setActive('appletv');
       return script(ha, `projector_${body.cmd}`, vars);
+    }
+
+    case 'projector_app': {
+      // Only apps listed in PROJECTOR_APPS; HA wakes the projector first if it is off.
+      const app = config.projectorApps.find((a) => a.package === body.package);
+      if (!app) throw new Error('Unknown projector app');
+      games.setActive(null);
+      return script(ha, 'projector_app', { projector: e.projector, apple_tv: e.appleTv, package: app.package });
     }
 
     case 'music': {

@@ -210,7 +210,7 @@ script:
 
   # ---------- projector ----------
   # Power: on goes through the Apple TV (HDMI-CEC wakes the projector; it has no network
-  # standby, so ADB cannot turn it on). Off, input and picture mode go over ADB
+  # standby, so ADB cannot turn it on). Off, input, apps and picture mode go over ADB
   # (media_player.theater_projector, Android Debug Bridge integration).
 
   theater_projector_power_on:
@@ -219,8 +219,10 @@ script:
       projector: { description: "Projector ADB media_player (optional)" }
       apple_tv: { description: "Apple TV media_player" }
     sequence:
+      # The ADB entity can't wake it (no network standby): the Apple TV wakes it over HDMI-CEC.
+      # Once the theater's ESP32 CEC node is in, press its "Projector wake" button here instead.
       - action: media_player.turn_on
-        target: { entity_id: "{{ projector if projector else apple_tv }}" }
+        target: { entity_id: "{{ apple_tv }}" }
 
   theater_projector_power_off:
     alias: "Theater: projector off"
@@ -287,6 +289,35 @@ script:
         target: { entity_id: "{{ projector }}" }
         data:
           command: "settings put global picture_mode {{ value | int }}"
+
+  # Open an app on the projector's own Android (Plex, YouTube...). If the projector is off it is
+  # woken first, then the app starts once ADB answers (the projector takes ~30 s to boot).
+  theater_projector_app:
+    alias: "Theater: projector app"
+    fields:
+      projector: { description: "Projector ADB media_player" }
+      apple_tv: { description: "Apple TV media_player (wakes the projector over HDMI-CEC)" }
+      package: { example: com.plexapp.android }
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ not projector or not package }}"
+        then:
+          - stop: Projector not configured
+      - if:
+          - condition: template
+            value_template: "{{ states(projector) in ['unavailable', 'unknown', 'off'] }}"
+        then:
+          - action: script.theater_projector_power_on
+            data: { projector: "{{ projector }}", apple_tv: "{{ apple_tv }}" }
+          - wait_template: "{{ states(projector) not in ['unavailable', 'unknown', 'off'] }}"
+            timeout: "00:01:30"
+            continue_on_timeout: false
+          - delay: "00:00:03"
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data:
+          command: "monkey -p {{ package }} -c android.intent.category.LEANBACK_LAUNCHER 1"
 
 automation:
   # Lights follow the Apple TV: dark while playing, 30% when paused for a while, back up when
