@@ -161,8 +161,11 @@ function cleanGames(g) {
     const id = String(s.id || s.name || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
     if (!ID.test(id) || !s.name) throw httpError(400, 'Every source needs a name');
     const src = { id, name: String(s.name).slice(0, 24), icon: String(s.icon || 'pad'), via: s.via === 'switcher' ? 'switcher' : 'projector' };
-    if (src.via === 'switcher') src.option = String(s.option || s.name);
-    else src.projectorInput = String(s.projectorInput || 'HDMI 2');
+    if (src.via === 'switcher') {
+      const n = Number(s.input);
+      if (Number.isInteger(n) && n >= 1 && n <= 8) src.input = n;
+      else src.option = String(s.option || s.name); // older configs: the option name itself
+    } else src.projectorInput = String(s.projectorInput || 'HDMI 2');
     if (s.games === false) src.games = false;
     if (s.haScript) src.haScript = String(s.haScript);
     out.sources.push(src);
@@ -187,7 +190,10 @@ export async function plexLibraries() {
 // Entity ids and names from HA, for the pickers.
 export async function haEntities(ha) {
   const states = await ha.request({ type: 'get_states' });
-  return states.map((s) => ({ id: s.entity_id, name: s.attributes?.friendly_name || '' }));
+  return states.map((s) => ({
+    id: s.entity_id, name: s.attributes?.friendly_name || '',
+    ...(s.entity_id.startsWith('select.') || s.entity_id.startsWith('input_select.') ? { options: s.attributes?.options || [] } : {}),
+  }));
 }
 
 // Try a service with the settings as they would be after saving (unsaved field values win).
