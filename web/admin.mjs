@@ -165,6 +165,7 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
     return html`<div class="field check"><label><input type="checkbox" checked=${eff === 'true'} onChange=${(e) => onChange(String(e.target.checked))} />${label}</label>
       ${value !== '' && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}${note}</div>`;
   }
+  if (f.type === 'libraries') return html`<div class="field">${label}<${LibraryPicker} value=${value} base=${base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'apps') return html`<div class="field">${label}<${AppsEditor} value=${value || base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'list' && f.domain) {
     return html`<div class="field">${label}<${EntityList} value=${value} base=${base.container} domain=${f.domain} entities=${entities} onChange=${onChange} />${note}</div>`;
@@ -197,6 +198,37 @@ function EntityList({ value, base, domain, entities, onChange }) {
       <button type="submit" class="small">Add</button>
       ${own && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}
     </form>
+    ${!own && shown.length > 0 && html`<small>From the container. Changing it saves your own list here.</small>`}
+  </div>`;
+}
+
+// Plex libraries as ordered chips, added from a dropdown of the server's libraries.
+function LibraryPicker({ value, base, onChange }) {
+  const [libs, setLibs] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { api('/api/admin/plex-libraries').then(setLibs).catch((e) => { setLibs([]); setErr(e.message); }); }, []);
+  const split = (v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : []);
+  const own = value ? split(value) : null;
+  const shown = own || split(base);
+  const put = (arr) => onChange(arr.join(','));
+  const move = (i, d) => { const n = [...shown]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n); };
+  const type = (t) => libs?.find((l) => l.title === t)?.type;
+  const left = (libs || []).filter((l) => !shown.includes(l.title));
+  return html`<div class="chips">
+    ${shown.length === 0 && html`<span class="muted">Every movie and TV library</span>`}
+    ${shown.map((t, i) => html`<span class=${`chip ${own ? '' : 'inherited'}`}>${t}${type(t) && html` <code>${type(t) === 'show' ? 'TV' : 'movies'}</code>`}
+      ${libs && !type(t) && html` <code class="err">not in Plex</code>`}
+      <button type="button" aria-label=${`Move ${t} left`} disabled=${i === 0} onClick=${() => move(i, -1)}>‹</button>
+      <button type="button" aria-label=${`Move ${t} right`} disabled=${i === shown.length - 1} onClick=${() => move(i, 1)}>›</button>
+      <button type="button" aria-label=${`Remove ${t}`} onClick=${() => put(shown.filter((_, k) => k !== i))}>×</button></span>`)}
+    <div class="row">
+      <select value="" disabled=${!left.length} onChange=${(e) => { if (e.target.value) put([...shown, e.target.value]); e.target.value = ''; }}>
+        <option value="">${libs === null ? 'Loading libraries…' : left.length ? 'Add a library…' : 'All libraries added'}</option>
+        ${left.map((l) => html`<option value=${l.title}>${l.title} (${l.type === 'show' ? 'TV' : 'movies'})</option>`)}
+      </select>
+      ${own && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}
+    </div>
+    ${err && html`<small class="err">${err}</small>`}
     ${!own && shown.length > 0 && html`<small>From the container. Changing it saves your own list here.</small>`}
   </div>`;
 }

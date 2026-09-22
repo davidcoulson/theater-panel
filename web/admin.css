@@ -61,7 +61,9 @@ button.icon { width: 32px; height: 32px; padding: 0; font-size: 16px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--chip); font-size: 14px; }
 .chip.inherited { opacity: .7; }
 .chip button { border: 0; background: none; height: 24px; width: 24px; padding: 0; font-size: 16px; color: var(--muted); }
-.chips form { flex: 1 1 100%; }
+.chips form, .chips > .row { flex: 1 1 100%; }
+.chips .row select { max-width: 360px; }
+.chip button:disabled { opacity: .3; }
 
 table.grid { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
 table.grid th { text-align: left; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 0 6px 4px; font-weight: 600; }
