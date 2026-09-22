@@ -5,7 +5,8 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, clock, getState, setTheater } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater } from './lib/api.mjs';
+import { RailGlow } from './lib/effects.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
 import { Watch } from './views/watch.mjs';
@@ -100,9 +101,16 @@ addEventListener('hashchange', () => {
 
 function Rail({ current }) {
   const [now, setNow] = useState(clock());
+  // The rail glows with whatever the accent lights are doing (see lib/effects.mjs).
+  const ents = useStore((s) => s.entities);
+  const accent = useEntity(ents.lights?.find((id) => /accent/.test(id)) || '');
+  const speedEnt = useEntity(ents.accentSpeed);
+  const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
+  const theater = useStore((s) => Boolean(s.theater?.active));
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
+    <${RailGlow} name=${accent?.state === 'on' ? accent.attributes?.effect : null} speed=${speed} opacity=${theater ? 0.25 : 0.55} />
     <div class="logo"><b>BC</b><span>Theater</span></div>
     ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}

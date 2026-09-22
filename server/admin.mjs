@@ -31,6 +31,8 @@ export const FIELDS = [
   { group: 'Entities', key: 'ENTITY_PLEX_PLAYER', label: 'Plex player', type: 'entity', domain: 'media_player' },
   { group: 'Entities', key: 'ENTITY_MUSIC_PLAYERS', label: 'Music players (first is the theater)', type: 'list', domain: 'media_player' },
   { group: 'Entities', key: 'ENTITY_LIGHTS', label: 'Lights', type: 'list', domain: 'light' },
+  { group: 'Entities', key: 'ENTITY_ACCENT_SPEED', label: 'Effect speed (input_number)', type: 'entity', domain: 'input_number' },
+  { group: 'Entities', key: 'ENTITY_ACCENT_INTENSITY', label: 'Effect intensity (input_number)', type: 'entity', domain: 'input_number' },
   { group: 'Entities', key: 'ENTITY_PICTURE_MODE', label: 'Picture mode (input_select)', type: 'entity', domain: 'input_select' },
   { group: 'Entities', key: 'ENTITY_TEMPERATURE', label: 'Temperature', type: 'entity', domain: 'sensor' },
   { group: 'Entities', key: 'ENTITY_OCCUPANCY', label: 'Occupancy', type: 'entity', domain: 'binary_sensor' },

@@ -3,7 +3,8 @@
 import { useState, useRef } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
-import { go } from '../app.mjs';
+import { go, route } from '../app.mjs';
+import { EffectPreview, EffectTile, byMood, familyOf } from '../lib/effects.mjs';
 
 const SCENES = [
   { name: 'pre_show', label: 'Pre-show', desc: 'Warm lights · music', icon: 'music' },
@@ -230,15 +231,85 @@ const LIGHT_META = {
 
 function Lights() {
   const ids = useStore((s) => s.entities.lights || []);
-  return html`<section class="card">
+  const [picking, setPicking] = useState(null);
+  return html`<section class="card lights-card">
     <${H2} title="Lights"><button type="button" class="link" onClick=${() => act({ action: 'aisle_glow' })}>Aisle glow</button><//>
     <div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">
-      ${ids.map((id) => html`<${LightRow} id=${id} />`)}
+      ${ids.map((id) => html`<${LightRow} id=${id} onEffects=${setPicking} />`)}
     </div>
+    ${(picking || (route.params.fxopen && ids.find((x) => /accent/.test(x)))) && html`<${EffectSheet} id=${picking || ids.find((x) => /accent/.test(x))} onClose=${() => setPicking(null)} />`}
   </section>`;
 }
 
-function LightRow({ id }) {
+// Variant B (mockup, #/lobby?fx=b): the row itself is the picker — swipe through effects, the
+// neighbours peek at the edges, tap the middle to apply.
+function EffectCarousel({ id, effects, current }) {
+  const list = effects.filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
+  const [i, setI] = useState(() => Math.max(0, list.indexOf(current)));
+  const swipe = useRef(null);
+  const at = (n) => list[(n + list.length) % list.length];
+  const down = (e) => { swipe.current = e.clientX; };
+  const up = (e) => {
+    const x0 = swipe.current; swipe.current = null;
+    if (x0 == null) return;
+    const dx = e.clientX - x0;
+    if (dx < -40) setI((v) => (v + 1) % list.length);
+    else if (dx > 40) setI((v) => (v - 1 + list.length) % list.length);
+    else act({ action: 'light_effect', entity_id: id, effect: at(i) });
+  };
+  return html`<div class="fx-carousel" onPointerDown=${down} onPointerUp=${up}>
+    <div class="strip">
+      <${EffectPreview} name=${at(i - 1)} h=${40} cls="side" />
+      <div class="cur"><${EffectPreview} name=${at(i)} h=${52} />${at(i) === current && html`<span class="live">On</span>`}</div>
+      <${EffectPreview} name=${at(i + 1)} h=${40} cls="side" />
+    </div>
+    <div class="name">${at(i)}<small>${at(i) === current ? 'playing · swipe for more' : 'tap to apply'}</small></div>
+  </div>`;
+}
+
+// Favourites first, then every effect the light has, grouped by mood; speed and intensity at the
+// bottom drive the same helpers the basement card uses.
+const FAVOURITES = ['Candle Flicker', '2D Hearth', '2D Pacifica', '2D Aurora (Solar Storm)', 'Rolling Fog', '2D Clouds', 'Heartbeat Pulse', 'TwinkleFox'];
+
+function EffectSheet({ id, onClose }) {
+  const st = useEntity(id);
+  const ents = useStore((s) => s.entities);
+  const speedEnt = useEntity(ents.accentSpeed);
+  const intensityEnt = useEntity(ents.accentIntensity);
+  const [mood, setMood] = useState(null);
+  const all = (st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
+  const current = st?.attributes?.effect;
+  const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
+  const favs = FAVOURITES.filter((f) => all.includes(f)).slice(0, 8);
+  const groups = byMood(all);
+  const shown = mood ? groups.find((g) => g.id === mood)?.effects || [] : favs;
+  const pick = (name) => act({ action: 'light_effect', entity_id: id, effect: name });
+
+  return html`<div class="fx-sheet" role="dialog" aria-label="Choose an effect">
+    <div class="h">
+      <div><div class="eyebrow">${st?.attributes?.friendly_name || 'Lights'}</div>
+        <div class="t">${mood ? groups.find((g) => g.id === mood)?.name : 'Effects'}</div></div>
+      <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
+    </div>
+    <div class="moods hscroll">
+      <button type="button" class=${`pill ${!mood ? 'on' : ''}`} aria-pressed=${!mood ? 'true' : 'false'} onClick=${() => setMood(null)}>Favourites</button>
+      ${groups.map((g) => html`<button type="button" class=${`pill ${mood === g.id ? 'on' : ''}`} aria-pressed=${mood === g.id ? 'true' : 'false'} onClick=${() => setMood(g.id)}>${g.name}<small>${g.effects.length}</small></button>`)}
+    </div>
+    <div class="fx-grid scroll">
+      ${shown.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} />`)}
+    </div>
+    <div class="fx-sliders">
+      ${speedEnt && html`<div><div class="label">Speed</div><${Range} value=${Math.round((Number(speedEnt.state) / 255) * 100)} label="Effect speed" fill="var(--gold)"
+        onCommit=${(v) => act({ action: 'light_number', entity_id: ents.accentSpeed, value: Math.round((v / 100) * 255) })} /></div>`}
+      ${intensityEnt && html`<div><div class="label">Intensity</div><${Range} value=${Math.round((Number(intensityEnt.state) / 255) * 100)} label="Effect intensity" fill="var(--gold)"
+        onCommit=${(v) => act({ action: 'light_number', entity_id: ents.accentIntensity, value: Math.round((v / 100) * 255) })} /></div>`}
+    </div>
+  </div>`;
+}
+
+// A light that has effects: the row shows the running effect as a live strip, and tapping it
+// opens the picker (favourites, then everything grouped by mood).
+function LightRow({ id, onEffects }) {
   const st = useEntity(id);
   const meta = LIGHT_META[id] || { name: st?.attributes?.friendly_name || id, fill: '#B8792F' };
   const on = st?.state === 'on';
@@ -247,6 +318,8 @@ function LightRow({ id }) {
   const detail = !st ? 'Unavailable' : !on ? 'Off'
     : st.attributes.effect && st.attributes.effect !== 'Solid' ? `${pct}% · ${st.attributes.effect}`
     : st.attributes.color_mode === 'color_temp' ? `${pct}% · ${st.attributes.color_temp_kelvin}K` : `${pct}%`;
+  const effects = st?.attributes?.effect_list || [];
+  const effect = on && st.attributes.effect && st.attributes.effect !== 'Solid' ? st.attributes.effect : null;
   return html`<div class="light">
     <div class="head">
       <button type="button" class="name" onClick=${() => act({ action: 'light', entity_id: id, on: !on })} aria-label=${`${meta.name}: turn ${on ? 'off' : 'on'}`}>
@@ -256,6 +329,11 @@ function LightRow({ id }) {
     </div>
     <${Range} value=${pct} label=${`${meta.name} brightness`} fill=${meta.fill}
       onCommit=${(v) => act({ action: 'light', entity_id: id, ...(v === 0 ? { on: false } : { brightness_pct: v }) })} />
+    ${effects.length > 1 && route.params.fx === 'b' ? html`<${EffectCarousel} id=${id} effects=${effects} current=${effect} />`
+      : effects.length > 1 && html`<button type="button" class="fx-row" onClick=${() => onEffects(id)} aria-label=${`Choose an effect for ${meta.name}`}>
+      ${effect ? html`<${EffectPreview} name=${effect} h=${26} round=${8} />` : html`<span class="none">No effect</span>`}
+      <span class="lbl">${effect || 'Choose'}</span><${Icon} name="chev" size=${18} color="var(--muted)" />
+    </button>`}
   </div>`;
 }
 

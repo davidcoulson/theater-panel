@@ -57,6 +57,10 @@ html.r-noanim #stage * { animation: none !important; transition: none !important
 
 /* ---------- rail ---------- */
 .rail { width: 136px; height: 1080px; flex-shrink: 0; padding: 28px 16px; border-right: 6px solid #F1EDE4; box-shadow: 1px 0 0 #C9BFB2, 4px 0 18px rgba(20, 10, 5, .3); display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 2; }
+.rail { position: relative; }
+/* The accents' effect, painted down the wood column and blended into it. */
+.rail-glow { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: screen; filter: blur(16px); pointer-events: none; z-index: 0; }
+.rail > * { position: relative; z-index: 1; }
 .rail .logo { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
 .rail .logo b { font-family: var(--disp); font-weight: 800; font-size: 42px; line-height: 1; color: #F4ECE0; text-shadow: 0 2px 6px rgba(0,0,0,.45); letter-spacing: 1px; }
 .rail .logo span { font-size: 12px; font-weight: 600; letter-spacing: 2.5px; color: #E4DCD2; text-shadow: 0 1px 3px rgba(0,0,0,.5); text-transform: uppercase; }
@@ -306,6 +310,38 @@ input.range.thin { height: 40px; }
 .stat .v small { font-size: 16px; margin-left: 6px; color: var(--on-choc2); }
 .stat .v.hot { color: #F2A07A; }
 .rail a { padding: 13px 0 11px; }
+
+/* ---------- light effects ---------- */
+canvas.fx { display: block; width: 100%; }
+.fx-row { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: var(--track); border-radius: 12px; padding: 8px 12px; margin-top: 10px; text-align: left; }
+.fx-row canvas.fx { width: 120px; flex-shrink: 0; }
+.fx-row .none { width: 120px; height: 26px; border-radius: 8px; background: rgba(58,36,25,.12); flex-shrink: 0; }
+.fx-row .lbl { flex-grow: 1; min-width: 0; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lights-card { position: relative; overflow: hidden; }
+.fx-sheet { position: absolute; inset: 0; z-index: 5; background: var(--choc2); color: #F4ECE0; padding: 22px; display: flex; flex-direction: column; gap: 14px; animation: fx-in .18s ease-out; }
+@keyframes fx-in { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
+.fx-sheet .h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.fx-sheet .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; }
+.fx-sheet .moods { display: flex; gap: 8px; flex-shrink: 0; }
+.fx-sheet .pill { height: 42px; padding: 0 16px; border-radius: 21px; border: 1.5px solid rgba(244,236,224,.22); background: none; color: #E9DCCB; font-size: 16px; font-weight: 600; display: inline-flex; gap: 8px; align-items: center; }
+.fx-sheet .pill small { color: #A89484; font-size: 13px; }
+.fx-sheet .pill.on { background: var(--gold); border-color: var(--gold); color: var(--choc2); }
+.fx-sheet .pill.on small { color: rgba(42,25,17,.6); }
+.fx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex-grow: 1; align-content: start; }
+.fx-tile { border: 1.5px solid transparent; background: rgba(0,0,0,.25); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; color: #E9DCCB; font-size: 15px; font-weight: 600; text-align: left; height: max-content; }
+.fx-tile.on { border-color: var(--gold); }
+.fx-tile span { display: block; }
+.fx-sliders { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.fx-sliders .label { color: #C7B39E; }
+
+/* Variant B: the row as a swipeable carousel. */
+.fx-carousel { margin-top: 10px; touch-action: pan-y; }
+.fx-carousel .strip { display: flex; align-items: center; gap: 8px; }
+.fx-carousel .strip canvas.fx.side { width: 60px; opacity: .45; flex-shrink: 0; }
+.fx-carousel .cur { position: relative; flex-grow: 1; min-width: 0; }
+.fx-carousel .cur .live { position: absolute; top: 6px; right: 8px; background: rgba(20,10,6,.7); color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 8px; }
+.fx-carousel .name { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; font-size: 17px; font-weight: 600; }
+.fx-carousel .name small { color: var(--muted); font-size: 14px; font-weight: 500; }
 
 /* ---------- gaming PC stats ---------- */
 .stats-view { --hot: #E0674A; --warm: #E3A865; --cool: #8FB9A0; color: #F4ECE0; touch-action: pan-y; }
