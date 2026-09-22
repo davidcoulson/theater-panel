@@ -1,11 +1,13 @@
 // Games: switch the projector to a console (through the HDMI switcher) or the gaming PC, browse
 // and launch the Steam library, and watch the PC's temperatures and load.
 
-import { useState } from 'preact/hooks';
+import { useState, useRef } from 'preact/hooks';
 import { html, Icon, Poster, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useEntity, toast } from '../lib/api.mjs';
+import { go } from '../app.mjs';
 
 export function Games() {
+  const swipe = useRef(null);
   const [g, err, reload] = useLoad(() => get('/api/games'), []);
   const [steam] = useLoad(() => get('/api/steam/library').catch(() => ({ configured: false, games: [] })), []);
   const [active, setActive] = useState(null);
@@ -33,8 +35,17 @@ export function Games() {
     if (await act({ action: 'game_launch', appid: game.appid })) toast(`Launching ${game.name}`);
   }
 
-  return html`<main class="view">
-    <${Header} title="Games" kicker="HDMI switcher · Gaming PC" />
+  // Swipe left for the PC stats page (the Games screen has nothing else to swipe to).
+  const down = (e) => { swipe.current = { x: e.clientX, y: e.clientY }; };
+  const up = (e) => {
+    const st = swipe.current; swipe.current = null;
+    if (st && e.clientX - st.x < -70 && Math.abs(e.clientY - st.y) < 70 && g?.pc) go('stats');
+  };
+
+  return html`<main class="view" style="touch-action:pan-y" onPointerDown=${down} onPointerUp=${up}>
+    <${Header} title="Games" kicker="HDMI switcher · Gaming PC">
+      ${g?.pc && html`<button type="button" class="chip" onClick=${() => go('stats')}><${Icon} name="chart" size=${20} />PC stats<${Icon} name="chev" size=${18} /></button>`}
+    <//>
     <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(sources.length || 5, 1)}, minmax(0, 1fr))`}>
       ${sources.map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} onClick=${() => pick(s)}>
         <${Icon} name=${s.icon?.includes(':') ? s.icon : ICONS[s.icon] || 'pad'} size=${44} color=${current === s.id ? 'var(--gold)' : 'var(--acc)'} w=${1.8} />
