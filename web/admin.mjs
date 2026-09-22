@@ -5,6 +5,7 @@ import { h, render } from 'preact';
 import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import htm from 'htm';
 import { Icon } from '/lib/ui.mjs';
+import { EffectPreview, byMood } from '/lib/effects.mjs';
 
 const html = htm.bind(h);
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
@@ -181,6 +182,7 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
         ${f.options.map(([v, t]) => html`<option value=${v}>${t}</option>`)}
       </select>${note}</div>`;
   }
+  if (f.type === 'effects') return html`<div class="field">${label}<${EffectFavourites} value=${value} base=${base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'libraries') return html`<div class="field">${label}<${LibraryPicker} value=${value} base=${base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'apps') return html`<div class="field">${label}<${AppsEditor} value=${value || base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'list' && f.domain) {
@@ -215,6 +217,40 @@ function EntityList({ value, base, domain, entities, onChange }) {
       ${own && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}
     </form>
     ${!own && shown.length > 0 && html`<small>From the container. Changing it saves your own list here.</small>`}
+  </div>`;
+}
+
+// Up to 8 favourite effects, in order, picked from whatever the lights offer. Each row shows the
+// same animation the panel draws.
+const MAX_FAVS = 8;
+function EffectFavourites({ value, base, onChange }) {
+  const [all, setAll] = useState(null);
+  useEffect(() => { api('/api/admin/light-effects').then(setAll).catch(() => setAll([])); }, []);
+  const split = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
+  const own = value ? split(value) : null;
+  const picked = own || split(base);
+  const put = (arr) => onChange(arr.slice(0, MAX_FAVS).join(','));
+  const toggle = (name) => (picked.includes(name) ? put(picked.filter((p) => p !== name)) : picked.length < MAX_FAVS && put([...picked, name]));
+  const move = (i, d) => { const n = [...picked]; [n[i], n[i + d]] = [n[i + d], n[i]]; put(n); };
+  const groups = byMood(all || []);
+  return html`<div class="fx-pick">
+    <div class="chosen">
+      ${picked.map((name, i) => html`<div class=${`fav ${own ? '' : 'inherited'}`}>
+        <${EffectPreview} name=${name} h=${26} still=${true} />
+        <span class="ellipsis">${name}</span>
+        <button type="button" class="icon" aria-label="Move up" disabled=${i === 0} onClick=${() => move(i, -1)}>↑</button>
+        <button type="button" class="icon" aria-label="Move down" disabled=${i === picked.length - 1} onClick=${() => move(i, 1)}>↓</button>
+        <button type="button" class="icon" aria-label=${`Remove ${name}`} onClick=${() => toggle(name)}>×</button>
+      </div>`)}
+      ${!picked.length && html`<p class="muted">None picked: the panel shows its own defaults.</p>`}
+      <small>${picked.length} of ${MAX_FAVS}${own ? '' : ' (from the container)'}</small>
+    </div>
+    ${all === null ? html`<p class="muted">Loading effects…</p>`
+      : !all.length ? html`<p class="muted">No effects found. The lights must be reachable in Home Assistant.</p>`
+      : groups.map((g) => html`<div class="group"><div class="gname">${g.name}</div>
+          <div class="opts">${g.effects.map((name) => html`<button type="button" class=${`opt ${picked.includes(name) ? 'on' : ''}`}
+            aria-pressed=${picked.includes(name) ? 'true' : 'false'} disabled=${!picked.includes(name) && picked.length >= MAX_FAVS} onClick=${() => toggle(name)}>
+            <${EffectPreview} name=${name} h=${22} still=${true} /><span class="ellipsis">${name}</span></button>`)}</div></div>`)}
   </div>`;
 }
 

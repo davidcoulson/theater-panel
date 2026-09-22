@@ -100,3 +100,13 @@ td.center { text-align: center; }
 .igrid button .ipv { width: 30px; height: 30px; }
 .igrid button small { margin: 0; font-family: var(--mono); font-size: 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .igrid button[aria-pressed="true"] { border-color: var(--acc); }
+.fx-pick { display: flex; flex-direction: column; gap: 14px; }
+.fx-pick canvas { display: block; width: 100%; border-radius: 6px; }
+.fx-pick .chosen { display: flex; flex-direction: column; gap: 8px; }
+.fx-pick .fav { display: grid; grid-template-columns: 90px 1fr auto auto auto; align-items: center; gap: 10px; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.fx-pick .fav.inherited { opacity: .75; }
+.fx-pick .gname { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.fx-pick .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.fx-pick .opt { height: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 13px; text-align: left; }
+.fx-pick .opt.on { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
+.fx-pick .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

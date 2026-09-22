@@ -279,7 +279,8 @@ function EffectSheet({ id, onClose }) {
   const all = (st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
   const current = st?.attributes?.effect;
   const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
-  const favs = FAVOURITES.filter((f) => all.includes(f)).slice(0, 8);
+  const chosen = useStore((st) => st.effectFavourites);
+  const favs = (chosen?.length ? chosen : FAVOURITES).filter((f) => all.includes(f)).slice(0, 8);
   const groups = byMood(all);
   const shown = mood ? groups.find((g) => g.id === mood)?.effects || [] : favs;
   const pick = (name) => act({ action: 'light_effect', entity_id: id, effect: name });
@@ -287,7 +288,7 @@ function EffectSheet({ id, onClose }) {
   return html`<div class="fx-sheet" role="dialog" aria-label="Choose an effect">
     <div class="h">
       <div><div class="eyebrow">${st?.attributes?.friendly_name || 'Lights'}</div>
-        <div class="t">${mood ? groups.find((g) => g.id === mood)?.name : 'Effects'}</div></div>
+        <div class="t">${mood ? groups.find((g) => g.id === mood)?.name : 'Moods'}</div></div>
       <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
     </div>
     <div class="moods hscroll">

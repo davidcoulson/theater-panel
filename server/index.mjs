@@ -123,6 +123,7 @@ get(/^\/api\/state$/, () => ({
   entities: config.entities,
   ui: config.ui,
   projectorApps: config.projectorApps,
+  effectFavourites: config.effectFavourites,
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 
@@ -189,6 +190,7 @@ async function adminApi(req, res, path) {
   if (path === '/api/admin/import' && method === 'POST') { const r = await admin.importContainer(); await applySettings(); return r; }
   if (path === '/api/admin/entities') return admin.haEntities(ha);
   if (path === '/api/admin/plex-libraries') return admin.plexLibraries();
+  if (path === '/api/admin/light-effects') return admin.lightEffects(ha);
   if (path === '/api/admin/icons') return icons.search(ha, new URL(req.url, 'http://panel').searchParams.get('q'));
   if (path === '/api/admin/test' && method === 'POST') return admin.test(body.service, body.values);
   throw admin.httpError(404, 'Not found');
