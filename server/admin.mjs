@@ -9,7 +9,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config, settings, saveSettings, effectiveVars } from './config.mjs';
 import { loadGames, loadGamesFile } from './games.mjs';
 
-// type: text | secret | entity | list (comma-separated) | libraries | select | bool | apps (Name=package list)
+// type: text | secret | entity | list (comma-separated) | libraries | effects | select | bool | apps (Name=package list)
 export const FIELDS = [
   { group: 'Home Assistant', key: 'HA_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.3.6:8123' },
   { group: 'Home Assistant', key: 'HA_TOKEN', label: 'Long-lived access token', type: 'secret' },
@@ -37,6 +37,8 @@ export const FIELDS = [
   { group: 'Entities', key: 'ENTITY_TEMPERATURE', label: 'Temperature', type: 'entity', domain: 'sensor' },
   { group: 'Entities', key: 'ENTITY_OCCUPANCY', label: 'Occupancy', type: 'entity', domain: 'binary_sensor' },
   { group: 'Entities', key: 'ENTITY_TAUTULLI', label: 'Tautulli watching', type: 'entity', domain: 'sensor' },
+
+  { group: 'Lights', key: 'ACCENT_FAVOURITES', label: 'Favourite effects (up to 8)', type: 'effects', help: 'Shown first in the panel\'s Moods sheet. The rest stay under the mood tabs.' },
 
   { group: 'Projector apps', key: 'PROJECTOR_APPS', label: 'Apps', type: 'apps', help: 'Open on the projector over ADB. The package is the Android app id.' },
 
@@ -177,6 +179,17 @@ function cleanGames(g) {
 }
 
 // ---------- helpers for the page ----------
+
+// Every effect the theater's lights offer, for the favourites picker.
+export function lightEffects(ha) {
+  const out = new Map();
+  for (const id of config.entities.lights) {
+    for (const e of ha.states[id]?.attributes?.effect_list || []) {
+      if (e !== 'None' && !/^Calibrate/i.test(e)) out.set(e, true);
+    }
+  }
+  return [...out.keys()];
+}
 
 // Plex's movie and TV libraries, for the library picker.
 export async function plexLibraries() {

@@ -12,9 +12,10 @@ const FAMILIES = [
   [/aurora|noise drift|plasma|nebula|galaxy|sky/i, 'aurora'],
   [/twinkle|star|firefly|fairy|glitter|sparkle|confetti|snow/i, 'stars'],
   [/fog|cloud|smoke|mist|breathe|glow|soft/i, 'fog'],
-  [/chase|scanner|comet|meteor|sinelon|running|wipe|radar|pinwheel|lighthouse|pac-?man|marquee|theater/i, 'chase'],
-  [/rainbow|colorloop|party|disco|dance|strobe|fireworks|shockwave|halloween/i, 'party'],
-  [/heartbeat|pulse|metronome|beat|flicker/i, 'pulse'],
+  [/chase|scan|sweep|comet|meteor|sinelon|runner|running|wipe|radar|pinwheel|lighthouse|pac-?man|marquee|theater|saw|juggle|tetrix/i, 'chase'],
+  [/rainbow|colorloop|party|disco|dance|strobe|blink|fireworks|shockwave|halloween|colorful|random|dynamic|dissolve|noise|lake|police|traffic/i, 'party'],
+  [/heartbeat|pulse|metronome|beat|flicker|blend|android/i, 'pulse'],
+  [/solid|static|preset|colortwinkle/i, 'glow'],
 ];
 export const familyOf = (name) => (FAMILIES.find(([re]) => re.test(name || ''))?.[1] || 'glow');
 
@@ -77,12 +78,13 @@ function level(family, x, t) {
 // blocks), so the wood column feels lit by whatever the accents are doing.
 function paintRail(ctx, family, w, h, t, speed = 0.5) {
   const tt = t * (0.2 + speed * 0.5);
-  const steps = 40, bh = h / steps;
+  const steps = 60, bh = h / steps;
   ctx.clearRect(0, 0, w, h);
   for (let i = 0; i < steps; i++) {
     const y = i / (steps - 1);
-    const v = Math.max(0, Math.min(1, level(family, y, tt)));
-    ctx.fillStyle = ramp(family, v * 0.85);
+    // A floor under the pattern, so the whole column stays lit rather than going dark in bands.
+    const v = 0.35 + 0.65 * Math.max(0, Math.min(1, level(family, y, tt)));
+    ctx.fillStyle = ramp(family, v);
     ctx.fillRect(0, i * bh - 1, w, bh + 2);
   }
 }
