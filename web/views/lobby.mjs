@@ -296,7 +296,7 @@ function EffectSheet({ id, onClose }) {
       ${groups.map((g) => html`<button type="button" class=${`pill ${mood === g.id ? 'on' : ''}`} aria-pressed=${mood === g.id ? 'true' : 'false'} onClick=${() => setMood(g.id)}>${g.name}<small>${g.effects.length}</small></button>`)}
     </div>
     <div class="fx-grid scroll">
-      ${shown.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} />`)}
+      ${shown.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} h=${34} />`)}
     </div>
   </div>`;
 }
