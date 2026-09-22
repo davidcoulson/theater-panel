@@ -108,12 +108,15 @@ function Rail({ current }) {
   const accent = useEntity(ents.lights?.find((id) => /accent/.test(id)) || '');
   const speedEnt = useEntity(ents.accentSpeed);
   const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
+  // The glow tracks the accents' brightness: 0.15 when they are barely on, 0.65 at full.
+  const bright = Math.max(0, Math.min(1, (Number(accent?.attributes?.brightness) || 0) / 255));
+  const glow = 0.15 + 0.5 * bright;
   const theater = useStore((s) => Boolean(s.theater?.active));
   const build = useStore((s) => s.build) || {};
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
-    <${RailGlow} name=${route.params.glow || (accent?.state === 'on' ? accent.attributes?.effect : null)} speed=${speed} opacity=${Number(route.params.glowop) || (theater ? 0.25 : 0.65)} />
+    <${RailGlow} name=${route.params.glow || (accent?.state === 'on' ? accent.attributes?.effect : null)} speed=${speed} opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : glow)} />
     <div class="logo"><b>BC</b><span>Theater</span></div>
     ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}
