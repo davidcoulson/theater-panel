@@ -120,7 +120,7 @@ function Sheet({ r, onClose, onDone }) {
   }
 
   return html`<div class="sheet dark tx-suede">
-    <div class="framed" style="width:150px"><${Poster} src=${r.poster} title=${r.title} /></div>
+    <div class="framed" style="width:150px;align-self:flex-start"><${Poster} src=${r.poster} title=${r.title} /></div>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;justify-content:space-between;gap:12px">
         <div style="min-width:0"><div class="eyebrow" style="font-size:14px">${r.mediaType === 'tv' ? 'Series' : 'Movie'} · ${r.mediaType === 'tv' ? 'Sonarr' : 'Radarr'}</div>
@@ -136,7 +136,7 @@ function Sheet({ r, onClose, onDone }) {
           <button type="button" class="pill" aria-pressed=${!is4k ? 'true' : 'false'} onClick=${() => set4k(false)}>1080p</button>
           <button type="button" class="pill" aria-pressed=${is4k ? 'true' : 'false'} onClick=${() => set4k(true)}>4K</button>
         </div>
-        <button type="button" class="btn primary" style="height:66px" disabled=${busy} onClick=${send}><${Icon} name="dl" />${busy ? 'Requesting…' : `Request ${r.title}`}</button>
+        <button type="button" class="btn primary" style="height:66px" disabled=${busy} onClick=${send}><${Icon} name="dl" />${busy ? 'Requesting…' : `Request in ${is4k ? '4K' : '1080p'}`}</button>
       ` : html`<div class="chip" style="align-self:flex-start">${STATUS_LABEL[info.status] || info.status}</div>`}
     </div>
   </div>`;
