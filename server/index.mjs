@@ -161,7 +161,7 @@ get(/^\/api\/steam\/library$/, () => steamLibrary());
 // the panel's own routes through here (rest_command.theater_panel_navigate in ha/theater.yaml).
 post(/^\/api\/navigate$/, (m, q, body) => {
   const route = String(body.route || '');
-  if (!/^#?\/?[a-z]+(\?[\w=&%.-]*)?$/i.test(route)) throw new Error('Bad route');
+  if (!/^#?\/?[a-z]+(\?[\w=&%.,-]*)?$/i.test(route)) throw new Error('Bad route');
   broadcast('navigate', { route });
   return { ok: true, panels: clients.size };
 });

@@ -26,6 +26,7 @@ export const route = parseHash();
 let setRoute = () => {};
 let lastManual = 0;
 export function go(name, params = {}) {
+  setRender(params.render);
   route.name = VIEWS[name] ? name : 'lobby';
   route.params = params;
   if (!params.auto) lastManual = Date.now();
@@ -39,9 +40,29 @@ export function go(name, params = {}) {
 // In an ordinary browser it never grows past 100%, so a big monitor shows it at the panel's own
 // size; ?fit=1 scales it to the window anyway.
 const onPanel = Boolean(window.kioskSatellite) || window.parent !== window || new URLSearchParams(location.search).has('fit');
+//
+// At exactly 1:1 (the panel) the stage is drawn in place with no transform: a transformed
+// full-screen layer made the panel's Android WebView sprinkle black specks along shadows. Other
+// sizes use CSS zoom (real layout at that size, no scaled layer); render=transform brings back
+// the old scaled layer.
+//
+// Render switches for chasing GPU glitches on the panel, set from HA without a redeploy:
+// rest_command.theater_panel_navigate with route "#/lobby?render=noshadow,notex" (comma list of
+// transform, noshadow, notex, noanim). They stick until another render= arrives; "render=" clears them.
+let renderFlags = new Set();
+export function setRender(value) {
+  if (value === undefined) return;
+  renderFlags = new Set(String(value).split(',').map((x) => x.trim()).filter(Boolean));
+  for (const f of ['noshadow', 'notex', 'noanim']) document.documentElement.classList.toggle(`r-${f}`, renderFlags.has(f));
+  fit();
+}
 function fit() {
   const s = Math.min(innerWidth / 1920, innerHeight / 1080, onPanel ? Infinity : 1);
-  document.getElementById('stage').style.transform = `translate(-50%, -50%) scale(${s})`;
+  const st = document.getElementById('stage');
+  const legacy = renderFlags.has('transform');
+  document.documentElement.classList.toggle('r-zoom', !legacy);
+  st.style.transform = legacy ? `translate(-50%, -50%) scale(${s})` : '';
+  st.style.zoom = legacy || s === 1 ? '' : String(s);
 }
 addEventListener('resize', fit);
 addEventListener('hashchange', () => {
@@ -103,7 +124,7 @@ function goRoute(r) {
   go(name || 'lobby', Object.fromEntries(new URLSearchParams(qs || '')));
 }
 
-fit();
+setRender(route.params.render ?? '');
 startLive({ navigate: goRoute });
 // Is Kiosk Satellite's theater mode reachable (directly, or relayed by the HA page around us)?
 detectTheater().then((t) => {

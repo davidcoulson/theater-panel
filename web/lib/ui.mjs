@@ -54,7 +54,8 @@ const PATHS = {
 export function Icon({ name, size = 24, color = 'currentColor', w = 2 }) {
   if (name && name.includes(':')) {
     const [prefix, icon] = name.split(':');
-    return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;color:${color};--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
+    // Only an explicit colour is inline, so CSS can colour it like the built-in icons.
+    return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;${color !== 'currentColor' ? `color:${color};` : ''}--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
   }
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
 }

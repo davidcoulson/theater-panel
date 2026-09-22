@@ -197,10 +197,10 @@ function Projector() {
     </div>
     <div class="label" style="margin:18px 0 8px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
-      <${Icon} name=${s.icon} size=${28} /><span>${s.name}</span></button>`)}</div>
+      <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
     ${apps.length > 0 && html`<div class="label" style="margin:16px 0 8px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
-      <${Icon} name=${appIcon(a)} size=${28} /><span>${a.name}</span></button>`)}</div>`}
+      <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}</div>`}
   </section>`;
 }
 
