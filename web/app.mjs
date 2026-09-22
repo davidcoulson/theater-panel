@@ -35,8 +35,12 @@ export function go(name, params = {}) {
 }
 
 // Scale the stage to fit whatever screen we are on (exactly 1:1 on the 1920x1080 panel).
+// On the wall panel (Kiosk Satellite, or framed in HA's dashboard) the stage fills the screen.
+// In an ordinary browser it never grows past 100%, so a big monitor shows it at the panel's own
+// size; ?fit=1 scales it to the window anyway.
+const onPanel = Boolean(window.kioskSatellite) || window.parent !== window || new URLSearchParams(location.search).has('fit');
 function fit() {
-  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080, onPanel ? Infinity : 1);
   document.getElementById('stage').style.transform = `translate(-50%, -50%) scale(${s})`;
 }
 addEventListener('resize', fit);
