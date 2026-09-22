@@ -354,26 +354,28 @@ script:
           command: "monkey -p {{ package }} -c android.intent.category.LEANBACK_LAUNCHER 1"
 
 automation:
-  # Lights follow the Apple TV: dark while playing, 30% when paused for a while, back up when
-  # playback ends. The 10 s pause delay stops a quick pause from lighting the room.
+  # Lights follow playback on the Apple TV or on the projector's own Plex client (Plezy, seen by
+  # HA's Plex integration as "Plezy - AURORA PRO"): dark while playing, 30% when paused for a
+  # while, back up when playback ends. The 10 s pause delay stops a quick pause from lighting
+  # the room; a Plex client that disappears (unavailable) counts as stopped.
   - id: theater_lights_follow_playback
     alias: "Theater: lights follow playback"
     mode: restart
     triggers:
       - trigger: state
-        entity_id: media_player.home_theater
+        entity_id: [media_player.home_theater, media_player.plex_plezy_aurora_pro]
         to: playing
         for: "00:00:02"
         id: playing
       - trigger: state
-        entity_id: media_player.home_theater
+        entity_id: [media_player.home_theater, media_player.plex_plezy_aurora_pro]
         to: paused
         for: "00:00:10"
         id: paused
       - trigger: state
-        entity_id: media_player.home_theater
+        entity_id: [media_player.home_theater, media_player.plex_plezy_aurora_pro]
         from: [playing, paused]
-        to: [idle, standby, "off"]
+        to: [idle, standby, "off", unavailable]
         for: "00:00:20"
         id: stopped
     conditions:
