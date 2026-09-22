@@ -91,13 +91,14 @@ function Settings() {
 
   async function save() {
     setBusy(true); setStatus(null);
+    // Only what changed on this page, so nothing else is touched.
     const values = {};
     for (const f of data.fields) {
       if (f.type === 'secret') { if (clear[f.key]) values[f.key] = null; else if (draft[f.key]) values[f.key] = draft[f.key]; }
-      else values[f.key] = draft[f.key];
+      else if (draft[f.key] !== data.values[f.key].saved) values[f.key] = draft[f.key];
     }
     try {
-      await api('/api/admin/settings', { values, ...(gamesDirty ? { games } : {}) });
+      await api('/api/admin/settings', { rev: data.rev, values, ...(gamesDirty ? { games } : {}) });
       await load();
       setStatus({ ok: true, text: 'Saved. The panel picks it up right away.' });
     } catch (e) { setStatus({ ok: false, text: e.message }); }
@@ -115,9 +116,14 @@ function Settings() {
     setBusy(false);
   }
   const pending = data.fromContainer.length > 0 || data.gamesSource === 'file';
+  const REQUIRED = ['HA_URL', 'HA_TOKEN', 'PLEX_URL', 'PLEX_TOKEN', 'SEERR_URL', 'SEERR_API_KEY'];
+  const isSet = (k) => { const v = data.values[k]; return typeof v.saved === 'boolean' ? v.saved || v.container : Boolean(v.saved || v.container); };
+  const missing = REQUIRED.filter((k) => !isSet(k));
 
   return html`
     <p class="intro">Values here override the container's settings. Leave a field blank to use the container's value, shown in grey.</p>
+    ${missing.length > 0 && html`<section class="card missing"><b>Not set anywhere:</b> ${missing.map((k) => html`<code>${k}</code> `)}
+      <small>The panel can't reach these services until they're filled in below.</small></section>`}
     ${pending && html`<section class="card import"><div><b>${data.fromContainer.length} setting(s)${data.gamesSource === 'file' ? ' and the game sources' : ''} still come from the container.</b>
       <small>Import copies them here, tokens included, so you can delete the container's variables afterwards. Keep ADMIN_PASSWORD on the container.</small></div>
       <button type="button" class="primary" disabled=${busy || dirty} onClick=${importAll}>Import from container</button></section>`}
@@ -172,7 +178,7 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
   }
   const list = f.type === 'entity' ? `dl-${f.domain}` : undefined;
   return html`<div class="field"><label for=${id}>${label}</label>
-    <input id=${id} type="text" spellcheck="false" list=${list} placeholder=${base.container || f.placeholder || ''} value=${value} onInput=${(e) => onChange(e.target.value)} />
+    <input id=${id} type="text" spellcheck="false" list=${list} placeholder=${base.container || (f.placeholder ? `Not set (e.g. ${f.placeholder})` : 'Not set')} value=${value} onInput=${(e) => onChange(e.target.value)} />
     ${list && html`<${EntityOptions} id=${list} domain=${f.domain} entities=${entities} />`}
     ${f.type === 'entity' && value && entities.length > 0 && !entities.some((x) => x.id === value) && html`<small class="err">Home Assistant has no ${value}</small>`}
     ${note}</div>`;
@@ -223,12 +229,12 @@ function LibraryPicker({ value, base, onChange }) {
       <button type="button" aria-label=${`Remove ${t}`} onClick=${() => put(shown.filter((_, k) => k !== i))}>×</button></span>`)}
     <div class="row">
       <select value="" disabled=${!left.length} onChange=${(e) => { if (e.target.value) put([...shown, e.target.value]); e.target.value = ''; }}>
-        <option value="">${libs === null ? 'Loading libraries…' : left.length ? 'Add a library…' : 'All libraries added'}</option>
+        <option value="">${libs === null ? 'Loading libraries…' : err || !libs.length ? 'Plex not reachable' : left.length ? 'Add a library…' : 'All libraries added'}</option>
         ${left.map((l) => html`<option value=${l.title}>${l.title} (${l.type === 'show' ? 'TV' : 'movies'})</option>`)}
       </select>
       ${own && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}
     </div>
-    ${err && html`<small class="err">${err}</small>`}
+    ${(err || (libs && !libs.length)) && html`<small class="err">Can't list Plex's libraries${err ? `: ${err}` : ''}. Save the Plex URL and token first.</small>`}
     ${!own && shown.length > 0 && html`<small>From the container. Changing it saves your own list here.</small>`}
   </div>`;
 }

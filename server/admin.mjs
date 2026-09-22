@@ -99,7 +99,7 @@ export async function view() {
   }
   const gamesSaved = Boolean(settings().games);
   return {
-    fields: FIELDS, values,
+    fields: FIELDS, values, rev: settings().rev || 0,
     // Settings still coming from the container (what Import would copy).
     fromContainer: FIELDS.filter((f) => process.env[f.key] && !saved[f.key]).map((f) => f.key),
     games: (await loadGames()) || { switcher: {}, sources: [] },
@@ -111,6 +111,8 @@ export async function view() {
 // keeps the saved secret and null removes it; for everything else '' falls back to the container.
 export function save(body) {
   const cur = settings();
+  // A page loaded before someone else's save (another tab, an import) must reload first.
+  if (body.rev !== undefined && body.rev !== (cur.rev || 0)) throw httpError(409, 'Settings changed since this page loaded. Reload and try again.');
   const vars = { ...cur.vars };
   for (const [k, v] of Object.entries(body.values || {})) {
     const f = BY_KEY[k];
@@ -125,7 +127,7 @@ export function save(body) {
   }
   let games = cur.games;
   if (body.games !== undefined) games = body.games === null ? null : cleanGames(body.games);
-  saveSettings({ vars, games });
+  saveSettings({ vars, games, rev: (cur.rev || 0) + 1 });
   return { ok: true };
 }
 
@@ -141,7 +143,7 @@ export async function importContainer() {
   }
   let games = cur.games;
   if (!games) { const file = await loadGamesFile(); if (file) { games = cleanGames(file); copied.push('games.json'); } }
-  saveSettings({ vars, games });
+  saveSettings({ vars, games, rev: (cur.rev || 0) + 1 });
   return { ok: true, copied };
 }
 
@@ -190,6 +192,10 @@ export async function test(service, values = {}) {
   const v = { ...effectiveVars() };
   for (const [k, val] of Object.entries(values)) if (typeof val === 'string' && val.trim()) v[k] = val.trim();
   const t = AbortSignal.timeout(8000);
+  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'] }[service];
+  if (!need) throw httpError(400, 'Unknown service');
+  const gone = need.filter((k) => !v[k]);
+  if (gone.length) return { ok: false, detail: `${gone.join(' and ')} not set` };
   try {
     if (service === 'ha') {
       const r = await fetch(`${v.HA_URL.replace(/\/$/, '')}/api/`, { headers: { Authorization: `Bearer ${v.HA_TOKEN}` }, signal: t });
