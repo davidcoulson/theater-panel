@@ -135,6 +135,32 @@ export async function request(opts) {
   return { ...ok[0], qualities: wanted.filter((_, i) => results[i].status === 'fulfilled').map((k) => (k ? '4K' : '1080p')) };
 }
 
+// Requests that became watchable recently: the Lobby shows them as "Now in Plex". The Plex id
+// prefers the 4K copy (the merged Movies tab plays the best copy anyway).
+export async function arrivals(hours = 48) {
+  const d = await seerr('/request', { params: { take: 20, skip: 0, filter: 'available', sort: 'modified' } });
+  const since = Date.now() - hours * 3600e3;
+  const recent = d.results.filter((r) => {
+    const m = r.media || {};
+    const t = Math.max(Date.parse(m.mediaAddedAt || 0) || 0, Date.parse(r.updatedAt || 0) || 0);
+    return t >= since && (m.ratingKey || m.ratingKey4k);
+  });
+  const seen = new Set();
+  const out = [];
+  for (const r of recent) {
+    const m = r.media;
+    if (seen.has(m.tmdbId)) continue;
+    seen.add(m.tmdbId);
+    const info = await details(m.mediaType || r.type, m.tmdbId).catch(() => null);
+    out.push({
+      id: r.id, tmdbId: m.tmdbId, mediaType: m.mediaType || r.type,
+      title: info?.title || `TMDB ${m.tmdbId}`, poster: info?.poster,
+      plexId: String(m.ratingKey4k || m.ratingKey), requestedBy: r.requestedBy?.displayName,
+    });
+  }
+  return out;
+}
+
 export async function requests(take = 8) {
   const d = await seerr('/request', { params: { take, skip: 0, filter: 'all', sort: 'added' } });
   const out = await Promise.all(d.results.map(async (r) => {
