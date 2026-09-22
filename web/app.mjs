@@ -137,6 +137,18 @@ function App() {
     if (tvState === 'playing' && route.name !== 'showtime' && Date.now() - lastManual > 90000) go('showtime', { auto: true });
     if (['idle', 'off', 'standby'].includes(tvState) && route.name === 'showtime') go('lobby', { auto: true });
   }, [tvState]);
+  // Untouched for a while: drift to the Now Showing screen (a cinema lobby board). Any touch
+  // brings the panel straight back to Home. Nothing happens during Showtime.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const idleMin = getState().idleMinutes ?? 8;
+      if (idleMin > 0 && route.name !== 'showtime' && route.name !== 'showing' && Date.now() - lastManual > idleMin * 60000) go('showing', { auto: true });
+    }, 15000);
+    const back = () => { if (route.name === 'showing') go('lobby'); };
+    addEventListener('pointerdown', back, true);
+    return () => { clearInterval(t); removeEventListener('pointerdown', back, true); };
+  }, []);
+
   useEffect(() => {
     const t = setInterval(() => {
       const st = getState().states[getState().entities.appleTv]?.state;

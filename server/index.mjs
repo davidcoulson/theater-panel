@@ -127,6 +127,7 @@ get(/^\/api\/state$/, () => ({
   projectorApps: config.projectorApps,
   effectFavourites: config.effectFavourites,
   build: config.build,
+  idleMinutes: config.idleMinutes,
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 
