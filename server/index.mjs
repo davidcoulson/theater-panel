@@ -182,6 +182,7 @@ async function adminApi(req, res, path) {
   if (!admin.isAdmin(req)) throw admin.httpError(401, 'Sign in first');
   if (path === '/api/admin/settings' && method === 'GET') return admin.view();
   if (path === '/api/admin/settings' && method === 'POST') { const r = admin.save(body); await applySettings(); return r; }
+  if (path === '/api/admin/import' && method === 'POST') { const r = await admin.importContainer(); await applySettings(); return r; }
   if (path === '/api/admin/entities') return admin.haEntities(ha);
   if (path === '/api/admin/test' && method === 'POST') return admin.test(body.service, body.values);
   throw admin.httpError(404, 'Not found');

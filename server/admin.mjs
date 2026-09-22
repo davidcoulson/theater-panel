@@ -100,6 +100,8 @@ export async function view() {
   const gamesSaved = Boolean(settings().games);
   return {
     fields: FIELDS, values,
+    // Settings still coming from the container (what Import would copy).
+    fromContainer: FIELDS.filter((f) => process.env[f.key] && !saved[f.key]).map((f) => f.key),
     games: (await loadGames()) || { switcher: {}, sources: [] },
     gamesSource: gamesSaved ? 'admin' : (await loadGamesFile()) ? 'file' : 'none',
   };
@@ -125,6 +127,22 @@ export function save(body) {
   if (body.games !== undefined) games = body.games === null ? null : cleanGames(body.games);
   saveSettings({ vars, games });
   return { ok: true };
+}
+
+// Copy every setting that only exists on the container (tokens included) and the games.json
+// sources into the saved settings, so the container's variables can then be deleted.
+export async function importContainer() {
+  const cur = settings();
+  const vars = { ...cur.vars };
+  const copied = [];
+  for (const f of FIELDS) {
+    const v = process.env[f.key];
+    if (v && !vars[f.key]) { vars[f.key] = v; copied.push(f.key); }
+  }
+  let games = cur.games;
+  if (!games) { const file = await loadGamesFile(); if (file) { games = cleanGames(file); copied.push('games.json'); } }
+  saveSettings({ vars, games });
+  return { ok: true, copied };
 }
 
 const ID = /^[a-z0-9_-]{1,32}$/;

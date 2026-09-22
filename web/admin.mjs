@@ -104,8 +104,24 @@ function Settings() {
     setBusy(false);
   }
 
+  async function importAll() {
+    if (!confirm(`Copy ${data.fromContainer.length} setting(s)${data.gamesSource === 'file' ? ' and the games.json sources' : ''} from the container into this page?`)) return;
+    setBusy(true);
+    try {
+      const r = await api('/api/admin/import', {});
+      await load();
+      setStatus({ ok: true, text: `Copied ${r.copied.length} setting(s). You can now delete them from the container (keep ADMIN_PASSWORD).` });
+    } catch (e) { setStatus({ ok: false, text: e.message }); }
+    setBusy(false);
+  }
+  const pending = data.fromContainer.length > 0 || data.gamesSource === 'file';
+
   return html`
     <p class="intro">Values here override the container's settings. Leave a field blank to use the container's value, shown in grey.</p>
+    ${pending && html`<section class="card import"><div><b>${data.fromContainer.length} setting(s)${data.gamesSource === 'file' ? ' and the game sources' : ''} still come from the container.</b>
+      <small>Import copies them here, tokens included, so you can delete the container's variables afterwards. Keep ADMIN_PASSWORD on the container.</small></div>
+      <button type="button" class="primary" disabled=${busy || dirty} onClick=${importAll}>Import from container</button></section>`}
+    ${!pending && html`<p class="intro ok">Everything is saved here. The container only needs ADMIN_PASSWORD.</p>`}
     ${groups.map((g) => html`<section class="card" id=${g.toLowerCase().replace(/\W+/g, '-')}>
       <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} />`}</div>
       ${data.fields.filter((f) => f.group === g).map((f) => html`<${Field} f=${f} value=${draft[f.key]} base=${data.values[f.key]} entities=${entities}
