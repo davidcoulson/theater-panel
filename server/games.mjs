@@ -9,12 +9,18 @@
 // Either kind may also run an HA script (wake a console, start Steam Big Picture...).
 
 import { readFile } from 'node:fs/promises';
-import { config } from './config.mjs';
+import { config, settings } from './config.mjs';
 
 const file = process.env.GAMES_CONFIG || './config/games.json';
 let active = null;          // id of the last projector-input source picked from the panel
 
+// Games saved on the admin page win over the games.json file.
+export async function loadGamesFile() {
+  try { return JSON.parse(await readFile(file, 'utf8')); } catch { return null; }
+}
+
 export async function loadGames() {
+  if (settings().games) return settings().games;
   try { return JSON.parse(await readFile(file, 'utf8')); }
   catch (e) {
     if (e.code !== 'ENOENT') console.warn(`[games] ${file}: ${e.message}`);

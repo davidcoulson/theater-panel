@@ -6,3 +6,4 @@ shots/
 config/games.json
 unraid/stack.env
 .venv/
+settings.json

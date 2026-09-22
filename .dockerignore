@@ -9,3 +9,4 @@ ha
 .venv
 unraid
 config/games.json
+settings.json
