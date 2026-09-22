@@ -1,6 +1,6 @@
 {
   "name": "theater-panel",
-  "version": "0.1.0",
+  "version": "2026.9.22",
   "private": true,
   "description": "Home theater wall panel: Plex browsing, Seerr requests, Music Assistant and room control, served to Kiosk Satellite.",
   "type": "module",
@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/index.mjs",
     "dev": "node --env-file-if-exists=.env --watch server/index.mjs",
-    "push": "docker buildx build --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --output type=image,name=ghcr.io/davidcoulson/theater-panel:latest,push=true,oci-mediatypes=false ."
+    "push": "docker buildx build --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg BUILD_VERSION=$npm_package_version.$(git rev-parse --short HEAD) --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%MZ) --output type=image,name=ghcr.io/davidcoulson/theater-panel:latest,push=true,oci-mediatypes=false ."
   },
   "dependencies": {
     "@fontsource/big-shoulders-display": "^5.1.0",

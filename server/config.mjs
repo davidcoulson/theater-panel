@@ -98,6 +98,8 @@ function build(env) {
   }).filter(Boolean),
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
+  // Which build this is: stamped into the image by `npm run push`.
+  build: { version: env.BUILD_VERSION || 'dev', time: env.BUILD_TIME || '' },
   // Favourite light effects shown first in the Moods sheet (up to 8, in order).
   effectFavourites: list(env.ACCENT_FAVOURITES, []).slice(0, 8),
   // Poster labels. Network is off by default because Plex posters decorated by Kometa already
