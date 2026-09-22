@@ -30,7 +30,9 @@ function App() {
 }
 
 function Shell({ children, signOut }) {
-  return html`<header class="top"><div class="brand"><img src="/assets/icon.png" alt="" /><div><b>Theater panel</b><span>Settings</span></div></div>
+  const [build, setBuild] = useState({});
+  useEffect(() => { fetch('/api/state').then((r) => r.json()).then((s) => setBuild(s.build || {})).catch(() => {}); }, []);
+  return html`<header class="top"><div class="brand"><img src="/assets/icon.png" alt="" /><div><b>Theater panel</b><span>${build.version ? `v${build.version}${build.time ? ` · ${build.time}` : ''}` : 'Settings'}</span></div></div>
     <nav>${signOut && html`<a href="/" target="_blank" rel="noopener">Open panel</a><button type="button" class="link" onClick=${signOut}>Sign out</button>`}</nav></header>
     <main>${children}</main>`;
 }

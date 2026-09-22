@@ -3,9 +3,14 @@ FROM node:26-alpine
 LABEL org.opencontainers.image.source=https://github.com/davidcoulson/theater-panel
 
 WORKDIR /app
+# Stamped by `npm run push` so the panel can show which build it is running.
+ARG BUILD_VERSION=dev
+ARG BUILD_TIME=
 ENV NODE_ENV=production \
     PORT=8787 \
-    CACHE_DIR=/data/cache
+    CACHE_DIR=/data/cache \
+    BUILD_VERSION=$BUILD_VERSION \
+    BUILD_TIME=$BUILD_TIME
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force

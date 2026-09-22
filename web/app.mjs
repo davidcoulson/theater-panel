@@ -107,6 +107,7 @@ function Rail({ current }) {
   const speedEnt = useEntity(ents.accentSpeed);
   const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
   const theater = useStore((s) => Boolean(s.theater?.active));
+  const build = useStore((s) => s.build) || {};
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
@@ -118,6 +119,7 @@ function Rail({ current }) {
     ${ha.live === false ? html`<div class="offline">Server offline</div>` : ha.live && !ha.ok ? html`<div class="offline">${ha.configured ? 'HA offline' : 'HA not set up'}</div>` : null}
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
+    <div class="build" title=${build.time ? `built ${build.time}` : ''}>${build.version || ''}</div>
   </nav>`;
 }
 
