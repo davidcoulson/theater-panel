@@ -275,7 +275,6 @@ function EffectSheet({ id, onClose }) {
   const st = useEntity(id);
   const ents = useStore((s) => s.entities);
   const speedEnt = useEntity(ents.accentSpeed);
-  const intensityEnt = useEntity(ents.accentIntensity);
   const [mood, setMood] = useState(null);
   const all = (st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
   const current = st?.attributes?.effect;
@@ -297,12 +296,6 @@ function EffectSheet({ id, onClose }) {
     </div>
     <div class="fx-grid scroll">
       ${shown.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} />`)}
-    </div>
-    <div class="fx-sliders">
-      ${speedEnt && html`<div><div class="label">Speed</div><${Range} value=${Math.round((Number(speedEnt.state) / 255) * 100)} label="Effect speed" fill="var(--gold)"
-        onCommit=${(v) => act({ action: 'light_number', entity_id: ents.accentSpeed, value: Math.round((v / 100) * 255) })} /></div>`}
-      ${intensityEnt && html`<div><div class="label">Intensity</div><${Range} value=${Math.round((Number(intensityEnt.state) / 255) * 100)} label="Effect intensity" fill="var(--gold)"
-        onCommit=${(v) => act({ action: 'light_number', entity_id: ents.accentIntensity, value: Math.round((v / 100) * 255) })} /></div>`}
     </div>
   </div>`;
 }

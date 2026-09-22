@@ -331,8 +331,6 @@ canvas.fx { display: block; width: 100%; }
 .fx-tile { border: 1.5px solid transparent; background: rgba(0,0,0,.25); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; color: #E9DCCB; font-size: 15px; font-weight: 600; text-align: left; height: max-content; }
 .fx-tile.on { border-color: var(--gold); }
 .fx-tile span { display: block; }
-.fx-sliders { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
-.fx-sliders .label { color: #C7B39E; }
 
 /* Variant B: the row as a swipeable carousel. */
 .fx-carousel { margin-top: 10px; touch-action: pan-y; }
