@@ -43,6 +43,16 @@ buffering or compression middleware on this router.
 
 For development without Docker: `npm install` and `npm run dev` (Node 22 or newer).
 
+### Unraid
+
+Copy [unraid/theater-panel.xml](unraid/theater-panel.xml) to
+`/boot/config/plugins/dockerMan/templates-user/my-theater-panel.xml`, then Docker > Add Container >
+Template: theater-panel. The image is `ghcr.io/davidcoulson/theater-panel:latest`; Unraid shows an
+update whenever a new one is pushed, and the Auto Update Applications plugin can apply it.
+
+Publish with `npm run push`. It builds amd64 and arm64 with Docker (not OCI) manifest types and no
+attestations: Unraid's update check can't read an OCI index and reports "not available".
+
 ## Home Assistant setup
 
 1. Copy `ha/theater.yaml` to `/config/packages/` (with `packages: !include_dir_named packages`
