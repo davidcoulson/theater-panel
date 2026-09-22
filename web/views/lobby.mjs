@@ -1,6 +1,6 @@
 // Lobby: continue watching, scenes, projector, lights, just added and the pre-show music bar.
 
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
@@ -275,34 +275,46 @@ function EffectSheet({ id, onClose }) {
   const st = useEntity(id);
   const ents = useStore((s) => s.entities);
   const speedEnt = useEntity(ents.accentSpeed);
-  const [mood, setMood] = useState(null);
+  const chosen = useStore((stt) => stt.effectFavourites);
+  const [section, setSection] = useState('Favourites');
+  const scroller = useRef();
   const all = (st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
   const current = st?.attributes?.effect;
   const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
-  const chosen = useStore((st) => st.effectFavourites);
   const favs = (chosen?.length ? chosen : FAVOURITES).filter((f) => all.includes(f)).slice(0, 8);
-  const groups = byMood(all);
-  const shown = mood ? groups.find((g) => g.id === mood)?.effects || [] : favs;
+  // One list: favourites first, then every mood, scrolled through a section at a time.
+  const sections = [{ id: 'favs', name: 'Favourites', effects: favs }, ...byMood(all)].filter((g) => g.effects.length);
   const pick = (name) => act({ action: 'light_effect', entity_id: id, effect: name });
+
+  // The heading follows whichever section is at the top of the scroller.
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root) return;
+    const io = new IntersectionObserver((entries) => {
+      const top = entries.filter((e) => e.isIntersecting).sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
+      if (top) setSection(top.target.dataset.name);
+    }, { root, rootMargin: '0px 0px -75% 0px', threshold: 0 });
+    root.querySelectorAll('.fx-sec').forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [sections.length]);
 
   return html`<div class="fx-sheet" role="dialog" aria-label="Choose an effect">
     <div class="h">
       <div><div class="eyebrow">${st?.attributes?.friendly_name || 'Lights'}</div>
-        <div class="t">${mood ? groups.find((g) => g.id === mood)?.name : 'Moods'}</div></div>
+        <div class="t">Moods<span> · ${section}</span></div></div>
       <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
     </div>
-    <div class="moods hscroll">
-      <button type="button" class=${`pill ${!mood ? 'on' : ''}`} aria-pressed=${!mood ? 'true' : 'false'} onClick=${() => setMood(null)}>Favourites</button>
-      ${groups.map((g) => html`<button type="button" class=${`pill ${mood === g.id ? 'on' : ''}`} aria-pressed=${mood === g.id ? 'true' : 'false'} onClick=${() => setMood(g.id)}>${g.name}<small>${g.effects.length}</small></button>`)}
-    </div>
-    <div class="fx-grid scroll">
-      ${shown.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} h=${34} />`)}
+    <div class="fx-scroll scroll" ref=${scroller}>
+      ${sections.map((g) => html`<section class="fx-sec" data-name=${g.name}>
+        <div class="fx-secname">${g.name}<small>${g.effects.length}</small></div>
+        <div class="fx-grid">
+          ${g.effects.map((name) => html`<${EffectTile} name=${name} speed=${speed} active=${name === current} onPick=${pick} h=${34} />`)}
+        </div>
+      </section>`)}
     </div>
   </div>`;
 }
 
-// A light that has effects: the row shows the running effect as a live strip, and tapping it
-// opens the picker (favourites, then everything grouped by mood).
 function LightRow({ id, onEffects }) {
   const st = useEntity(id);
   const meta = LIGHT_META[id] || { name: st?.attributes?.friendly_name || id, fill: '#B8792F' };
