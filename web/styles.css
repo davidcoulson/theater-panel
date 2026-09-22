@@ -41,6 +41,9 @@ a { color: var(--acc); }
 /* Default: the stage sits in a centring grid, unscaled at 1:1 or sized with CSS zoom (see fit()). */
 html.r-zoom body { display: grid; place-items: center; }
 html.r-zoom #stage { position: relative; left: auto; top: auto; flex-shrink: 0; }
+/* On the panel the wood Scenes card's outer shadow still speckles even unblurred (it sits under
+   a texture image), so it keeps only its inner frame there. */
+html.r-panel:not(.r-shadows) .scenes { box-shadow: inset 0 0 0 6px rgba(60,28,8,.18) !important; }
 /* GPU-glitch test switches (render= route param). */
 html.r-noshadow #stage *, html.r-noshadow #stage *::before, html.r-noshadow #stage *::after { box-shadow: none !important; text-shadow: none !important; }
 html.r-notex #stage [class*="tx-"] { background-image: none !important; }

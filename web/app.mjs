@@ -53,7 +53,7 @@ let renderFlags = new Set();
 export function setRender(value) {
   if (value === undefined) return;
   renderFlags = new Set(String(value).split(',').map((x) => x.trim()).filter(Boolean));
-  for (const f of ['noshadow', 'notex', 'noanim']) document.documentElement.classList.toggle(`r-${f}`, renderFlags.has(f));
+  for (const f of ['noshadow', 'notex', 'noanim', 'shadows']) document.documentElement.classList.toggle(`r-${f}`, renderFlags.has(f));
   fit();
 }
 // The panel's GPU sprinkles specks along blurred box-shadows (confirmed with render=noshadow), so
@@ -82,6 +82,7 @@ function crispShadows() {
 }
 
 function fit() {
+  document.documentElement.classList.toggle('r-panel', onPanel);
   crispShadows();
   const s = Math.min(innerWidth / 1920, innerHeight / 1080, onPanel ? Infinity : 1);
   const st = document.getElementById('stage');
