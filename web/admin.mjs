@@ -170,6 +170,13 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
     return html`<div class="field check"><label><input type="checkbox" checked=${eff === 'true'} onChange=${(e) => onChange(String(e.target.checked))} />${label}</label>
       ${value !== '' && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}${note}</div>`;
   }
+  if (f.type === 'select') {
+    return html`<div class="field"><label for=${id}>${label}</label>
+      <select id=${id} value=${value} onChange=${(e) => onChange(e.target.value)}>
+        <option value="">${`Container value (${(f.options.find((o) => o[0] === base.container) || f.options[0])[1]})`}</option>
+        ${f.options.map(([v, t]) => html`<option value=${v}>${t}</option>`)}
+      </select>${note}</div>`;
+  }
   if (f.type === 'libraries') return html`<div class="field">${label}<${LibraryPicker} value=${value} base=${base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'apps') return html`<div class="field">${label}<${AppsEditor} value=${value || base.container} onChange=${onChange} />${note}</div>`;
   if (f.type === 'list' && f.domain) {

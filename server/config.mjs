@@ -79,6 +79,10 @@ function build(env) {
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
   },
+  // Where "Play on projector" plays: the Apple TV's Plex app, or the Plex client on the projector
+  // itself (Plezy, opened over ADB with a plezy://play link).
+  playTarget: env.PLAY_TARGET === 'projector' ? 'projector' : 'appletv',
+  projectorPlexPackage: env.PROJECTOR_PLEX_PACKAGE || 'com.edde746.plezy',
   // The Plex client's name as Plex reports it (Settings > Plex Web > Devices), used to pick the
   // theater's session out of /status/sessions. Empty = the first playing session.
   plexPlayerName: env.PLEX_PLAYER_NAME || '',
