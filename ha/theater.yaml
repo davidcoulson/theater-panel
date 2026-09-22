@@ -1,0 +1,334 @@
+# Theater panel: Home Assistant package.
+#
+# Install: copy to /config/packages/theater.yaml and make sure configuration.yaml has
+#   homeassistant:
+#     packages: !include_dir_named packages
+# then restart Home Assistant (or reload scripts, automations and input helpers).
+#
+# The panel calls only these scripts, so the same scenes work from Pico remotes, voice and
+# the HA app. Room entities are named here; if you rename a light, change it in this file and
+# in the panel's ENTITY_LIGHTS setting.
+#
+#   Downlights    light.media_room_downlights        (4 Govee, dimmable, color temp + RGB)
+#   Accent lights light.home_theater_accent_lights   (4 Govee accents, RGB)
+#   LED strip     light.home_theater_wled            (WLED, 188 LEDs)
+#   Apple TV      media_player.home_theater
+#   Music         media_player.home_theater_2        (Music Assistant)
+
+# Move the panel to one of its screens from an automation or script, e.g.
+#   action: rest_command.theater_panel_navigate
+#   data: { route: "#/watch?brand=netflix" }
+# Kiosk Satellite's own navigate service moves the HA dashboard around the panel, not the panel.
+# If PANEL_KEY is set, add ?key=<PANEL_KEY> to the URL (keep it in secrets.yaml).
+rest_command:
+  theater_panel_navigate:
+    url: https://ht-kiosk.coulson.io/api/navigate
+    method: POST
+    content_type: application/json
+    payload: '{"route": "{{ route }}"}'
+
+input_select:
+  theater_scene:
+    name: Theater scene
+    icon: mdi:theater
+    options: ["Off", "Pre-show", "Movie time", "Intermission", "Lights up"]
+
+input_boolean:
+  theater_auto_lights:
+    name: Theater lights follow playback
+    icon: mdi:lightbulb-auto
+    initial: true
+
+script:
+  # ---------- scenes ----------
+
+  theater_pre_show:
+    alias: "Theater: Pre-show"
+    icon: mdi:music
+    sequence:
+      - action: light.turn_on
+        target: { entity_id: light.media_room_downlights }
+        data: { brightness_pct: 40, color_temp_kelvin: 2700, transition: 3 }
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_accent_lights }
+        data: { brightness_pct: 25, rgb_color: [255, 138, 60], transition: 3 }
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_wled }
+        data: { brightness_pct: 60, effect: Candle }
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Pre-show }
+
+  theater_movie_time:
+    alias: "Theater: Movie time"
+    icon: mdi:filmstrip
+    sequence:
+      # Stop pre-show music; the movie has the room now.
+      - action: media_player.media_pause
+        target: { entity_id: media_player.home_theater_2 }
+        continue_on_error: true
+      - action: script.theater_lights_movie
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Movie time }
+
+  theater_intermission:
+    alias: "Theater: Intermission"
+    icon: mdi:coffee
+    sequence:
+      - action: media_player.media_pause
+        target: { entity_id: media_player.home_theater }
+        continue_on_error: true
+      - action: script.theater_lights_intermission
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Intermission }
+
+  theater_lights_up:
+    alias: "Theater: Lights up"
+    icon: mdi:weather-sunny
+    sequence:
+      - action: media_player.media_stop
+        target: { entity_id: media_player.home_theater_2 }
+        continue_on_error: true
+      - action: light.turn_on
+        target: { entity_id: light.media_room_downlights }
+        data: { brightness_pct: 100, color_temp_kelvin: 4000, transition: 4 }
+      - action: light.turn_off
+        target: { entity_id: [light.home_theater_accent_lights, light.home_theater_wled] }
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Lights up }
+
+  theater_all_off:
+    alias: "Theater: All off"
+    icon: mdi:power
+    sequence:
+      - action: light.turn_off
+        target: { entity_id: [light.media_room_downlights, light.home_theater_accent_lights, light.home_theater_wled] }
+        data: { transition: 3 }
+      - action: media_player.media_stop
+        target: { entity_id: media_player.home_theater_2 }
+        continue_on_error: true
+      # Turning the Apple TV off sends HDMI-CEC standby to the projector.
+      - action: media_player.turn_off
+        target: { entity_id: media_player.home_theater }
+        continue_on_error: true
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: "Off" }
+
+  # Lights only, used by the scenes above and by the playback automation (which must not
+  # pause the movie itself).
+  theater_lights_movie:
+    alias: "Theater: lights for the movie"
+    sequence:
+      - action: light.turn_off
+        target: { entity_id: light.media_room_downlights }
+        data: { transition: 6 }
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_accent_lights }
+        data: { brightness_pct: 4, rgb_color: [255, 120, 40], transition: 6 }
+      - action: light.turn_off
+        target: { entity_id: light.home_theater_wled }
+
+  theater_lights_intermission:
+    alias: "Theater: lights for intermission"
+    sequence:
+      - action: light.turn_on
+        target: { entity_id: light.media_room_downlights }
+        data: { brightness_pct: 30, color_temp_kelvin: 2700, transition: 3 }
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_accent_lights }
+        data: { brightness_pct: 20, rgb_color: [255, 138, 60], transition: 3 }
+
+  theater_aisle_glow:
+    alias: "Theater: Aisle glow"
+    icon: mdi:lightbulb-night
+    mode: single
+    sequence:
+      # Toggle a very low amber glow so people can find a seat without lighting the screen.
+      - if:
+          - condition: state
+            entity_id: light.home_theater_accent_lights
+            state: "on"
+          - condition: numeric_state
+            entity_id: light.home_theater_accent_lights
+            attribute: brightness
+            above: 30
+        then:
+          - action: light.turn_on
+            target: { entity_id: light.home_theater_accent_lights }
+            data: { brightness_pct: 4, transition: 2 }
+        else:
+          - action: light.turn_on
+            target: { entity_id: light.home_theater_accent_lights }
+            data: { brightness_pct: 15, rgb_color: [255, 120, 40], transition: 2 }
+
+  # ---------- playback ----------
+
+  theater_play_plex:
+    alias: "Theater: play from Plex"
+    icon: mdi:plex
+    mode: restart
+    fields:
+      rating_key: { description: "Plex ratingKey of the movie or episode", example: "358614" }
+      media_type: { description: "movie or episode", example: movie }
+      offset: { description: "Resume position in seconds", example: 0 }
+      apple_tv: { description: "Apple TV media_player", example: media_player.home_theater }
+      plex_player: { description: "The Plex client entity for the Apple TV", example: media_player.plex_plex_for_apple_tv_home_theater }
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ not plex_player }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Theater panel
+              message: >-
+                Playback needs the Plex client entity for the Apple TV. In Plex on the Apple TV turn on
+                Settings > Advanced > Allow remote control (Advertise as player), open Plex, press
+                "Scan clients" on the Plex integration, then set ENTITY_PLEX_PLAYER in the panel's settings.
+          - stop: Plex player not configured
+      # Wake the Apple TV; HDMI-CEC turns the projector on and switches to its input.
+      - action: media_player.turn_on
+        target: { entity_id: "{{ apple_tv }}" }
+      # Open Plex so the client is running and reachable.
+      - action: media_player.select_source
+        target: { entity_id: "{{ apple_tv }}" }
+        data: { source: Plex }
+      - wait_template: "{{ states(plex_player) not in ['unavailable', 'unknown'] }}"
+        timeout: "00:00:25"
+        continue_on_timeout: true
+      - action: media_player.play_media
+        target: { entity_id: "{{ plex_player }}" }
+        data:
+          media_content_type: "{{ media_type | default('movie') }}"
+          media_content_id: >-
+            plex://{{ {'plex_key': rating_key | int, 'offset': offset | default(0) | int} | to_json }}
+      - action: script.theater_movie_time
+
+  # ---------- projector ----------
+  # Power: on goes through the Apple TV (HDMI-CEC wakes the projector; it has no network
+  # standby, so ADB cannot turn it on). Off, input and picture mode go over ADB
+  # (media_player.theater_projector, Android Debug Bridge integration).
+
+  theater_projector_power_on:
+    alias: "Theater: projector on"
+    fields:
+      projector: { description: "Projector ADB media_player (optional)" }
+      apple_tv: { description: "Apple TV media_player" }
+    sequence:
+      - action: media_player.turn_on
+        target: { entity_id: "{{ projector if projector else apple_tv }}" }
+
+  theater_projector_power_off:
+    alias: "Theater: projector off"
+    fields:
+      projector: { description: "Projector ADB media_player (optional)" }
+      apple_tv: { description: "Apple TV media_player" }
+    sequence:
+      - action: media_player.turn_off
+        target: { entity_id: "{{ projector if projector else apple_tv }}" }
+
+  # Inputs are Android TV inputs on the Aurora Pro's MediaTek build (verified over ADB):
+  # HDMI 1 = HW5 (Apple TV, CEC), HDMI 2 = HW6, HDMI 3 = HW7, HDMI 4 = HW8. The projector's
+  # current input can be read back with `getprop cur.prj.currentSourceId` (5-8).
+  theater_projector_source:
+    alias: "Theater: projector source"
+    fields:
+      projector: { description: "Projector ADB media_player (Android Debug Bridge integration)" }
+      apple_tv: {}
+      source: { example: HDMI 2 }
+    variables:
+      hw: >-
+        {{ {'Apple TV': 5, 'HDMI 1': 5, 'HDMI 2': 6, 'HDMI 3': 7, 'HDMI 4': 8}.get(source, 0) }}
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ not projector or hw | int == 0 }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Theater panel
+              message: "Can't switch the projector to {{ source }}: set ENTITY_PROJECTOR to the projector's ADB entity (and use Apple TV or HDMI 1-4)."
+          - stop: Projector not configured
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data:
+          command: >-
+            am start -a android.intent.action.VIEW -d
+            content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW{{ hw }}
+
+  # Picture mode is the `picture_mode` global setting; writing it makes the projector's TV
+  # settings service apply the mode (verified: each mode loads its own backlight, colour
+  # temperature and hue). Values from the Aurora Pro: 2 Cinema Home, 8 Cinema Pro, 9 Standard,
+  # 3 Brightest, 10 Game, 0 Custom.
+  theater_projector_picture:
+    alias: "Theater: projector picture mode"
+    fields:
+      projector: { description: "Projector ADB media_player" }
+      apple_tv: {}
+      mode: { example: Cinema }
+    variables:
+      value: >-
+        {{ {'Cinema': 2, 'Cinema Home': 2, 'Cinema Pro': 8, 'Standard': 9, 'Brightest': 3, 'Game': 10, 'Custom': 0}.get(mode, -1) }}
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ not projector or value | int < 0 }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Theater panel
+              message: "Can't set the projector to {{ mode }}: set ENTITY_PROJECTOR to the projector's ADB entity (modes: Cinema, Cinema Pro, Standard, Brightest, Game)."
+          - stop: Projector not configured
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data:
+          command: "settings put global picture_mode {{ value | int }}"
+
+automation:
+  # Lights follow the Apple TV: dark while playing, 30% when paused for a while, back up when
+  # playback ends. The 10 s pause delay stops a quick pause from lighting the room.
+  - id: theater_lights_follow_playback
+    alias: "Theater: lights follow playback"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: playing
+        for: "00:00:02"
+        id: playing
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: paused
+        for: "00:00:10"
+        id: paused
+      - trigger: state
+        entity_id: media_player.home_theater
+        from: [playing, paused]
+        to: [idle, standby, "off"]
+        for: "00:00:20"
+        id: stopped
+    conditions:
+      - condition: state
+        entity_id: input_boolean.theater_auto_lights
+        state: "on"
+    actions:
+      - choose:
+          - conditions: { condition: trigger, id: playing }
+            sequence:
+              - action: script.theater_lights_movie
+              - action: input_select.select_option
+                target: { entity_id: input_select.theater_scene }
+                data: { option: Movie time }
+          - conditions: { condition: trigger, id: paused }
+            sequence:
+              - action: script.theater_lights_intermission
+              - action: input_select.select_option
+                target: { entity_id: input_select.theater_scene }
+                data: { option: Intermission }
+          - conditions: { condition: trigger, id: stopped }
+            sequence:
+              - action: script.theater_lights_up

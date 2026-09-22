@@ -1,0 +1,11 @@
+node_modules
+cache
+shots
+.env
+.git
+tools
+ha
+*.md
+.venv
+unraid
+config/games.json

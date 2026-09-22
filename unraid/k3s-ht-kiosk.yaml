@@ -1,0 +1,50 @@
+# ht-kiosk.coulson.io -> the theater panel on Unraid (10.2.3.4:8787), through the k3s Traefik
+# ingress that already serves *.coulson.io (sonarr.coulson.io etc.).
+#
+#   kubectl apply -f k3s-ht-kiosk.yaml
+#
+# Match the namespace, entryPoint and TLS settings to the IngressRoute your Sonarr uses
+# (kubectl get ingressroute -A -o yaml | grep -A20 sonarr). Do not attach a middleware that
+# sets X-Frame-Options or buffers responses: the panel is framed by Home Assistant and streams
+# live updates (Server-Sent Events).
+apiVersion: v1
+kind: Service
+metadata:
+  name: theater-panel
+  namespace: default
+spec:
+  ports:
+    - name: http
+      port: 8787
+      targetPort: 8787
+---
+# A Service without a selector plus an EndpointSlice: traffic goes to the Unraid host.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: theater-panel-unraid
+  namespace: default
+  labels:
+    kubernetes.io/service-name: theater-panel
+addressType: IPv4
+ports:
+  - name: http
+    port: 8787
+    protocol: TCP
+endpoints:
+  - addresses: ["10.2.3.4"]
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: theater-panel
+  namespace: default
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`ht-kiosk.coulson.io`)
+      kind: Rule
+      services:
+        - name: theater-panel
+          port: 8787
+  tls: {}   # default certificate (the *.coulson.io wildcard); copy Sonarr's tls block if it names a secret

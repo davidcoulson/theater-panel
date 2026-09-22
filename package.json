@@ -1,0 +1,20 @@
+{
+  "name": "theater-panel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Home theater wall panel: Plex browsing, Seerr requests, Music Assistant and room control, served to Kiosk Satellite.",
+  "type": "module",
+  "main": "server/index.mjs",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --env-file-if-exists=.env --watch server/index.mjs"
+  },
+  "dependencies": {
+    "@fontsource/big-shoulders-display": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@fontsource/ibm-plex-sans": "^5.1.0",
+    "htm": "^3.1.1",
+    "preact": "^10.26.0"
+  }
+}

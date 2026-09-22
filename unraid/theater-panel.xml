@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!--
+  Unraid Docker template for the theater panel. Replaces the Compose Manager stack.
+
+  Install: copy this file to the flash drive as
+    /boot/config/plugins/dockerMan/templates-user/my-theater-panel.xml
+  then Docker > Add Container > Template: theater-panel, fill in the three tokens, Apply.
+  Stop and remove the Compose Manager stack first: both use the name theater-panel and port 8787.
+
+  Updates: the image tag is :latest, so Unraid shows "update ready" whenever a new image is
+  pushed to GHCR. To apply updates automatically, turn on this container in the
+  "Auto Update Applications" plugin (Community Applications).
+-->
+<Container version="2">
+  <Name>theater-panel</Name>
+  <Repository>ghcr.io/davidcoulson/theater-panel:latest</Repository>
+  <Registry>https://github.com/users/davidcoulson/packages/container/package/theater-panel</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/davidcoulson/theater-panel/issues</Support>
+  <Project>https://github.com/davidcoulson/theater-panel</Project>
+  <Overview>Home theater wall panel: Plex browse and play, Seerr requests, Music Assistant, lights, projector and games, served to Kiosk Satellite. Talks to Home Assistant over its websocket; everything it controls goes through HA.</Overview>
+  <Category>MediaApp:Video HomeAutomation:</Category>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/unraid/theater-panel.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png</Icon>
+  <!-- Unraid's nobody:users, so the appdata folders stay writable. Autostart is the Docker page toggle. -->
+  <ExtraParams>--user 99:100</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <Config Name="Web UI port" Target="8787" Default="8787" Mode="tcp" Description="The panel. The k3s route for ht-kiosk.coulson.io points at this port on the Unraid host (10.2.3.4)." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Data (image cache)" Target="/data" Default="/mnt/user/appdata/theater-panel/data" Mode="rw" Description="Poster and artwork cache." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/theater-panel/data</Config>
+  <Config Name="Config (games.json)" Target="/app/config" Default="/mnt/user/appdata/theater-panel/config" Mode="ro" Description="Holds games.json (HDMI switcher, consoles, gaming PC)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/theater-panel/config</Config>
+
+  <Config Name="Home Assistant URL" Target="HA_URL" Default="http://10.2.3.6:8123" Mode="" Description="" Type="Variable" Display="always" Required="true" Mask="false">http://10.2.3.6:8123</Config>
+  <Config Name="Home Assistant token" Target="HA_TOKEN" Default="" Mode="" Description="Long-lived access token (HA profile > Security)." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Plex URL" Target="PLEX_URL" Default="http://10.2.6.3:32400" Mode="" Description="" Type="Variable" Display="always" Required="true" Mask="false">http://10.2.6.3:32400</Config>
+  <Config Name="Plex token" Target="PLEX_TOKEN" Default="" Mode="" Description="X-Plex-Token of the server owner." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Plex libraries" Target="PLEX_LIBRARIES" Default="4K Movies,Movies,TV Shows" Mode="" Description="Library tabs, in order, comma-separated. Empty shows every movie and TV library." Type="Variable" Display="always" Required="false" Mask="false">4K Movies,Movies,TV Shows</Config>
+  <Config Name="Seerr URL" Target="SEERR_URL" Default="http://seerr.dkr.coulson.io:5055" Mode="" Description="" Type="Variable" Display="always" Required="true" Mask="false">http://seerr.dkr.coulson.io:5055</Config>
+  <Config Name="Seerr API key" Target="SEERR_API_KEY" Default="" Mode="" Description="Seerr > Settings > General > API Key." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Frame ancestors" Target="FRAME_ANCESTORS" Default="https://home-iot.coulson.io" Mode="" Description="Origins allowed to embed the panel (the Home Assistant dashboard Kiosk Satellite shows), space- or comma-separated." Type="Variable" Display="always" Required="true" Mask="false">https://home-iot.coulson.io</Config>
+
+  <Config Name="Projector entity" Target="ENTITY_PROJECTOR" Default="media_player.theater_projector" Mode="" Description="Android Debug Bridge media_player for the NexiGo." Type="Variable" Display="always" Required="false" Mask="false">media_player.theater_projector</Config>
+  <Config Name="Music players" Target="ENTITY_MUSIC_PLAYERS" Default="media_player.home_theater_2,media_player.great_room_2,media_player.kitchen_tv_2,media_player.office_tv_3" Mode="" Description="Music Assistant players under Play on; the first is the theater's own." Type="Variable" Display="always" Required="false" Mask="false">media_player.home_theater_2,media_player.great_room_2,media_player.kitchen_tv_2,media_player.office_tv_3</Config>
+  <Config Name="Plex player entity" Target="ENTITY_PLEX_PLAYER" Default="" Mode="" Description="HA's media_player for the Plex client that Play targets." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Plex player name" Target="PLEX_PLAYER_NAME" Default="" Mode="" Description="That client's name as Plex reports it, to pick the theater's session. Empty uses the first playing session." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <Config Name="Steam API key" Target="STEAM_API_KEY" Default="" Mode="" Description="For the Steam library on the Games screen." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Steam ID" Target="STEAM_ID" Default="" Mode="" Description="64-bit SteamID." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Seerr user id" Target="SEERR_USER_ID" Default="" Mode="" Description="Make requests as this Seerr user instead of the API key's owner." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Seerr region" Target="SEERR_REGION" Default="US" Mode="" Description="Region for streaming-service lookups." Type="Variable" Display="advanced" Required="false" Mask="false">US</Config>
+  <Config Name="Panel key" Target="PANEL_KEY" Default="" Mode="" Description="Optional shared key; clients open the panel once with ?key=... and keep a cookie." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Quality badges" Target="SHOW_QUALITY_BADGES" Default="true" Mode="" Description="4K / HDR / Dolby Vision labels on posters." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="Network badges" Target="SHOW_NETWORK_BADGES" Default="false" Mode="" Description="Streaming network labels on posters." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Image cache size (MB)" Target="IMAGE_CACHE_MB" Default="512" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">512</Config>
+  <Config Name="Cache directory" Target="CACHE_DIR" Default="/data/cache" Mode="" Description="Inside the container; keep it under /data." Type="Variable" Display="advanced-hide" Required="true" Mask="false">/data/cache</Config>
+</Container>

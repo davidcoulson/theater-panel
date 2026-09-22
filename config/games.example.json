@@ -1,0 +1,92 @@
+{
+  "_comment": "Copy to config/games.json. Consoles behind an HDMI switcher are switched through its Home Assistant select entity (e.g. the orei_ukm integration); `option` must match that select's option names.",
+  "switcher": {
+    "entity": "select.orei_ukm_401_10_2_4_100_input",
+    "projectorInput": "HDMI 3"
+  },
+  "sources": [
+    {
+      "id": "wii",
+      "name": "Wii",
+      "icon": "remote",
+      "via": "switcher",
+      "option": "Wii"
+    },
+    {
+      "id": "xbox",
+      "name": "Xbox",
+      "icon": "pad",
+      "via": "switcher",
+      "option": "Xbox"
+    },
+    {
+      "id": "retropie",
+      "name": "RetroPie",
+      "icon": "joystick",
+      "via": "switcher",
+      "option": "RetroPie"
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "icon": "steam",
+      "via": "projector",
+      "projectorInput": "HDMI 2",
+      "haScript": "script.gaming_pc_big_picture"
+    },
+    {
+      "id": "windows",
+      "name": "Windows",
+      "icon": "monitor",
+      "via": "projector",
+      "projectorInput": "HDMI 2"
+    }
+  ],
+  "pc": {
+    "name": "Gaming PC",
+    "power": "switch.windows_vm",
+    "launchScript": "script.gaming_pc_launch_steam_game",
+    "sensors": [
+      {
+        "entity": "sensor.gaming_pc_cpu_load",
+        "label": "CPU",
+        "kind": "percent"
+      },
+      {
+        "entity": "sensor.gaming_pc_cpu_temperature",
+        "label": "CPU temp",
+        "kind": "temp"
+      },
+      {
+        "entity": "sensor.gaming_pc_cpu_clock",
+        "label": "CPU clock",
+        "kind": "value"
+      },
+      {
+        "entity": "sensor.gaming_pc_gpu_load",
+        "label": "GPU",
+        "kind": "percent"
+      },
+      {
+        "entity": "sensor.gaming_pc_gpu_temperature",
+        "label": "GPU temp",
+        "kind": "temp"
+      },
+      {
+        "entity": "sensor.gaming_pc_gpu_clock",
+        "label": "GPU clock",
+        "kind": "value"
+      },
+      {
+        "entity": "sensor.gaming_pc_memory_used",
+        "label": "Memory",
+        "kind": "percent"
+      },
+      {
+        "entity": "sensor.gaming_pc_disk_c_used",
+        "label": "Disk C:",
+        "kind": "percent"
+      }
+    ]
+  }
+}

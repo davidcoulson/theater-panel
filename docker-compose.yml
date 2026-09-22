@@ -1,0 +1,40 @@
+# docker compose up -d   (settings come from .env; see .env.example)
+#
+# Traefik finds the container through the labels below and serves it at PANEL_HOST over HTTPS.
+# The container joins Traefik's Docker network (TRAEFIK_NETWORK, created by your Traefik
+# stack). Port 8787 is also published so the panel still works from the LAN if Traefik is down.
+services:
+  theater-panel:
+    build: .
+    image: theater-panel:latest
+    container_name: theater-panel
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CACHE_DIR: /data/cache
+    ports:
+      - "8787:8787"
+    volumes:
+      - theater-panel-data:/data
+      # games.json (consoles, HDMI switcher, gaming PC); see config/games.example.json
+      - ./config:/app/config:ro
+    networks:
+      - default
+      - traefik
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
+      traefik.http.routers.theater-panel.rule: Host(`${PANEL_HOST:-ht-kiosk.coulson.io}`)
+      traefik.http.routers.theater-panel.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.theater-panel.tls: "true"
+      # Empty = use Traefik's default certificate (the *.coulson.io wildcard).
+      traefik.http.routers.theater-panel.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-}
+      traefik.http.services.theater-panel.loadbalancer.server.port: "8787"
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
+
+volumes:
+  theater-panel-data:

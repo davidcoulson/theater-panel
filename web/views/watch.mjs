@@ -1,0 +1,184 @@
+// Watch: Plex libraries as a poster grid with filters, and a detail pane that starts playback.
+
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { html, Icon, Play, Poster, Seg, Header, useDebounced } from '../lib/ui.mjs';
+import { get, act, useLoad, runtime, endsAt, toast } from '../lib/api.mjs';
+import { play } from './lobby.mjs';
+import { route } from '../app.mjs';
+import { useNetworks, NetworkPicker, PosterLabels } from './networks.mjs';
+
+const FILTERS = [
+  { key: 'unwatched', label: 'Unwatched' },
+  { key: 'short', label: 'Under 2 hours', movieOnly: true },
+  { key: 'family', label: 'Family friendly' },
+  { key: '4k', label: '4K', movieOnly: true },
+  { key: 'hdr', label: 'HDR', movieOnly: true },
+];
+const SORTS = [
+  { value: 'added', label: 'Recently added' },
+  { value: 'released', label: 'Newest' },
+  { value: 'rating', label: 'Top rated' },
+  { value: 'random', label: 'Random pick' },
+];
+const PAGE = 48;
+
+export function Watch() {
+  const [libs] = useLoad(() => get('/api/plex/libraries'), []);
+  const [lib, setLib] = useState(route.params.lib || (route.params.brand ? 'networks' : null));
+  const [filters, setFilters] = useState(['unwatched']);
+  const [sort, setSort] = useState('added');
+  const [query, setQuery] = useState('');
+  const q = useDebounced(query.trim());
+  const [selected, setSelected] = useState(route.params.item || null);
+  const [items, setItems] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [seed, setSeed] = useState(0);
+  const [brand, setBrand] = useState(route.params.brand || null);
+  const networks = useNetworks();
+  const gridRef = useRef();
+
+  const libId = lib || libs?.find((l) => l.title === 'Movies')?.id || libs?.[0]?.id;
+  const byNetwork = libId === 'networks';
+  const libType = byNetwork ? null : libs?.find((l) => l.id === libId)?.type;
+  const activeFilters = filters.filter((f) => !(FILTERS.find((x) => x.key === f)?.movieOnly && libType !== 'movie')).join(',');
+  const brandName = networks.find((n) => n.id === brand)?.name;
+
+  useEffect(() => {
+    if (!libId && !q) return;
+    if (byNetwork && !brand && !q) { setItems([]); setTotal(0); return; }
+    let live = true;
+    setItems(null);
+    const req = q ? get(`/api/plex/search?q=${encodeURIComponent(q)}`).then((r) => ({ items: r, total: r.length }))
+      : byNetwork ? get(`/api/plex/brand/${brand}?filters=${filters.includes('unwatched') ? 'unwatched' : ''}&size=90`)
+      : get(`/api/plex/library/${libId}?filters=${activeFilters}&sort=${sort}&size=${PAGE}`);
+    req.then((r) => {
+      if (!live) return;
+      setItems(r.items); setTotal(r.total);
+      if (!selected && r.items[0]) setSelected(r.items[0].id);
+      gridRef.current?.scrollTo(0, 0);
+    }).catch((e) => live && (setItems([]), toast(e.message, true)));
+    return () => { live = false; };
+  }, [libId, activeFilters, sort, q, seed, brand]);
+
+  async function more() {
+    if (loadingMore || q || byNetwork || !items || items.length >= total) return;
+    setLoadingMore(true);
+    try {
+      const r = await get(`/api/plex/library/${libId}?filters=${activeFilters}&sort=${sort}&size=${PAGE}&start=${items.length}`);
+      setItems([...items, ...r.items]);
+    } finally { setLoadingMore(false); }
+  }
+  const onScroll = (e) => { const el = e.target; if (el.scrollTop + el.clientHeight > el.scrollHeight - 600) more(); };
+  const toggle = (k) => setFilters(filters.includes(k) ? filters.filter((f) => f !== k) : [...filters, k]);
+  const libTitle = libs?.find((l) => l.id === libId)?.title;
+
+  return html`<main class="view">
+    <${Header} title="Watch" kicker=${q ? `Plex search · ${total} results` : byNetwork ? `Plex · ${brandName ? `${brandName} · ${total} titles` : 'Pick a network'}` : `Plex · ${libTitle || ''}${total ? ` · ${total.toLocaleString()} titles` : ''}`}>
+      <label class="search" style="width:420px"><${Icon} name="search" color="var(--muted)" /><span class="sr">Search Plex</span>
+        <input type="search" placeholder="Search Plex" value=${query} onInput=${(e) => setQuery(e.target.value)} />
+        ${query && html`<button type="button" class="icon-btn" aria-label="Clear search" style="width:40px;height:40px" onClick=${() => setQuery('')}><${Icon} name="x" size=${20} /></button>`}
+      </label>
+    <//>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:620px;flex-shrink:0">
+        <${Seg} options=${[...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
+      </div>
+      <div class="hscroll" style="display:flex;gap:10px;min-width:0">
+        ${byNetwork && brand && html`<button type="button" class="filter" onClick=${() => { setBrand(null); setSelected(null); }}><${Icon} name="left" size=${18} />All networks</button>`}
+        ${byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
+          ${filters.includes(f.key) && html`<${Icon} name="check" size=${18} />`}${f.label}</button>`)}
+        ${!byNetwork && SORTS.map((s) => html`<button type="button" class="filter" aria-pressed=${sort === s.value ? 'true' : 'false'} disabled=${!!q}
+          onClick=${() => { setSort(s.value); if (s.value === 'random') setSeed(seed + 1); }}>
+          ${s.value === 'random' && html`<${Icon} name="dice" size=${18} />`}${s.label}</button>`)}
+      </div>
+    </div>
+    <div class="watch-body">
+      ${byNetwork && !brand && !q ? html`<div class="scroll" style="flex-grow:1;min-width:0"><${NetworkPicker} networks=${networks} onPick=${(b) => { setBrand(b); setSelected(null); }} hint="Movies and shows in your Plex library from each network." /></div>` : html`
+      <div class="poster-grid scroll" ref=${gridRef} onScroll=${onScroll}>
+        ${items === null ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
+          : !items.length ? html`<div class="empty" style="grid-column:1/-1">Nothing matches. Try removing a filter.</div>`
+          : items.map((m) => html`<${Tile} m=${m} selected=${m.id === selected} onSelect=${() => setSelected(m.id)} />`)}
+      </div>`}
+      ${byNetwork && !brand && !q ? null : selected ? html`<${Detail} id=${selected} key=${selected} onOpen=${setSelected} />` : html`<aside class="detail"><div class="empty" style="flex-grow:1">Pick a title</div></aside>`}
+    </div>
+  </main>`;
+}
+
+function Tile({ m, selected, onSelect }) {
+  const name = m.type === 'episode' ? m.showTitle : m.title;
+  const pct = m.duration && m.viewOffset ? Math.round((m.viewOffset / m.duration) * 100) : 0;
+  return html`<button type="button" class="poster-btn" aria-pressed=${selected ? 'true' : 'false'} onClick=${onSelect} aria-label=${`${name} (${m.year || ''})`}>
+    <${Poster} src=${m.poster} title=${name}>
+      ${!m.watched && !pct && html`<span class="corner" title="Unwatched"></span>`}
+      <${PosterLabels} brand=${m.brand} quality=${m.quality} lifted=${pct > 0} />
+      ${pct > 0 && html`<span class="prog"><i style=${`width:${pct}%`}></i></span>`}
+    <//>
+    <span class="t ellipsis">${name}</span>
+    <span class="y">${m.type === 'episode' ? `S${m.season} · E${m.episode}` : m.type === 'show' ? `${m.year || ''} · ${m.leafCount} eps` : m.year}</span>
+  </button>`;
+}
+
+function Detail({ id, onOpen }) {
+  const [it, err] = useLoad(() => get(`/api/plex/item/${id}`), [id]);
+  const [season, setSeason] = useState(null);
+  const [subs, setSubs] = useState(undefined);
+  const [eps] = useLoad(() => (season ? get(`/api/plex/episodes/${season}`) : Promise.resolve(null)), [season]);
+
+  if (err) return html`<aside class="detail"><div class="empty" style="flex-grow:1">${err.message}</div></aside>`;
+  if (!it) return html`<aside class="detail"><div class="backdrop"></div><div class="empty" style="flex-grow:1">Loading…</div></aside>`;
+
+  const isShow = it.type === 'show' || it.type === 'season';
+  const target = isShow ? it.next : it;               // what "Play" starts
+  const remaining = target ? (target.duration || 0) - (target.viewOffset || 0) : 0;
+  const subOptions = it.subtitles?.length ? [{ value: 0, label: 'Off' }, ...pickSubs(it.subtitles)] : null;
+  const currentSub = subs !== undefined ? subs : (it.subtitles?.find((s) => s.selected)?.id ?? 0);
+  const meta = [it.year, runtime(it.duration), it.contentRating, ...(it.genres || []).slice(0, 2)].filter(Boolean).join(' · ');
+
+  return html`<aside class="detail">
+    <div class="backdrop" style=${it.art ? `background-image:url('${it.art}')` : ''}>
+      <div class="t"><h2 class="clamp2">${it.title}</h2></div>
+    </div>
+    <div class="inner scroll">
+      <div class="mono muted" style="font-size:16px">${meta}</div>
+      ${(it.badges?.length || it.brand) && html`<div class="detail-badges">
+        ${it.brand && html`<span class=${`brand-chip inline b-${it.brand}`}>${networkName(it.brand)}</span>`}
+        ${(it.badges || []).map((b) => html`<span class="qb big">${b}</span>`)}</div>`}
+      ${(it.directors?.length || it.cast?.length) && html`<div style="font-size:17px" class="ellipsis">${it.directors?.length ? `Dir. ${it.directors.join(', ')} · ` : ''}${(it.cast || []).slice(0, 3).join(', ')}</div>`}
+      <p class="clamp3">${it.summary}</p>
+      ${isShow ? html`
+        ${it.next && html`<div class="endsat"><${Icon} name="film" color="var(--amb)" />Up next: S${it.next.season} · E${it.next.episode} ${it.next.title}</div>`}
+        <div class="label">Seasons</div>
+        <div class="hscroll" style="display:flex;gap:8px">${(it.seasons || []).map((s) => html`<button type="button" class="filter" aria-pressed=${season === s.id ? 'true' : 'false'} onClick=${() => setSeason(season === s.id ? null : s.id)}>${s.title}</button>`)}</div>
+        ${eps && html`<div class="eps">${eps.slice(0, 30).map((e) => html`<button type="button" class="ep" onClick=${() => play(e, true)}>
+          <img src=${e.still} alt="" loading="lazy" />
+          <span style="min-width:0"><b>${e.episode}. ${e.title}</b><br /><span class="muted mono" style="font-size:14px">${runtime(e.duration)}${e.watched ? ' · watched' : ''}</span></span></button>`)}</div>`}
+      ` : html`
+        <div class="endsat"><${Icon} name="moon" color="var(--amb)" />${it.viewOffset ? `Resume now, ends at ${endsAt(remaining)}` : `Start now, ends at ${endsAt(remaining)}`}</div>
+        ${subOptions && html`<div><div class="label" style="margin-bottom:6px">Subtitles</div><${Seg} options=${subOptions} value=${currentSub} onChange=${setSubs} /></div>`}
+      `}
+      <div style="flex-grow:1"></div>
+      ${target ? html`<button type="button" class="btn primary big" onClick=${() => play(target, true, { partId: it.partId, subtitleStreamID: subs })}>
+          <${Play} size=${30} />${target.viewOffset ? 'Resume on projector' : 'Play on projector'}</button>`
+        : html`<button type="button" class="btn big" disabled>Nothing to play</button>`}
+      ${!isShow && it.viewOffset > 0 && html`<button type="button" class="btn sm" onClick=${() => play(it, false, { partId: it.partId, subtitleStreamID: subs })}>Start over</button>`}
+    </div>
+  </aside>`;
+}
+
+// Keep the subtitle choice short: English tracks first, then up to two others. Plex labels look
+// like "English SDH (SRT)"; drop the codec and number any labels that still collide.
+function pickSubs(list) {
+  const en = list.filter((s) => /english/i.test(s.label));
+  const others = list.filter((s) => !/english/i.test(s.label)).slice(0, 2);
+  const seen = {};
+  return [...en.slice(0, 3), ...others].map((s) => {
+    let label = s.forced ? 'Forced' : s.label.replace(/\s*\([^)]*\)\s*$/, '').replace(/^English\s+/i, 'English ').slice(0, 16);
+    seen[label] = (seen[label] || 0) + 1;
+    if (seen[label] > 1) label = `${label} ${seen[label]}`;
+    return { value: s.id, label };
+  });
+}
+
+const NAMES = { netflix: 'Netflix', prime: 'Prime Video', max: 'Max', apple: 'Apple TV+', disney: 'Disney+', hulu: 'Hulu', peacock: 'Peacock', paramount: 'Paramount+' };
+const networkName = (id) => NAMES[id] || id;
