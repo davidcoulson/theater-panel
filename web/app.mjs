@@ -56,7 +56,33 @@ export function setRender(value) {
   for (const f of ['noshadow', 'notex', 'noanim']) document.documentElement.classList.toggle(`r-${f}`, renderFlags.has(f));
   fit();
 }
+// The panel's GPU sprinkles specks along blurred box-shadows (confirmed with render=noshadow), so
+// on the panel every blurred outer shadow becomes a crisp 2px edge of the same colour, a little
+// lighter. Done on the loaded stylesheet so new styles are covered too; render=shadows keeps them.
+const SHADOW_PART = /((?:[^,(]|\([^)]*\))+)/g;
+function crispShadow(value) {
+  return value.match(SHADOW_PART).map((part) => {
+    if (/inset/.test(part)) return part.trim();
+    const color = (part.match(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}\b|var\([^)]*\)/i) || ['rgba(0,0,0,.2)'])[0];
+    const lengths = part.replace(color, '').match(/-?[\d.]+/g)?.map(Number) || [];
+    if (lengths.length < 3 || lengths[2] === 0) return part.trim();
+    const lighter = color.replace(/rgba\(([^)]*),\s*([\d.]+)\)/, (m, rgb, a) => `rgba(${rgb}, ${(Number(a) * 0.6).toFixed(2)})`);
+    return `${Math.sign(lengths[0]) * 2}px ${Math.sign(lengths[1]) * 2}px 0 ${lighter}`;
+  }).join(', ');
+}
+let crisped = false;
+function crispShadows() {
+  if (crisped || !onPanel || renderFlags.has('shadows')) return;
+  crisped = true;
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch { continue; }
+    for (const r of rules) if (r.style?.boxShadow && r.style.boxShadow !== 'none') r.style.boxShadow = crispShadow(r.style.boxShadow);
+  }
+}
+
 function fit() {
+  crispShadows();
   const s = Math.min(innerWidth / 1920, innerHeight / 1080, onPanel ? Infinity : 1);
   const st = document.getElementById('stage');
   const legacy = renderFlags.has('transform');
