@@ -309,3 +309,59 @@ input.range.thin { height: 40px; }
 .stat .v small { font-size: 16px; margin-left: 6px; color: var(--on-choc2); }
 .stat .v.hot { color: #F2A07A; }
 .rail a { padding: 13px 0 11px; }
+
+/* ---------- gaming PC stats (mockups) ---------- */
+.stats-view { --hot: #E0674A; --warm: #E3A865; --cool: #8FB9A0; color: #F4ECE0; }
+.stats-view header.top h1, .stats-view .kicker { color: #F4ECE0; }
+.stats-view .kicker { color: var(--gold); }
+.dark-chip { background: rgba(0,0,0,.3); color: #F4ECE0; border-color: rgba(244,236,224,.15); }
+.st { flex-grow: 1; min-height: 0; }
+.st .l { font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+.st .s { font-size: 17px; color: #C7B39E; }
+.st small { font-size: .4em; margin-left: 4px; color: #C7B39E; font-weight: 600; }
+.st-gauge { position: relative; flex-shrink: 0; }
+.st-gauge .in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.st-gauge .n { font-family: var(--disp); font-weight: 800; font-size: 130px; line-height: .9; }
+.st-cores { display: flex; align-items: flex-end; gap: 6px; height: 90px; }
+.st-cores i { flex: 1; border-radius: 3px 3px 0 0; transition: height 1.8s ease; }
+.st-bar .t { display: flex; justify-content: space-between; font-size: 16px; color: #C7B39E; margin-bottom: 6px; }
+.st-bar .t b { color: #F4ECE0; }
+.st-bar .b { height: 12px; border-radius: 6px; background: rgba(244,236,224,.1); overflow: hidden; }
+.st-bar .b i { display: block; height: 100%; border-radius: 6px; transition: width 1.8s ease; }
+.spark path { transition: d 1.8s ease; }
+
+/* A. cockpit */
+.st.cockpit { display: grid; grid-template-columns: 400px 1fr 400px; grid-template-rows: 1fr auto; gap: 24px 40px; align-items: center; }
+.cockpit .mid { display: flex; flex-direction: column; align-items: center; gap: 22px; min-width: 0; }
+.cockpit .fps { text-align: center; }
+.cockpit .fps .n { font-family: var(--disp); font-weight: 800; font-size: 220px; line-height: .85; }
+.cockpit .fps.idle .n { font-size: 150px; }
+.cockpit .st-cores { width: 520px; }
+.cockpit .strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.cockpit .strip div { background: rgba(0,0,0,.25); border-radius: 16px; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+.cockpit .strip span { font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); }
+.cockpit .strip b { font-family: var(--disp); font-size: 44px; font-weight: 800; line-height: 1; }
+
+/* B. big number */
+.st.hero { display: grid; grid-template-columns: 1fr 520px; gap: 30px; }
+.hero .big { position: relative; border-radius: 24px; background: rgba(0,0,0,.22); padding: 40px 48px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.hero .big .bg { position: absolute; inset: auto 0 0 0; opacity: .9; }
+.hero .big .bg svg { width: 100%; }
+.hero .big .n { position: relative; font-family: var(--disp); font-weight: 800; font-size: 400px; line-height: .8; letter-spacing: -4px; }
+.hero .big .l, .hero .big .s { position: relative; font-size: 22px; }
+.hero .big .l { margin-bottom: 18px; }
+.hero .col { display: flex; flex-direction: column; gap: 14px; }
+.hero .row { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgba(0,0,0,.22); border-radius: 18px; padding: 12px 22px; }
+.hero .row .v { font-family: var(--disp); font-weight: 800; font-size: 50px; line-height: 1; }
+.hero .row .mini { width: 220px; height: 12px; border-radius: 6px; background: rgba(244,236,224,.1); overflow: hidden; }
+.hero .row .mini i { display: block; height: 100%; background: var(--gold); transition: width 1.8s ease; }
+
+/* C. telemetry wall */
+.st.wall { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 20px; }
+.st.wall.game { grid-template-columns: 1.4fr 1.4fr 1fr; }
+.wall .p { background: rgba(0,0,0,.22); border-radius: 20px; padding: 22px 26px; display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow: hidden; border: 1.5px solid rgba(244,236,224,.06); }
+.wall .p .h { display: flex; justify-content: space-between; align-items: baseline; }
+.wall .p .h span { font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+.wall .p .h b { font-family: var(--disp); font-weight: 800; font-size: 64px; line-height: 1; }
+.wall .p svg, .wall .p .st-cores, .wall .p .stack { margin-top: auto; width: 100%; }
+.wall .p .stack { display: flex; flex-direction: column; gap: 14px; }
