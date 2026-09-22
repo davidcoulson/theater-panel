@@ -130,7 +130,7 @@ function Scenes() {
 // Sources: the Apple TV, then what is wired straight to the projector (the Unraid VM), then the
 // consoles on the HDMI switcher, all from games.json. Apps open on the projector's own Android.
 const SOURCE_ICONS = { pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'server', server: 'server', steam: 'playc' };
-const APP_ICONS = [[/plex|plezy/i, 'plex'], [/you ?tube|smarttube/i, 'youtube']];
+const APP_ICONS = [[/plex|plezy/i, 'plex'], [/you ?tube|smarttube/i, 'youtube'], [/moonlight|parsec|steam link/i, 'pad']];
 const appIcon = (name) => APP_ICONS.find(([re]) => re.test(name))?.[1] || 'app';
 
 function Projector() {
