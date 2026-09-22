@@ -323,11 +323,11 @@ canvas.fx { display: block; width: 100%; }
 @keyframes fx-in { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
 .fx-sheet .h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .fx-sheet .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; }
-.fx-sheet .moods { display: flex; gap: 8px; flex-shrink: 0; }
-.fx-sheet .pill { height: 42px; padding: 0 16px; border-radius: 21px; border: 1.5px solid rgba(244,236,224,.22); background: none; color: #E9DCCB; font-size: 16px; font-weight: 600; display: inline-flex; gap: 8px; align-items: center; }
-.fx-sheet .pill small { color: #A89484; font-size: 13px; }
-.fx-sheet .pill.on { background: var(--gold); border-color: var(--gold); color: var(--choc2); }
-.fx-sheet .pill.on small { color: rgba(42,25,17,.6); }
+.fx-sheet .t span { color: var(--gold); }
+.fx-scroll { flex-grow: 1; min-height: 0; scroll-snap-type: y proximity; }
+.fx-sec { scroll-snap-align: start; padding-bottom: 12px; }
+.fx-secname { position: sticky; top: 0; z-index: 1; background: var(--choc2); padding: 4px 0 8px; font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); display: flex; gap: 8px; align-items: baseline; }
+.fx-secname small { color: #A89484; font-size: 12px; letter-spacing: 1px; }
 .fx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex-grow: 1; min-height: 0; align-content: start; }
 .fx-tile { border: 1.5px solid transparent; background: rgba(0,0,0,.25); border-radius: 12px; padding: 6px 8px 7px; display: flex; flex-direction: column; gap: 5px; color: #E9DCCB; font-size: 14px; font-weight: 600; text-align: left; height: max-content; }
 .fx-tile.on { border-color: var(--gold); }
