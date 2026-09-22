@@ -1,10 +1,38 @@
-// All settings come from the environment (see .env.example). Entity ids live here, not in the
-// HA package, so the HA scripts stay generic and this file is the single place to rename things.
+// Settings come from the environment (see .env.example), overlaid with whatever was saved on the
+// admin page (settings.json next to the image cache, so it lives in the container's /data volume).
+// Entity ids live here, not in the HA package, so the HA scripts stay generic and this file is
+// the single place to rename things.
 
-const env = process.env;
+import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+
 const list = (v, d) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : d);
 
-export const config = {
+export const SETTINGS_FILE = process.env.SETTINGS_FILE || join(dirname(process.env.CACHE_DIR || './cache'), 'settings.json');
+
+// { vars: { HA_URL: ..., ... }, games: {...} }. Saved vars win over the environment.
+let saved = { vars: {}, games: null };
+try { saved = { vars: {}, games: null, ...JSON.parse(readFileSync(SETTINGS_FILE, 'utf8')) }; }
+catch (e) { if (e.code !== 'ENOENT') console.warn(`[settings] ${SETTINGS_FILE}: ${e.message}`); }
+
+export const settings = () => saved;
+export const effectiveVars = () => ({ ...process.env, ...Object.fromEntries(Object.entries(saved.vars).filter(([, v]) => v !== '' && v != null)) });
+
+// Replace the saved settings and apply them to the live config object (every module reads
+// config at call time, so nothing needs a restart except the HA connection, which the caller
+// reconnects).
+export function saveSettings(next) {
+  mkdirSync(dirname(SETTINGS_FILE), { recursive: true });
+  const tmp = `${SETTINGS_FILE}.tmp`;
+  writeFileSync(tmp, JSON.stringify(next, null, 2), { mode: 0o600 });
+  renameSync(tmp, SETTINGS_FILE);
+  saved = next;
+  const fresh = build(effectiveVars());
+  for (const k of Object.keys(fresh)) config[k] = fresh[k];
+}
+
+function build(env) {
+  const c = {
   port: Number(env.PORT || 8787),
   // Optional shared key. When set, a client must present it once (?key=...) and gets a cookie.
   panelKey: env.PANEL_KEY || '',
@@ -66,10 +94,16 @@ export const config = {
     qualityBadges: env.SHOW_QUALITY_BADGES !== 'false',
     networkBadges: env.SHOW_NETWORK_BADGES === 'true',
   },
-};
+  // Extra origins allowed to embed the panel (the HA dashboard), space- or comma-separated.
+  frameAncestors: (env.FRAME_ANCESTORS || '').split(/[\s,]+/).filter((o) => /^https?:\/\/[\w.-]+(:\d+)?$/.test(o)),
+  // The admin page's password; only from the environment, so the page can't lock itself open.
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  };
+  if (!c.entities.musicPlayers.length) c.entities.musicPlayers = [c.entities.musicPlayer];
+  return c;
+}
 
-// Every entity the panel shows; the HA subscription is limited to these.
-if (!config.entities.musicPlayers.length) config.entities.musicPlayers = [config.entities.musicPlayer];
+export const config = build(effectiveVars());
 
 export function watchedEntities() {
   const e = config.entities;

@@ -1,0 +1,83 @@
+/* Admin page: an ordinary responsive page in the panel's palette (light and dark). */
+@font-face { font-family: 'Big Shoulders Display'; font-weight: 800; font-display: swap; src: url(/fonts/big-shoulders-display-latin-800-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-weight: 400; font-display: swap; src: url(/fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-display: swap; src: url(/fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-display: swap; src: url(/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2'); }
+
+:root {
+  --bg: #E9E3DA; --card: #F7F3EC; --line: #D6CCC0; --ink: #25170F; --muted: #6A5C52; --field: #FFFDF9;
+  --acc: #8F4E1C; --acc-ink: #fff; --ok: #3F6B45; --err: #A23A22; --chip: #EDE5DA;
+  --disp: 'Big Shoulders Display', 'Arial Narrow', sans-serif; --sans: 'IBM Plex Sans', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #16100C; --card: #211811; --line: #3A2C22; --ink: #EFE6DA; --muted: #A89484; --field: #1A130E; --acc: #C97F3F; --acc-ink: #1A0F08; --ok: #8FC49A; --err: #F2A08A; --chip: #2E2219; }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+main { max-width: 900px; margin: 0 auto; padding: 8px 16px 120px; }
+h2 { font-family: var(--disp); font-weight: 800; font-size: 28px; line-height: 1; text-transform: uppercase; margin: 0; letter-spacing: .3px; }
+h3 { font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 8px 0; }
+code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+small { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.muted { color: var(--muted); }
+.ok { color: var(--ok); } .err { color: var(--err); }
+.intro { color: var(--muted); margin: 8px 0 16px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 900px; margin: 0 auto; padding: 20px 16px 8px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { width: 44px; height: 44px; border-radius: 10px; }
+.brand b { display: block; font-family: var(--disp); font-weight: 800; font-size: 24px; text-transform: uppercase; line-height: 1; }
+.brand span { font-size: 13px; color: var(--muted); }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--acc); font-weight: 600; text-decoration: none; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.login { max-width: 380px; margin: 60px auto; display: grid; gap: 14px; }
+.login label { display: grid; gap: 6px; font-weight: 600; }
+
+.field { padding: 10px 0; border-top: 1px solid var(--line); }
+.field:first-of-type { border-top: 0; }
+.field > label, .lbl { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-weight: 600; margin-bottom: 6px; }
+.field.check label { display: flex; gap: 10px; align-items: center; margin: 0; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input { flex: 1; }
+
+input[type=text], input[type=password], select { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); color: var(--ink); font: inherit; }
+input::placeholder { color: var(--muted); opacity: .8; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--acc); }
+
+button { font: inherit; font-weight: 600; height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+button.small { height: 34px; padding: 0 12px; font-size: 14px; }
+button.link { border: 0; background: none; color: var(--acc); padding: 0; height: auto; font-size: 14px; }
+button.icon { width: 32px; height: 32px; padding: 0; font-size: 16px; }
+.test { display: flex; gap: 10px; align-items: center; font-size: 14px; flex-wrap: wrap; justify-content: flex-end; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--chip); font-size: 14px; }
+.chip.inherited { opacity: .7; }
+.chip button { border: 0; background: none; height: 24px; width: 24px; padding: 0; font-size: 16px; color: var(--muted); }
+.chips form { flex: 1 1 100%; }
+
+table.grid { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
+table.grid th { text-align: left; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 0 6px 4px; font-weight: 600; }
+table.grid td { padding: 4px 6px; vertical-align: middle; }
+td.actions { white-space: nowrap; width: 1%; }
+.games { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.two { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin: 8px 0; }
+.two label { display: grid; gap: 6px; font-weight: 600; }
+
+.savebar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 12px max(16px, calc((100vw - 900px) / 2 + 16px)); background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0,0,0,.08); }
+.savebar .grow { flex: 1; }
+
+@media (max-width: 640px) {
+  .two { grid-template-columns: 1fr; }
+  table.grid thead { display: none; }
+  table.grid tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 0; border-top: 1px solid var(--line); }
+  table.grid td { padding: 0; }
+  td.actions { grid-column: 1 / -1; width: auto; }
+}

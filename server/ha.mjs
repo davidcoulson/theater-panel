@@ -28,6 +28,15 @@ export class HomeAssistant extends EventEmitter {
     this.#connect();
   }
 
+  // New URL, token or entity list from the admin page: drop the socket and connect again.
+  reconfigure({ url, token, entities }) {
+    const changed = url !== this.url || token !== this.token || JSON.stringify(entities) !== JSON.stringify(this.entities);
+    if (!changed) return;
+    Object.assign(this, { url, token, entities });
+    if (!this.configured) { this.ws?.close(); return; }
+    if (this.ws) { this.retryMs = 500; this.ws.close(); } else this.#connect();
+  }
+
   #connect() {
     const wsUrl = this.url.replace(/^http/, 'ws') + '/api/websocket';
     const ws = new WebSocket(wsUrl);
@@ -39,11 +48,12 @@ export class HomeAssistant extends EventEmitter {
 
   #onClose() {
     const was = this.connected;
+    this.ws = null;
     this.connected = false;
     for (const p of this.pending.values()) { clearTimeout(p.timer); p.reject(new Error('HA disconnected')); }
     this.pending.clear();
     if (was) this.emit('status', false);
-    setTimeout(() => this.#connect(), this.retryMs);
+    if (this.configured) setTimeout(() => { if (!this.ws) this.#connect(); }, this.retryMs);
     this.retryMs = Math.min(this.retryMs * 2, 30000);
   }
 

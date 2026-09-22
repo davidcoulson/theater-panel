@@ -56,7 +56,8 @@ export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   // Open the live stream before anything else so it gets a connection ahead of the posters.
   const es = new EventSource('/api/events');
-  get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [] })).catch(() => {});
+  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [] })).catch(() => {});
+  loadSettings();
   es.addEventListener('hello', (e) => {
     const d = JSON.parse(e.data);
     set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions });
@@ -69,6 +70,8 @@ export async function startLive({ navigate } = {}) {
   });
   es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
   es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data) }));
+  // Saved on the admin page: pick up the new entities, apps and display options.
+  es.addEventListener('settings', loadSettings);
   // Home Assistant (or anything with access to the panel's API) can move the panel to a route.
   es.addEventListener('navigate', (e) => { const d = JSON.parse(e.data); onNavigate?.(d.route); });
   // EventSource reconnects by itself; only call it offline if that has not worked after 8 s.

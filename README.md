@@ -43,6 +43,14 @@ buffering or compression middleware on this router.
 
 For development without Docker: `npm install` and `npm run dev` (Node 22 or newer).
 
+### Settings page
+
+Set `ADMIN_PASSWORD` on the container and open `/admin` (e.g. `https://ht-kiosk.coulson.io/admin`)
+from a laptop. Everything else (Home Assistant, Plex and Seerr connections, entities, projector
+apps, game sources, Steam, display options) can be changed there; the panel picks changes up
+without a restart. Saved values live in `settings.json` in the container's `/data` volume and win
+over the container's environment; a blank field falls back to it. Secrets are write-only.
+
 ### Unraid
 
 Copy [unraid/theater-panel.xml](unraid/theater-panel.xml) to

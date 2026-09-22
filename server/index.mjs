@@ -15,6 +15,7 @@ import * as seerr from './seerr.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
+import * as admin from './admin.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB = join(root, 'web');
@@ -37,8 +38,16 @@ const TYPES = {
 // ---------- Home Assistant bridge ----------
 
 // Entities streamed to the panel: the theater's own, plus the gaming PC's power and sensors.
-const entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
+let entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
 const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entities });
+
+// After the admin page saves: reconnect HA if its URL, token or the entity list changed, and tell
+// open panels to reload their settings.
+async function applySettings() {
+  entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
+  ha.reconfigure({ url: config.ha.url, token: config.ha.token, entities });
+  broadcast('settings', {});
+}
 const clients = new Set();
 function broadcast(event, data) {
   const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -157,14 +166,31 @@ post(/^\/api\/navigate$/, (m, q, body) => {
 post(/^\/api\/action$/, async (m, q, body) => { await runAction(ha, body); return { ok: true }; });
 
 // The panel runs inside Home Assistant's Webpage dashboard, so it must be frameable by HA
-// (and nothing else). FRAME_ANCESTORS lists the extra origins allowed to embed it, space- or
-// comma-separated, e.g. https://home-iot.coulson.io; the panel's own origin is always allowed.
-const FRAME_ANCESTORS = ["'self'", ...(process.env.FRAME_ANCESTORS || '').split(/[\s,]+/).filter((o) => /^https?:\/\/[\w.-]+(:\d+)?$/.test(o))].join(' ');
+// (and nothing else): its own origin plus FRAME_ANCESTORS (e.g. https://home-iot.coulson.io).
+// The admin page is never frameable.
+const frameAncestors = (path) => (path.startsWith('/admin') || path.startsWith('/api/admin') ? "'none'" : ["'self'", ...config.frameAncestors].join(' '));
+
+// Admin API. Everything but sign-in needs the admin cookie; changes must be JSON (with the
+// SameSite=Strict cookie, that keeps other sites from posting here).
+async function adminApi(req, res, path) {
+  const method = req.method;
+  if (method === 'POST' && !/^application\/json/.test(req.headers['content-type'] || '')) throw admin.httpError(415, 'JSON only');
+  const body = method === 'POST' ? await readBody(req) : undefined;
+  if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body);
+  if (path === '/api/admin/logout' && method === 'POST') return admin.logout(res);
+  if (path === '/api/admin/session') return { admin: admin.isAdmin(req), configured: Boolean(config.adminPassword) };
+  if (!admin.isAdmin(req)) throw admin.httpError(401, 'Sign in first');
+  if (path === '/api/admin/settings' && method === 'GET') return admin.view();
+  if (path === '/api/admin/settings' && method === 'POST') { const r = admin.save(body); await applySettings(); return r; }
+  if (path === '/api/admin/entities') return admin.haEntities(ha);
+  if (path === '/api/admin/test' && method === 'POST') return admin.test(body.service, body.values);
+  throw admin.httpError(404, 'Not found');
+}
 
 const server = createServer(async (req, res) => {
-  res.setHeader('Content-Security-Policy', `frame-ancestors ${FRAME_ANCESTORS}`);
   const url = new URL(req.url, 'http://panel');
   const path = url.pathname;
+  res.setHeader('Content-Security-Policy', `frame-ancestors ${frameAncestors(path)}`);
   try {
     if (!authorized(req, url, res)) {
       res.writeHead(401, { 'content-type': 'text/plain' }).end('Open this page once with ?key=<PANEL_KEY>.');
@@ -188,6 +214,12 @@ const server = createServer(async (req, res) => {
       res.writeHead(302, { location: extImage(pic.startsWith('http') ? pic : config.ha.url + pic), 'cache-control': 'no-store' }).end();
       return;
     }
+
+    if (path.startsWith('/api/admin/')) {
+      try { return json(res, 200, await adminApi(req, res, path)); }
+      catch (e) { return json(res, e.status || 502, { error: e.message }); }
+    }
+    if (path === '/admin' || path === '/admin/') return serveFile(res, join(WEB, 'admin.html'));
 
     if (path.startsWith('/api/')) {
       for (const [method, re, fn] of routes) {
