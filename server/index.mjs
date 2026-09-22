@@ -110,6 +110,7 @@ get(/^\/api\/state$/, () => ({
   sessions,
   entities: config.entities,
   ui: config.ui,
+  projectorApps: config.projectorApps,
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 

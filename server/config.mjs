@@ -52,6 +52,12 @@ export const config = {
   // The Plex client's name as Plex reports it (Settings > Plex Web > Devices), used to pick the
   // theater's session out of /status/sessions. Empty = the first playing session.
   plexPlayerName: env.PLEX_PLAYER_NAME || '',
+  // Apps the Projector card can open on the projector itself (Android, over ADB), as
+  // "Name=package" pairs. The projector is woken first if it is off.
+  projectorApps: list(env.PROJECTOR_APPS, ['Plex=com.plexapp.android']).map((pair) => {
+    const [name, pkg] = pair.split('=').map((x) => x.trim());
+    return pkg && /^[\w.]+$/.test(pkg) ? { name, package: pkg } : null;
+  }).filter(Boolean),
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
   // Poster labels. Network is off by default because Plex posters decorated by Kometa already
