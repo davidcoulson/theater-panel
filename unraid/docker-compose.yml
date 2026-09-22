@@ -1,0 +1,41 @@
+# Theater panel on Unraid (Compose Manager). Settings come from this stack's .env
+# (Compose Manager: "Edit Stack" > "ENV File"); see unraid/stack.env.example.
+#
+# Before the first start, on the Unraid terminal:
+#   mkdir -p /mnt/user/appdata/theater-panel/config /mnt/user/appdata/theater-panel/data
+#   chown -R 99:100 /mnt/user/appdata/theater-panel
+# and put games.json in /mnt/user/appdata/theater-panel/config/.
+services:
+  theater-panel:
+    image: ghcr.io/davidcoulson/theater-panel:latest
+    container_name: theater-panel
+    restart: unless-stopped
+    user: "99:100"                      # Unraid's nobody:users, so appdata stays writable
+    env_file: .env
+    environment:
+      CACHE_DIR: /data/cache
+    ports:
+      - "8787:8787"                     # LAN access without Traefik (optional)
+    volumes:
+      - /mnt/user/appdata/theater-panel/data:/data
+      - /mnt/user/appdata/theater-panel/config:/app/config:ro
+    networks:
+      traefik:
+        # Only for a macvlan/ipvlan network (containers with their own 10.2.6.x address,
+        # like Seerr and Traefik). Delete this line if Traefik's network is a plain bridge.
+        ipv4_address: ${PANEL_IP}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK}
+      traefik.http.routers.theater-panel.rule: Host(`${PANEL_HOST:-ht-kiosk.coulson.io}`)
+      traefik.http.routers.theater-panel.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.theater-panel.tls: "true"
+      traefik.http.routers.theater-panel.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-}
+      traefik.http.services.theater-panel.loadbalancer.server.port: "8787"
+      net.unraid.docker.icon: https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png
+      net.unraid.docker.webui: https://ht-kiosk.coulson.io
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK}

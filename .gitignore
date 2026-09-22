@@ -1,0 +1,8 @@
+node_modules/
+.env
+cache/
+.DS_Store
+shots/
+config/games.json
+unraid/stack.env
+.venv/
