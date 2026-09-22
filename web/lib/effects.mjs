@@ -77,13 +77,14 @@ function level(family, x, t) {
 // The nav rail's ambient glow: the same families painted vertically as a soft gradient (no LED
 // blocks), so the wood column feels lit by whatever the accents are doing.
 function paintRail(ctx, family, w, h, t, speed = 0.5) {
-  const tt = t * (0.2 + speed * 0.5);
+  const tt = t * (0.26 + speed * 0.65);   // ~25% quicker than the first pass
   const steps = 60, bh = h / steps;
   ctx.clearRect(0, 0, w, h);
   for (let i = 0; i < steps; i++) {
     const y = i / (steps - 1);
-    // A floor under the pattern, so the whole column stays lit rather than going dark in bands.
-    const v = 0.35 + 0.65 * Math.max(0, Math.min(1, level(family, y, tt)));
+    // A floor under the pattern, so the whole column stays lit rather than going dark in bands,
+    // and a push towards the bright end of the palette so the colour actually reads on the wood.
+    const v = Math.min(1, 0.5 + 0.7 * Math.max(0, Math.min(1, level(family, y, tt))));
     ctx.fillStyle = ramp(family, v);
     ctx.fillRect(0, i * bh - 1, w, bh + 2);
   }
