@@ -124,7 +124,10 @@ function Rail({ current }) {
     ${ha.live === false ? html`<div class="offline">Server offline</div>` : ha.live && !ha.ok ? html`<div class="offline">${ha.configured ? 'HA offline' : 'HA not set up'}</div>` : null}
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
-    <div class="build" title=${build.time ? `built ${build.time}` : ''}>${build.version || ''}</div>
+    ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''}>
+      <span>${build.version.split('.').slice(0, 3).join('.')}</span>
+      <span>${build.version.split('.').slice(3).join('.')}</span>
+    </div>`}
   </nav>`;
 }
 
