@@ -13,7 +13,10 @@
 //   The connector bodies hang 1.8 mm below the board, so the board stands off the floor and the
 //   floor is cut away under both connectors.
 //
-//   openscad -o hdmi-breakout-tray.stl hardware/hdmi-breakout-tray.scad
+//   openscad -D 'part="tray"' -o hdmi-breakout-tray.stl hardware/hdmi-breakout-tray.scad
+//   openscad -D 'part="lid"'  -o hdmi-breakout-lid.stl  hardware/hdmi-breakout-tray.scad
+
+part = "tray";          // "tray", "lid" or "both" (side by side, to look at)
 
 /* [Board] */
 board_w      = 27.97;   // across, between the long edges
@@ -36,6 +39,14 @@ pin_h        = 8.19;
 conn_drop    = 1.8;     // how far the connector bodies hang below the board
 conn_w       = 17.0;    // width of the cut-out under each connector
 conn_d       = 8.0;     // how far it reaches in from each end
+
+/* [Lid] */
+// Head room over the board: soldered wires need little, a Dupont plug on the pins needs ~16 mm.
+lid_inside_h = 12.0;
+lid_t        = 1.6;
+lid_skirt    = 5.0;     // how far the lid's skirt comes down the outside of the tray
+catch_h      = 1.0;     // the bump on the tray the lid clips under
+wire_slot_w  = 6.0;     // notch in the lid's end for the CEC and ground wires
 
 /* [Tray] */
 floor_t      = 2.0;     // under the board
@@ -92,9 +103,59 @@ module tray() {
   }
   posts();
   for (side = [-1, 1], y = [-1, 1]) tab(side, y * cav_d / 4.5);
+  // catches the lid clips under, on the outside of both walls
+  for (side = [-1, 1])
+    translate([side * (cav_w / 2 + wall_t), 0, floor_t + wall_h - catch_h - 0.6])
+      rotate([90, 0, 0])
+        linear_extrude(height = cav_d * 0.7, center = true)
+          polygon([[0, 0], [side * 0.9, catch_h / 2], [0, catch_h]]);
 }
 
-tray();
+// Lid: a roof over the pins with a skirt down the outside of the tray walls, open at both
+// connector ends, notched at one end for the wires leaving the pins. Everything is measured from
+// the tray floor, so the skirt always meets the walls.
+board_z   = floor_t + stand_h;              // underside of the board
+roof_z    = board_z + board_t + lid_inside_h;
+wall_top  = floor_t + wall_h;               // top of the tray walls
+catch_z   = wall_top - catch_h - 0.6;       // the bump the lid clips under
+overlap   = 4.0;                            // how far the skirt reaches past the catches
+
+module lid() {
+  out_w = cav_w + 2 * wall_t;
+  skirt_in = out_w + 0.4;                   // inside of the skirt, a little proud of the tray
+  skirt_out = skirt_in + 2 * lid_t;
+  skirt_bottom = catch_z - overlap;
+  difference() {
+    union() {
+      translate([0, 0, roof_z + lid_t / 2]) cube([skirt_out, cav_d, lid_t], center = true);
+      for (side = [-1, 1])
+        translate([side * (skirt_out / 2 - lid_t / 2), 0, (skirt_bottom + roof_z) / 2])
+          cube([lid_t, cav_d, roof_z - skirt_bottom], center = true);
+    }
+    // groove that snaps over the tray's catches
+    for (side = [-1, 1])
+      translate([side * (skirt_in / 2), catch_z * 0, catch_z])
+        rotate([90, 0, 0])
+          linear_extrude(height = cav_d * 0.72, center = true)
+            polygon([[0, -catch_h], [side * 1.2, 0], [0, catch_h]]);
+    // wire notch at one end
+    translate([0, -cav_d / 2, roof_z + lid_t / 2]) cube([wire_slot_w, 6, lid_t + 2], center = true);
+    // ease the skirt's mouth so it slides on
+    for (side = [-1, 1])
+      translate([side * (skirt_in / 2 + lid_t / 2), 0, skirt_bottom])
+        rotate([90, 0, 0])
+          linear_extrude(height = cav_d + 2, center = true)
+            polygon([[-side * lid_t, 0], [side * lid_t, 0], [side * lid_t, -1.2]]);
+  }
+}
+
+module board_ghost() {  // just for looking at the fit
+  %translate([0, 0, floor_t + stand_h]) cube([board_w, board_d, board_t], center = true);
+}
+
+if (part == "tray") tray();
+else if (part == "lid") translate([0, 0, roof_z + lid_t]) rotate([180, 0, 0]) lid();   // printed roof-down
+else { tray(); translate([0, 0, floor_t + stand_h + board_t]) lid(); }
 
 // The walls must stay under the pins, or jumpers won't seat.
 assert(lip + 0.6 < pin_h, "walls would foul the header pins");
