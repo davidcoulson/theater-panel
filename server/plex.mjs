@@ -359,6 +359,25 @@ export async function recentlyAdded(size = 16) {
     .map((m) => mapItem(m));
 }
 
+// The idle screen's list: what is in progress, what just arrived, and what is on its way.
+export async function showing(size = 10) {
+  const [deck, recent] = await Promise.all([onDeck(6).catch(() => []), recentlyAdded(size).catch(() => [])]);
+  const out = [];
+  const seen = new Set();
+  const key = (m) => `${m.showTitle || m.title}`.toLowerCase();
+  for (const m of deck) {
+    if (seen.has(key(m))) continue;
+    seen.add(key(m));
+    out.push({ ...m, id: `deck-${m.id}`, kind: 'deck', label: m.viewOffset ? 'Continue watching' : 'Up next' });
+  }
+  for (const m of recent) {
+    if (seen.has(key(m))) continue;
+    seen.add(key(m));
+    out.push({ ...m, id: `new-${m.id}`, kind: 'new', label: 'Just added' });
+  }
+  return out;
+}
+
 export async function search(query, size = 30) {
   const mc = await plex('/hubs/search', { query, limit: String(size) });
   const out = [];

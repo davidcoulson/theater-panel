@@ -17,6 +17,8 @@ import { runAction, musicLibrary, musicSearch, musicQueue } from './actions.mjs'
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
+import * as vote from './vote.mjs';
+import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB = join(root, 'web');
@@ -141,6 +143,81 @@ get(/^\/api\/plex\/item\/(\d+)$/, (m) => plex.item(m[1]));
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
 get(/^\/api\/plex\/ondeck$/, (m, q) => plex.onDeck(Number(q.get('size') || 12)));
 get(/^\/api\/plex\/recent$/, (m, q) => plex.recentlyAdded(Number(q.get('size') || 16)));
+const qrSvg = (text) => QRCode.toString(String(text).slice(0, 300), { type: 'svg', margin: 1, color: { dark: '#25170F', light: '#0000' } });
+
+// Movie night. The panel asks for a shortlist, then everyone votes from their phones at
+// /vote (a tiny page served below); the panel follows along over its event stream.
+get(/^\/api\/pick$/, async (m, q) => {
+  const filters = ['unwatched', ...(q.get('filters') || '').split(',')].filter(Boolean);
+  const { items } = await plex.listLibrary(plex.MERGED, { filters: [...new Set(filters)], sort: 'random', size: 60 });
+  const n = Math.min(6, Math.max(2, Number(q.get('n')) || 3));
+  return { items: items.slice(0, n) };
+});
+
+post(/^\/api\/vote\/start$/, (m, q, body) => {
+  const items = (body.items || []).slice(0, 6).map((i) => ({
+    id: String(i.id), title: String(i.title || '').slice(0, 120), year: i.year || null,
+    poster: typeof i.poster === 'string' ? i.poster : null, plexId: String(i.id),
+  }));
+  if (items.length < 2) throw new Error('Pick at least two');
+  const st = vote.start(items);
+  broadcast('vote', st);
+  return st;
+});
+
+get(/^\/api\/vote$/, () => vote.state() || { items: [] });
+
+
+post(/^\/api\/vote$/, (m, q, body) => {
+  const st = vote.vote(body.round, body.voter, body.item);
+  broadcast('vote', st);
+  return st;
+});
+
+post(/^\/api\/vote\/end$/, () => { const w = vote.winner(); vote.clear(); broadcast('vote', null); return { winner: w }; });
+
+// Voice, through Home Assistant's own assistant (custom sentences in ha/theater.yaml call this):
+// { intent: "play", query: "avatar" } or { intent: "scene", name: "movie_time" }.
+post(/^\/api\/voice$/, async (m, q, body) => {
+  const intent = String(body.intent || '').toLowerCase();
+  if (intent === 'scene') {
+    const name = String(body.name || '').toLowerCase().replace(/[^a-z_]/g, '');
+    await runAction(ha, { action: 'scene', name });
+    return { ok: true, spoken: name.replace(/_/g, ' ') };
+  }
+  if (intent === 'navigate') {
+    const route = String(body.route || '').replace(/[^\w#/?=&,.-]/g, '');
+    broadcast('navigate', { route });
+    return { ok: true, spoken: route.replace(/^#?\//, '') };
+  }
+  if (intent !== 'play') throw new Error('Unknown voice intent');
+  const query = String(body.query || '').trim();
+  if (!query) throw new Error('Nothing to play');
+  const hits = await plex.search(query, 10);
+  // Best match: an exact title first, then one that starts with what was said, then a movie.
+  const said = query.toLowerCase();
+  const name = (h) => String(h.showTitle || h.title || '').toLowerCase();
+  const score = (h) => (name(h) === said ? 3 : name(h).startsWith(said) ? 2 : h.type === 'movie' ? 1 : 0);
+  const best = hits.slice().sort((a, b) => score(b) - score(a))[0];
+  if (!best) return { ok: false, spoken: `I could not find ${query} in Plex` };
+  // A show plays its next episode, a movie plays itself.
+  const target = best.type === 'show' ? (await plex.item(best.id)).next || best : best;
+  if (!body.dryRun) await runAction(ha, { action: 'play', ratingKey: target.id, type: target.type, offset: target.viewOffset || 0 });
+  return { ok: true, spoken: best.type === 'show' ? `${best.title}, ${target.title || 'next episode'}` : best.title, id: target.id };
+});
+
+// Idle screen: Plex's own titles, then a few coming from Seerr.
+get(/^\/api\/showing$/, async () => {
+  const [plexItems, soon] = await Promise.all([
+    config.plex.url ? plex.showing(10).catch(() => []) : [],
+    config.seerr.url ? seerr.requests(8).then((r) => r.results.filter((x) => x.label !== 'Available').slice(0, 4)).catch(() => []) : [],
+  ]);
+  return [
+    ...plexItems,
+    ...soon.map((r) => ({ id: `soon-${r.id}`, kind: 'soon', label: r.label === 'Downloading' ? 'Downloading now' : 'Requested', title: r.title, year: r.year, poster: r.poster, art: null })),
+  ];
+});
+
 get(/^\/api\/plex\/search$/, (m, q) => plex.search(q.get('q') || ''));
 
 get(/^\/api\/seerr\/search$/, (m, q) => seerr.search(q.get('q') || '', q.get('page') || 1));
@@ -226,6 +303,14 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // The QR the panel shows for movie night: the address people should open.
+    if (path === '/api/vote/qr.svg') {
+      const svg = await qrSvg(url.searchParams.get('url') || '/vote');
+      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" });
+      res.end(svg);
+      return;
+    }
+
     // One icon as SVG, e.g. /api/icon/mdi/microsoft-xbox.svg. Never framed or scripted.
     const ic = /^\/api\/icon\/([a-z0-9-]+)\/([a-z0-9-]+)\.svg$/.exec(path);
     if (ic) {
@@ -241,6 +326,7 @@ const server = createServer(async (req, res) => {
       catch (e) { return json(res, e.status || 502, { error: e.message }); }
     }
     if (path === '/admin' || path === '/admin/') return serveFile(res, join(WEB, 'admin.html'));
+    if (path === '/vote' || path === '/vote/') return serveFile(res, join(WEB, 'vote.html'));
 
     if (path.startsWith('/api/')) {
       for (const [method, re, fn] of routes) {

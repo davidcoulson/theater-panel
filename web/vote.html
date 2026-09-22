@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#2A1911">
+<title>Movie night</title>
+<link rel="icon" href="/assets/icon.png">
+<style>
+  :root { --bg: #17100B; --card: #221710; --line: #3A2A1E; --ink: #F4ECE0; --muted: #B9A797; --gold: #E3A865; --acc: #8F4E1C; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 20px 16px 40px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: #B9A797; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  button.pick { width: 100%; display: flex; gap: 14px; align-items: center; text-align: left; padding: 10px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: inherit; }
+  button.pick[aria-pressed="true"] { border-color: var(--gold); background: #2C1E14; }
+  button.pick img { width: 64px; height: 96px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: #0d0907; }
+  .t { font-weight: 600; font-size: 19px; }
+  .y { color: #B9A797; font-size: 15px; }
+  .count { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 700; color: var(--gold); }
+  .note { margin-top: 22px; color: #B9A797; font-size: 15px; text-align: center; }
+  .err { color: #F2A08A; }
+</style>
+</head>
+<body>
+<h1>Movie night</h1>
+<p class="sub" id="sub">Pick the one you want.</p>
+<ul id="list"></ul>
+<p class="note" id="note"></p>
+<script type="module">
+// One vote per phone: this id is kept on the phone, so tapping again changes the vote.
+let voter = localStorage.getItem('tp-voter');
+if (!voter) { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem('tp-voter', voter); } catch {} }
+let mine = null;
+
+const list = document.getElementById('list');
+const note = document.getElementById('note');
+const sub = document.getElementById('sub');
+
+function draw(state) {
+  if (!state || !state.items?.length) {
+    list.innerHTML = '';
+    sub.textContent = 'No vote running right now.';
+    note.textContent = 'Start one on the theater panel.';
+    return;
+  }
+  sub.textContent = 'Pick the one you want.';
+  note.textContent = `${state.voters} vote${state.voters === 1 ? '' : 's'} so far`;
+  list.replaceChildren(...state.items.map((item) => {
+    const b = document.createElement('button');
+    b.className = 'pick';
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(mine === item.id));
+    b.innerHTML = `${item.poster ? `<img src="${item.poster}" alt="">` : ''}<span><span class="t"></span><br><span class="y"></span></span><span class="count">${state.tally[item.id] ?? 0}</span>`;
+    b.querySelector('.t').textContent = item.title;
+    b.querySelector('.y').textContent = item.year || '';
+    b.onclick = () => send(state.id, item.id);
+    return b;
+  }));
+}
+
+async function send(round, item) {
+  mine = item;
+  try {
+    const r = await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ round, voter, item }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not vote');
+    draw(d);
+    note.textContent = 'Voted. Tap another to change your mind.';
+  } catch (e) { note.innerHTML = `<span class="err">${e.message}</span>`; }
+}
+
+const load = () => fetch('/api/vote').then((r) => r.json()).then(draw).catch(() => {});
+load();
+// The panel drives the round; polling keeps this page honest without a socket.
+setInterval(load, 4000);
+</script>
+</body>
+</html>
