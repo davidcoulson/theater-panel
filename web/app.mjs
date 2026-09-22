@@ -13,8 +13,9 @@ import { Request } from './views/request.mjs';
 import { Music } from './views/music.mjs';
 import { Showtime } from './views/showtime.mjs';
 import { Games } from './views/games.mjs';
+import { Stats } from './views/stats.mjs';
 
-const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime };
+const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
 
 // Hash routes, with optional query params: #/watch?lib=networks&brand=netflix
