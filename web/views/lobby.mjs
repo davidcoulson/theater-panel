@@ -19,11 +19,16 @@ export function Lobby() {
   const tv = useEntity(ents.appleTv);
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
+  const arrivals = useArrivals();
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
 
   return html`<main class="view">
     <${Header} title="Home Theater" kicker=${`${weekday} ${part}`}>
+      ${arrivals.list.length > 0 && html`<button type="button" class="chip arrival" onClick=${() => go('watch', { item: arrivals.list[0].plexId })}>
+        ${arrivals.list[0].poster && html`<img src=${arrivals.list[0].poster} alt="" />`}
+        <span><b>Now in Plex</b> ${arrivals.list[0].title}</span>${arrivals.list.length > 1 && html`<span class="more">+${arrivals.list.length - 1}</span>`}
+        <span class="x" role="button" aria-label="Dismiss" onClick=${(e) => { e.stopPropagation(); arrivals.dismiss(arrivals.list[0].id); }}>×</span></button>`}
       ${temp && html`<span class="chip"><${Icon} name="therm" size=${20} />${Math.round(Number(temp.state) * 10) / 10}°</span>`}
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
@@ -40,6 +45,19 @@ export function Lobby() {
       </div>
     </div>
   </main>`;
+}
+
+// Requested titles that landed in Plex in the last two days, newest first, minus ones dismissed on
+// this panel.
+function useArrivals() {
+  const [all] = useLoad(() => get('/api/seerr/arrivals').catch(() => []), []);
+  const [gone, setGone] = useState(() => { try { return JSON.parse(localStorage.getItem('tp-dismissed') || '[]'); } catch { return []; } });
+  const dismiss = (id) => {
+    const next = [...gone, id].slice(-50);
+    setGone(next);
+    try { localStorage.setItem('tp-dismissed', JSON.stringify(next)); } catch {}
+  };
+  return { list: (all || []).filter((a) => !gone.includes(a.id)), dismiss };
 }
 
 function Continue() {

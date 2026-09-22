@@ -147,6 +147,7 @@ get(/^\/api\/seerr\/provider\/([a-z]+)$/, (m, q) => seerr.byProvider(m[1], q.get
 get(/^\/api\/seerr\/(movie|tv)\/(\d+)$/, (m) => seerr.details(m[1], m[2]));
 get(/^\/api\/seerr\/requests$/, (m, q) => seerr.requests(Math.min(Number(q.get('take') || 8), 30)));
 get(/^\/api\/seerr\/counts$/, () => seerr.counts());
+get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(Math.min(Number(process.env.ARRIVAL_HOURS) || 48, 24 * 14)) : []));
 post(/^\/api\/seerr\/request$/, (m, q, body) => seerr.request(body));
 
 get(/^\/api\/music\/library$/, (m, q) => musicLibrary(ha, { type: q.get('type') || 'album', order: q.get('order') || 'timestamp_added_desc', limit: Math.min(Number(q.get('limit') || 24), 60) }));

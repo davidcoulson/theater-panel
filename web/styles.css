@@ -180,6 +180,12 @@ input.range.thin { height: 40px; }
 .scene[aria-pressed="true"] { background: var(--choc); color: #F4F0E8; border-color: #1E120B; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 .scene[aria-pressed="true"] .d { color: var(--on-choc2); }
 
+.chip.arrival { background: var(--gold); color: var(--choc2); border-color: var(--gold); font-weight: 600; gap: 10px; padding-left: 6px; max-width: 520px; }
+.chip.arrival img { width: 24px; height: 36px; border-radius: 5px; object-fit: cover; }
+.chip.arrival b { font-weight: 800; text-transform: uppercase; letter-spacing: .5px; font-size: 13px; margin-right: 4px; }
+.chip.arrival .more { font-weight: 800; flex-shrink: 0; }
+.chip.arrival > span:not(.x):not(.more) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.arrival .x { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 20px; line-height: 1; background: rgba(0,0,0,.08); flex-shrink: 0; }
 .proj .aside.mode { border: 1.5px solid var(--line); background: none; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 16px; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
 .proj .aside.mode:active { transform: scale(.97); }
 .proj .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
