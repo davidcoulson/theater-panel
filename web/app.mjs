@@ -6,6 +6,7 @@ import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
 import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe } from './lib/api.mjs';
+import { Emblem } from './lib/emblems.mjs';
 import { RailGlow } from './lib/effects.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
@@ -173,7 +174,7 @@ function Rail({ current }) {
     <div class="grow"></div>
     ${ha.live === false ? html`<div class="offline">Server offline</div>` : ha.live && !ha.ok ? html`<div class="offline">${ha.configured ? 'HA offline' : 'HA not set up'}</div>` : null}
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
-    ${hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Icon} name=${hol.glyph} size=${30} w=${1.8} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
+    ${hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Emblem} id=${hol.id} size=${68} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
     ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''}>
       <span>${build.version.split('.').slice(0, 3).join('.')}</span>
