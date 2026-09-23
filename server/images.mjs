@@ -94,7 +94,9 @@ function send(res, body, type) {
   res.writeHead(200, {
     'content-type': type || sniff(body),
     'content-length': body.length,
-    'cache-control': 'public, max-age=604800, immutable',
+    // Posters, backdrops and logos are effectively permanent, and each URL carries its own
+    // identifiers, so the panel's browser can keep them for a year and never re-ask.
+    'cache-control': 'public, max-age=31536000, immutable',
   });
   res.end(body);
 }
