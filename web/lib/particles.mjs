@@ -88,7 +88,9 @@ function drawBat(ctx, x, y, s, t, flap) {
 function spawnGhost(fresh) {
   const slimer = Math.random() < 0.6;                                   // the green, greedy kind
   return { slimer, x: fresh ? rnd(200, W - 200) : (Math.random() < 0.5 ? -140 : W + 140), y: rnd(120, H - 260), vx: rnd(18, 34) * (Math.random() < 0.5 ? 1 : -1),
-    size: rnd(95, 140), phase: rnd(0, 6.28), bob: rnd(0.6, 1.1), life: 0, span: rnd(18, 30) };
+    size: rnd(95, 140), phase: rnd(0, 6.28), bob: rnd(0.6, 1.1), life: 0, span: rnd(18, 30),
+    // each one fades away and materialises again on its own slow cycle, about 8-13 seconds
+    ghostly: rnd(0.48, 0.8), ghostlyPhase: rnd(0, 6.28) };
 }
 // A blobby little spook: Slimer's cousin, drawn green with a fat belly, stubby arms and a tongue
 // out, or the classic sheet ghost. Solid enough to read across the room, still see-through.
@@ -96,8 +98,13 @@ function drawGhost(ctx, g, t) {
   const s = g.size, x = g.x, y = g.y + Math.sin(t * g.bob + g.phase) * 10;
   const fade = Math.min(1, g.life / 3, (g.span - g.life) / 3);
   const wob = Math.sin(t * 2 + g.phase) * s * 0.02;
+  // Materialising: mostly gone, swelling up to solid and sinking away again, so one appears out
+  // of nowhere in the middle of the room rather than simply sliding in from the edge.
+  const shimmer = Math.pow(0.5 + 0.5 * Math.sin(t * g.ghostly + g.ghostlyPhase), 1.8);
+  const alpha = Math.max(0, fade) * (g.slimer ? 0.72 : 0.64) * shimmer;
+  if (alpha < 0.015) return;
   ctx.save();
-  ctx.globalAlpha = Math.max(0, fade) * (g.slimer ? 0.72 : 0.64);
+  ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   if (g.vx < 0) ctx.scale(-1, 1);
 
