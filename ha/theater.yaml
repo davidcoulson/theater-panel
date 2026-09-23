@@ -476,9 +476,8 @@ automation:
           topic: homeassistant/update/theater_panel/config
           retain: true
           payload: >-
-            {{ {"name": "Theater panel", "unique_id": "theater_panel_image",
-                "state_topic": "theater/panel/version", "value_template": "{{ value_json.state }}",
-                "json_attributes_topic": "theater/panel/version",
+            {{ {"name": none, "unique_id": "theater_panel_image",
+                "state_topic": "theater/panel/version",
                 "device": {"identifiers": ["theater_panel"], "name": "Theater panel",
                            "manufacturer": "davidcoulson", "model": "theater-panel"},
                 "entity_picture": "https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png",
