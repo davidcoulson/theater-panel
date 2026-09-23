@@ -24,7 +24,7 @@ export async function act(data) {
 
 // ---------- live store ----------
 
-let state = { vote: null, connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
+let state = { vote: null, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
 const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
@@ -60,7 +60,7 @@ export async function startLive({ navigate } = {}) {
   loadSettings();
   es.addEventListener('hello', (e) => {
     const d = JSON.parse(e.data);
-    set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions });
+    set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [] });
   });
   es.addEventListener('states', (e) => {
     const changed = JSON.parse(e.data);
@@ -70,6 +70,8 @@ export async function startLive({ navigate } = {}) {
   });
   es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
   es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data) }));
+  // Everything playing on the Plex server, behind the "N streams" pill.
+  es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
   // Saved on the admin page: pick up the new entities, apps and display options.
   es.addEventListener('settings', loadSettings);
   // Movie night: the shortlist and the running tally.
