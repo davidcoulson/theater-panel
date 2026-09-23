@@ -24,6 +24,6 @@ VOLUME /data
 EXPOSE 8787
 USER node
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD wget -qO- http://127.0.0.1:${PORT}/api/state >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT}/healthz >/dev/null 2>&1 || exit 1
 
 CMD ["node", "server/index.mjs"]

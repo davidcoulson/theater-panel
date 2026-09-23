@@ -101,7 +101,7 @@ async function readBody(req) {
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
-const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/vote', '/vote/', '/api/vote']);
+const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/vote', '/vote/', '/api/vote', '/healthz']);
 
 // Trusted networks skip the key entirely (see TRUST_NETWORKS on the settings page).
 let isProxy = netList(config.trustedProxies);
@@ -336,6 +336,13 @@ const server = createServer(async (req, res) => {
       const pic = entities.includes(id) && ha.states[id]?.attributes?.entity_picture;
       if (!pic) { res.writeHead(404).end(); return; }
       res.writeHead(302, { location: extImage(pic.startsWith('http') ? pic : config.ha.url + pic), 'cache-control': 'no-store' }).end();
+      return;
+    }
+
+    // Container health check: no key, no secrets, just "the server is up".
+    if (path === '/healthz') {
+      res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+      res.end(`ok ${config.build.version}`);
       return;
     }
 
