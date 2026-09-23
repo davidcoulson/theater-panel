@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { html, Icon } from '../lib/ui.mjs';
 import { get, useLoad, useStore, clock, runtime } from '../lib/api.mjs';
+import { useStreams } from './streams.mjs';
 import { route } from '../app.mjs';
 
 const HOLD = 14000;   // ms per title
@@ -13,7 +14,7 @@ export function Showing() {
   const [items] = useLoad(() => get('/api/showing').catch(() => []), []);
   const [i, setI] = useState(0);
   const [now, setNow] = useState(clock());
-  const temp = useStore((s) => s.states[s.entities.temperature]);
+  const streams = useStreams();
   const hold = Number(route.params.hold) * 1000 || HOLD;
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function Showing() {
     ${items.map((m, k) => html`<div class=${`sh-art ${k === i % items.length ? 'on' : ''}`} key=${m.id}
       style=${m.art ? `background-image:url('${m.art}')` : ''}></div>`)}
     <div class="sh-veil"></div>
-    <div class="sh-clock">${now.hm}<small>${now.ampm}</small>${temp && html`<span class="t">${Math.round(Number(temp.state))}°</span>`}</div>
+    <div class="sh-clock">${now.hm}<small>${now.ampm}</small>${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span>`}</div>
     <div class="sh-body" key=${it.id}>
       ${it.poster && html`<img class="sh-poster" src=${it.poster} alt="" />`}
       <div class="sh-text">

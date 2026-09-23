@@ -409,6 +409,46 @@ export async function setStreams(partId, { audioStreamID, subtitleStreamID }) {
   await plex(`/library/parts/${partId}`, p, 'PUT');
 }
 
+// Every stream on the server right now, with the detail Tautulli shows: who, on what, how far in,
+// and whether the server is transcoding.
+export async function streams() {
+  const mc = await plex('/status/sessions');
+  return (mc.Metadata || []).map((m) => {
+    const media = m.Media?.[0] || {};
+    const part = media.Part?.[0] || {};
+    const ts = m.TranscodeSession || null;
+    const stream = (part.Stream || []).find((x) => x.streamType === 1) || {};
+    const decision = ts ? (ts.videoDecision === 'transcode' ? 'Transcode' : ts.videoDecision === 'copy' ? 'Direct stream' : 'Direct play') : 'Direct play';
+    return {
+      key: m.sessionKey || `${m.ratingKey}-${m.Player?.machineIdentifier}`,
+      title: m.title,
+      showTitle: m.grandparentTitle || null,
+      season: m.parentIndex ?? null,
+      episode: m.index ?? null,
+      type: m.type,
+      year: m.year,
+      poster: plexImage(m.type === 'episode' ? (m.grandparentThumb || m.thumb) : m.thumb, 160, 240),
+      user: m.User?.title || 'Someone',
+      player: m.Player?.title || 'Unknown player',
+      product: m.Player?.product || '',
+      local: m.Player?.local === '1' || m.Player?.local === true,
+      state: m.Player?.state || 'playing',
+      viewOffset: m.viewOffset || 0,
+      duration: m.duration || 0,
+      // What the file is, and what the viewer is actually getting.
+      source: [media.videoResolution === '4k' ? '4K' : media.videoResolution ? `${media.videoResolution}p` : null,
+        (media.videoCodec || '').toUpperCase(), stream.DOVIPresent ? 'DV' : /pq|smpte2084/i.test(stream.colorTrc || '') ? 'HDR' : null].filter(Boolean).join(' · '),
+      audio: [(media.audioCodec || '').toUpperCase(), media.audioChannels ? `${media.audioChannels}ch` : null].filter(Boolean).join(' '),
+      decision,
+      hw: Boolean(ts?.transcodeHwEncoding || ts?.transcodeHwDecoding),
+      throttled: Boolean(ts?.throttled),
+      bitrate: media.bitrate || null,           // kbps of the source
+      bandwidth: m.Session?.bandwidth || null,  // kbps Plex reserves for this stream
+      location: m.Session?.location || (m.Player?.local ? 'lan' : 'wan'),
+    };
+  });
+}
+
 // What is playing right now, from Plex's point of view. Richer than the Apple TV entity:
 // artwork, exact position and whether the stream is being transcoded.
 export async function sessions() {

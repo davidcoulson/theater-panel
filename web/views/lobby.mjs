@@ -5,6 +5,7 @@ import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } f
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf } from '../lib/effects.mjs';
+import { StreamsChip, StreamsSheet } from './streams.mjs';
 
 const SCENES = [
   { name: 'pre_show', label: 'Pre-show', desc: 'Warm lights · music', icon: 'music' },
@@ -21,6 +22,7 @@ export function Lobby() {
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
   const arrivals = useArrivals();
+  const [streamsOpen, setStreamsOpen] = useState(false);
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
 
@@ -30,7 +32,7 @@ export function Lobby() {
         ${arrivals.list[0].poster && html`<img src=${arrivals.list[0].poster} alt="" />`}
         <span><b>Now in Plex</b> ${arrivals.list[0].title}</span>${arrivals.list.length > 1 && html`<span class="more">+${arrivals.list.length - 1}</span>`}
         <span class="x" role="button" aria-label="Dismiss" onClick=${(e) => { e.stopPropagation(); arrivals.dismiss(arrivals.list[0].id); }}>×</span></button>`}
-      ${temp && html`<span class="chip"><${Icon} name="therm" size=${20} />${Math.round(Number(temp.state) * 10) / 10}°</span>`}
+      <${StreamsChip} onClick=${() => setStreamsOpen(true)} />
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
@@ -46,6 +48,7 @@ export function Lobby() {
         <${MusicBar} />
       </div>
     </div>
+    ${streamsOpen && html`<${StreamsSheet} onClose=${() => setStreamsOpen(false)} />`}
   </main>`;
 }
 
