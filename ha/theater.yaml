@@ -20,6 +20,22 @@
 #   data: { route: "#/watch?brand=netflix" }
 # Kiosk Satellite's own navigate service moves the HA dashboard around the panel, not the panel.
 # If PANEL_KEY is set, add ?key=<PANEL_KEY> to the URL (keep it in secrets.yaml).
+# Which build the panel is running, and whether a newer image is waiting on GHCR. Home Assistant
+# turns this into an update entity below. Add ?key=<PANEL_KEY> to the URL if the panel has a key.
+rest:
+  - resource: "https://ht-kiosk.coulson.io/api/version"
+    scan_interval: 1800
+    sensor:
+      - name: "Theater panel build"
+        unique_id: theater_panel_build
+        value_template: "{{ value_json.installed }}"
+        json_attributes: [installed, latest, update, built, image]
+    binary_sensor:
+      - name: "Theater panel update available"
+        unique_id: theater_panel_update_available
+        device_class: update
+        value_template: "{{ value_json.update }}"
+
 rest_command:
   # Voice goes through the panel: it finds the title in Plex and starts it the same way the
   # panel's own Play button does. See the sentences in custom_sentences/en/theater.yaml.
@@ -442,6 +458,40 @@ intent_script:
       text: "Showing {{ screen }}"
 
 automation:
+  # Publish the panel's version to MQTT so Home Assistant shows a proper update entity
+  # (update.theater_panel) next to everything else it tracks. It reports only; installing is a
+  # Docker pull on Unraid:
+  #   /usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container theater-panel
+  - id: theater_panel_update_entity
+    alias: "Theater: publish the panel's version to MQTT"
+    mode: queued
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: sensor.theater_panel_build
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: homeassistant/update/theater_panel/config
+          retain: true
+          payload: >-
+            {{ {"name": "Theater panel", "unique_id": "theater_panel_image",
+                "state_topic": "theater/panel/version", "value_template": "{{ value_json.state }}",
+                "json_attributes_topic": "theater/panel/version",
+                "device": {"identifiers": ["theater_panel"], "name": "Theater panel",
+                           "manufacturer": "davidcoulson", "model": "theater-panel"},
+                "entity_picture": "https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png",
+                "release_url": "https://github.com/davidcoulson/theater-panel/commits/main"} | to_json }}
+      - action: mqtt.publish
+        data:
+          topic: theater/panel/version
+          retain: true
+          payload: >-
+            {{ {"installed_version": state_attr('sensor.theater_panel_build', 'installed'),
+                "latest_version": state_attr('sensor.theater_panel_build', 'latest'),
+                "title": "Theater panel"} | to_json }}
+
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
   # a few minutes.

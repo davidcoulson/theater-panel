@@ -44,6 +44,24 @@ const FAMILIES = [
 
 export const familyOf = (name) => (FAMILIES.find(([re]) => re.test(name || ''))?.[1] || 'glow');
 
+// Many effects are variants of one another — Pacifica, Pacifica (Storm), 2D Pacifica (Calm Lagoon).
+// The qualifier in the name shifts the colour and the movement so they don't all look alike, and a
+// "2D" effect is drawn as the two rows it actually runs on.
+const VARIANTS = [
+  [/calm lagoon/i, { hue: -8, sat: 0.75, light: 1.12, speed: 0.55, contrast: 0.7 }],
+  [/deep current/i, { hue: 6, sat: 1.15, light: 0.7, speed: 0.6, contrast: 1.1 }],
+  [/storm/i, { hue: -4, sat: 1.1, light: 0.95, speed: 1.9, contrast: 1.5 }],
+  [/pastel dream/i, { hue: 30, sat: 0.55, light: 1.25, speed: 0.75, contrast: 0.75 }],
+  [/red sky/i, { hue: -120, sat: 1.15, light: 0.95, speed: 0.9, contrast: 1.1 }],
+  [/solar storm/i, { hue: 0, sat: 1.2, light: 1.05, speed: 1.5, contrast: 1.3 }],
+  [/pronounced/i, { hue: 0, sat: 1.1, light: 1.0, speed: 1.4, contrast: 1.6 }],
+  [/\bslow\b/i, { hue: 0, sat: 1, light: 1, speed: 0.5, contrast: 1 }],
+  [/\bswarm\b|\bdual\b/i, { hue: 0, sat: 1, light: 1, speed: 1.25, contrast: 1.1 }],
+];
+const NO_VARIANT = { hue: 0, sat: 1, light: 1, speed: 1, contrast: 1 };
+export const variantOf = (name) => VARIANTS.find(([re]) => re.test(name || ''))?.[1] || NO_VARIANT;
+export const rowsOf = (name) => (/^2d\b/i.test(name || '') ? 2 : 1);
+
 // Families grouped into moods for the long lists.
 export const MOODS = [
   { id: 'calm', name: 'Calm', families: ['fog', 'glow', 'water', 'ripple', 'bubbles', 'weather'] },
@@ -103,6 +121,27 @@ function ramp(family, v) {
   const a = hex(cols[i]), b = hex(cols[Math.min(cols.length - 1, i + 1)]);
   return `rgb(${Math.round(lerp(a[0], b[0], f))},${Math.round(lerp(a[1], b[1], f))},${Math.round(lerp(a[2], b[2], f))})`;
 }
+// Nudge a colour by the variant's hue / saturation / lightness.
+function tweak(rgbString, v) {
+  if (v === NO_VARIANT) return rgbString;
+  const [r, g, b] = rgbString.match(/\d+/g).map(Number).map((n) => n / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  let h = 0, sat = 0;
+  if (max !== min) {
+    const d = max - min;
+    sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  const H = ((h + v.hue) % 360 + 360) % 360;
+  const S = Math.max(0, Math.min(1, sat * v.sat));
+  const L = Math.max(0, Math.min(1, l * v.light));
+  const c = (1 - Math.abs(2 * L - 1)) * S, x = c * (1 - Math.abs(((H / 60) % 2) - 1)), m = L - c / 2;
+  const [rr, gg, bb] = H < 60 ? [c, x, 0] : H < 120 ? [x, c, 0] : H < 180 ? [0, c, x]
+    : H < 240 ? [0, x, c] : H < 300 ? [x, 0, c] : [c, 0, x];
+  return `rgb(${Math.round((rr + m) * 255)},${Math.round((gg + m) * 255)},${Math.round((bb + m) * 255)})`;
+}
+
 // Cheap repeatable noise so previews look the same on every panel.
 const noise = (x) => (Math.sin(x * 12.9898) * 43758.5453) % 1;
 const wave = (x, t, k, s) => 0.5 + 0.5 * Math.sin(x * k + t * s);
@@ -154,15 +193,18 @@ function hueShade(family, x, t) {
 }
 const HUE_FAMILIES = new Set(['rainbow', 'confetti']);
 
-// The colour of one point of the strip.
-function shade(family, x, t) {
-  return HUE_FAMILIES.has(family) ? hueShade(family, x, t) : ramp(family, Math.max(0, Math.min(1, level(family, x, t))));
+// The colour of one point of the strip, with the variant's colour and contrast applied.
+function shade(family, x, t, v = NO_VARIANT) {
+  if (HUE_FAMILIES.has(family)) return hueShade(family, x, t);
+  let lv = Math.max(0, Math.min(1, level(family, x, t)));
+  if (v.contrast !== 1) lv = Math.max(0, Math.min(1, 0.5 + (lv - 0.5) * v.contrast));
+  return tweak(ramp(family, lv), v);
 }
 
 // The nav rail's ambient glow: the same families painted vertically as a soft gradient (no LED
 // blocks), so the wood column feels lit by whatever the accents are doing.
-function paintRail(ctx, family, w, h, t, speed = 0.5) {
-  const tt = t * (0.26 + speed * 0.65);   // ~25% quicker than the first pass
+function paintRail(ctx, family, w, h, t, speed = 0.5, v = NO_VARIANT) {
+  const tt = t * (0.26 + speed * 0.65) * v.speed;   // ~25% quicker than the first pass
   const steps = 60, bh = h / steps;
   ctx.clearRect(0, 0, w, h);
   for (let i = 0; i < steps; i++) {
@@ -170,22 +212,29 @@ function paintRail(ctx, family, w, h, t, speed = 0.5) {
     // A floor under the pattern, so the whole column stays lit rather than going dark in bands,
     // and a push towards the bright end of the palette so the colour actually reads on the wood.
     ctx.fillStyle = HUE_FAMILIES.has(family) ? hueShade(family, y, tt)
-      : ramp(family, Math.min(1, 0.5 + 0.7 * Math.max(0, Math.min(1, level(family, y, tt)))));
+      : tweak(ramp(family, Math.min(1, 0.5 + 0.7 * Math.max(0, Math.min(1, level(family, y, tt))))), v);
     ctx.fillRect(0, i * bh - 1, w, bh + 2);
   }
 }
 
 // A strip of LED-ish blocks; speed 0..1 stretches time, so the preview follows the speed slider.
-function paint(ctx, family, w, h, t, speed = 0.5) {
+function paint(ctx, family, w, h, t, speed = 0.5, v = NO_VARIANT, rows = 1) {
   const leds = Math.max(12, Math.round(w / 14));
-  const tt = t * (0.35 + speed * 1.3);
+  const tt = t * (0.35 + speed * 1.3) * v.speed;
   const gap = Math.max(1, Math.round(w / leds / 8));
   const bw = w / leds;
+  const rowGap = rows > 1 ? Math.max(2, Math.round(h / 12)) : 0;
+  const rh = (h - rowGap * (rows - 1)) / rows;
   ctx.clearRect(0, 0, w, h);
-  for (let i = 0; i < leds; i++) {
-    const x = i / (leds - 1);
-    ctx.fillStyle = shade(family, x, tt);
-    ctx.fillRect(i * bw, 0, bw - gap, h);
+  for (let r = 0; r < rows; r++) {
+    // A second row runs the same effect a little later and shifted along, the way a matrix does.
+    const offT = tt + r * 0.6;
+    const offX = r * 0.12;
+    for (let i = 0; i < leds; i++) {
+      const x = i / (leds - 1);
+      ctx.fillStyle = shade(family, (x + offX) % 1, offT, v);
+      ctx.fillRect(i * bw, r * (rh + rowGap), bw - gap, rh);
+    }
   }
 }
 
@@ -197,18 +246,20 @@ function paint(ctx, family, w, h, t, speed = 0.5) {
 export function EffectPreview({ name, family, speed = 0.5, h = 46, round = 10, still = false, cls = '' }) {
   const ref = useRef();
   const fam = family || familyOf(name);
+  const v = variantOf(name);
+  const rows = rowsOf(name);
   useEffect(() => {
     const cv = ref.current;
     if (!cv) return;
     const ctx = cv.getContext('2d');
     const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(40, Math.round(r.width)); cv.height = Math.round(r.height || h); };
     size();
-    if (still) { paint(ctx, fam, cv.width, cv.height, 3, speed); return; }
+    if (still) { paint(ctx, fam, cv.width, cv.height, 3, speed, v, rows); return; }
 
     let live = true, running = false, t0 = performance.now();
     const frame = () => {
       if (!live) return;
-      paint(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed);
+      paint(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed, v, rows);
       if (running) setTimeout(() => requestAnimationFrame(frame), 83);
     };
     const start = () => { if (!running) { running = true; frame(); } };
@@ -221,7 +272,7 @@ export function EffectPreview({ name, family, speed = 0.5, h = 46, round = 10, s
     const onHide = () => (document.hidden ? stop() : start());
     document.addEventListener('visibilitychange', onHide);
     return () => { live = false; running = false; io.disconnect(); ro.disconnect(); document.removeEventListener('visibilitychange', onHide); };
-  }, [fam, speed, still]);
+  }, [fam, speed, still, name]);
   return html`<canvas class=${`fx ${cls}`} ref=${ref} style=${`height:${h}px;border-radius:${round}px`} aria-hidden="true"></canvas>`;
 }
 
@@ -239,6 +290,7 @@ export function curated(list, accentList) {
 export function RailGlow({ name, speed = 0.4, opacity = 0.55, paused = false }) {
   const ref = useRef();
   const fam = name ? familyOf(name) : null;
+  const v = variantOf(name);
   useEffect(() => {
     const cv = ref.current;
     if (!cv || !fam) return;
@@ -248,12 +300,12 @@ export function RailGlow({ name, speed = 0.4, opacity = 0.55, paused = false }) 
     const loop = () => {
       if (!live) return;
       // Paused (Showtime, or the screen is hidden) means one frame and then nothing.
-      if (!paused && !document.hidden) paintRail(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed);
+      if (!paused && !document.hidden) paintRail(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed, v);
       setTimeout(() => requestAnimationFrame(loop), paused || document.hidden ? 2000 : 125);
     };
     loop();
     return () => { live = false; };
-  }, [fam, speed, paused]);
+  }, [fam, speed, paused, name]);
   if (!fam) return null;
   return html`<canvas class="rail-glow" ref=${ref} style=${`opacity:${opacity}`} aria-hidden="true"></canvas>`;
 }
