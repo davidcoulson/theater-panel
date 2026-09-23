@@ -200,15 +200,13 @@ function cleanGames(g) {
 
 // ---------- helpers for the page ----------
 
-// Every effect the theater's lights offer, for the favourites picker.
+// The room's own moods: the effects built for the accent lights. Other lights (the WLED strip)
+// carry hundreds of stock effects, which are not what the panel offers.
 export function lightEffects(ha) {
-  const out = new Map();
-  for (const id of config.entities.lights) {
-    for (const e of ha.states[id]?.attributes?.effect_list || []) {
-      if (e !== 'None' && !/^Calibrate/i.test(e)) out.set(e, true);
-    }
-  }
-  return [...out.keys()];
+  const ids = config.entities.lights;
+  const accent = ids.find((id) => /accent/.test(id)) || ids[0];
+  const list = ha.states[accent]?.attributes?.effect_list || [];
+  return list.filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
 }
 
 // Plex's movie and TV libraries, for the library picker.

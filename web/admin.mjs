@@ -5,7 +5,7 @@ import { h, render } from 'preact';
 import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import htm from 'htm';
 import { Icon } from '/lib/ui.mjs';
-import { EffectPreview, byMood, withoutWledOwn } from '/lib/effects.mjs';
+import { EffectPreview, byMood } from '/lib/effects.mjs';
 
 const html = htm.bind(h);
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
@@ -234,7 +234,7 @@ function EntityList({ value, base, domain, entities, onChange }) {
 const MAX_FAVS = 8;
 function EffectFavourites({ value, base, onChange }) {
   const [all, setAll] = useState(null);
-  useEffect(() => { api('/api/admin/light-effects').then((l) => setAll(withoutWledOwn(l))).catch(() => setAll([])); }, []);
+  useEffect(() => { api('/api/admin/light-effects').then(setAll).catch(() => setAll([])); }, []);
   const split = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
   const own = value ? split(value) : null;
   const picked = own || split(base);
