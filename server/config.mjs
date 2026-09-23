@@ -4,6 +4,7 @@
 // the single place to rename things.
 
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
 const list = (v, d) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : d);
@@ -16,7 +17,28 @@ try { saved = { vars: {}, games: null, ...JSON.parse(readFileSync(SETTINGS_FILE,
 catch (e) { if (e.code !== 'ENOENT') console.warn(`[settings] ${SETTINGS_FILE}: ${e.message}`); }
 
 export const settings = () => saved;
-export const effectiveVars = () => ({ ...process.env, ...Object.fromEntries(Object.entries(saved.vars).filter(([, v]) => v !== '' && v != null)) });
+
+// Secrets the panel generates for itself when none are configured, kept with the settings so they
+// survive restarts. Without a panel key anyone who can reach the panel can drive the room, so one
+// is made on first run unless ALLOW_OPEN=1 says the network is trusted.
+function ensureSecrets(vars) {
+  let changed = false;
+  const need = (key, make) => {
+    if (process.env[key] || vars[key]) return;
+    vars[key] = make();
+    changed = true;
+  };
+  need('IMAGE_SECRET', () => randomBytes(24).toString('hex'));
+  if (process.env.ALLOW_OPEN !== '1') need('PANEL_KEY', () => randomBytes(12).toString('base64url'));
+  if (changed) {
+    try {
+      mkdirSync(dirname(SETTINGS_FILE), { recursive: true });
+      writeFileSync(SETTINGS_FILE, JSON.stringify({ ...saved, vars }, null, 2), { mode: 0o600 });
+    } catch (e) { console.warn(`[settings] could not save generated secrets: ${e.message}`); }
+  }
+  return vars;
+}
+export const effectiveVars = () => ({ ...process.env, ...Object.fromEntries(Object.entries(ensureSecrets(saved.vars)).filter(([, v]) => v !== '' && v != null)) });
 
 // Replace the saved settings and apply them to the live config object (every module reads
 // config at call time, so nothing needs a restart except the HA connection, which the caller
@@ -36,6 +58,7 @@ function build(env) {
   port: Number(env.PORT || 8787),
   // Optional shared key. When set, a client must present it once (?key=...) and gets a cookie.
   panelKey: env.PANEL_KEY || '',
+  imageSecret: env.IMAGE_SECRET || '',
   cacheDir: env.CACHE_DIR || './cache',
   imageCacheMb: Number(env.IMAGE_CACHE_MB || 512),
 
@@ -104,6 +127,8 @@ function build(env) {
   }).filter(Boolean),
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
+  // How far back the "Now in Plex" chip looks for requests that arrived.
+  arrivalHours: Math.min(Number(env.ARRIVAL_HOURS) || 48, 24 * 14),
   // Minutes without a touch before the panel drifts to the Now Showing screen (0 = never).
   idleMinutes: Number(env.IDLE_MINUTES ?? 8),
   // Which build this is: stamped into the image by `npm run push`.

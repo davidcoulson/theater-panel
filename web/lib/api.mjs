@@ -32,11 +32,15 @@ const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); }
 export function useStore(select = (s) => s) {
   const [, force] = useState(0);
   const last = useRef();
+  const sel = useRef(select);
+  sel.current = select;           // the selector changes when its inputs do (useEntity(id))
   const value = select(state);
   last.current = value;
   useEffect(() => subscribe(() => {
-    const next = select(state);
-    if (next !== last.current && JSON.stringify(next) !== JSON.stringify(last.current)) force((x) => x + 1);
+    const next = sel.current(state);
+    if (next === last.current) return;                       // same object: nothing to do
+    if (typeof next === 'object' && next !== null && JSON.stringify(next) === JSON.stringify(last.current)) return;
+    force((x) => x + 1);
   }), []);
   return value;
 }

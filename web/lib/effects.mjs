@@ -214,8 +214,9 @@ function paint(ctx, family, w, h, t, speed = 0.5) {
 
 // ---------- components ----------
 
-// Animated preview of one effect. Runs at 12 fps (the panel's GPU dislikes busy canvases) and
-// only while on screen.
+// Animated preview of one effect, at 12 fps. A list can hold hundreds of these (the strip has 216
+// effects), so each one only animates while it is actually on screen; off-screen it holds a single
+// painted frame and burns nothing.
 export function EffectPreview({ name, family, speed = 0.5, h = 46, round = 10, still = false, cls = '' }) {
   const ref = useRef();
   const fam = family || familyOf(name);
@@ -226,22 +227,35 @@ export function EffectPreview({ name, family, speed = 0.5, h = 46, round = 10, s
     const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(40, Math.round(r.width)); cv.height = Math.round(r.height || h); };
     size();
     if (still) { paint(ctx, fam, cv.width, cv.height, 3, speed); return; }
-    let live = true, t0 = performance.now();
-    const loop = () => {
+
+    let live = true, running = false, t0 = performance.now();
+    const frame = () => {
       if (!live) return;
       paint(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed);
-      setTimeout(() => requestAnimationFrame(loop), 83);
+      if (running) setTimeout(() => requestAnimationFrame(frame), 83);
     };
-    loop();
+    const start = () => { if (!running) { running = true; frame(); } };
+    const stop = () => { running = false; };
+    const io = new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop()), { threshold: 0.05 });
+    io.observe(cv);
+    frame();                                   // one frame, so an off-screen tile still shows something
     const ro = new ResizeObserver(size);
     ro.observe(cv);
-    return () => { live = false; ro.disconnect(); };
+    const onHide = () => (document.hidden ? stop() : start());
+    document.addEventListener('visibilitychange', onHide);
+    return () => { live = false; running = false; io.disconnect(); ro.disconnect(); document.removeEventListener('visibilitychange', onHide); };
   }, [fam, speed, still]);
   return html`<canvas class=${`fx ${cls}`} ref=${ref} style=${`height:${h}px;border-radius:${round}px`} aria-hidden="true"></canvas>`;
 }
 
+// WLED ships hundreds of its own effects (the "PS ..." particle system and the classic list). They
+// are noise next to the room's own named moods, so the panel hides them unless asked.
+const WLED_OWN = /^(PS |Solid$|Blink|Breathe$|Wipe|Sweep|Dynamic|Colorloop|Rainbow$|Rainbow Runner|Scan$|Scan Dual|Dual Scan|Fade$|Theater$|Theater Rainbow|Running$|Saw$|Twinkle$|Dissolve|Sparkle|Flash Sparkle|Hyper Sparkle|Strobe|Blink Rainbow|Android$|Chase$|Chase Random|Chase Rainbow|Chase Flash|Colorful$|Traffic Light|Sweep Random|Chase 2|Aurora$|Stream|Scanner$|Lighthouse$|Fireworks$|Rain$|Merry Christmas|Fire Flicker$|Gradient|Loading|Police|Two Dots|Fairy$|Two Areas|Running Dual|Halloween$|Tri |Tetrix|Ripple$|Percent|Heartbeat$|Pacifica$|Candle$|Sunrise|Phased|Twinkleup|Noise Pal|Sine|Flow|Chunchun$|Dancing Shadows$|Washing Machine|Blends|TV Simulator|Dynamic Smooth)/i;
+export const isWledOwn = (name) => WLED_OWN.test(name || '');
+export const withoutWledOwn = (list) => { const kept = list.filter((e) => !isWledOwn(e)); return kept.length ? kept : list; };
+
 // Ambient glow down the nav rail. Silent when nothing is running, and blended into the wood.
-export function RailGlow({ name, speed = 0.4, opacity = 0.55 }) {
+export function RailGlow({ name, speed = 0.4, opacity = 0.55, paused = false }) {
   const ref = useRef();
   const fam = name ? familyOf(name) : null;
   useEffect(() => {
@@ -252,12 +266,13 @@ export function RailGlow({ name, speed = 0.4, opacity = 0.55 }) {
     let live = true; const t0 = performance.now();
     const loop = () => {
       if (!live) return;
-      paintRail(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed);
-      setTimeout(() => requestAnimationFrame(loop), 125);
+      // Paused (Showtime, or the screen is hidden) means one frame and then nothing.
+      if (!paused && !document.hidden) paintRail(ctx, fam, cv.width, cv.height, (performance.now() - t0) / 1000, speed);
+      setTimeout(() => requestAnimationFrame(loop), paused || document.hidden ? 2000 : 125);
     };
     loop();
     return () => { live = false; };
-  }, [fam, speed]);
+  }, [fam, speed, paused]);
   if (!fam) return null;
   return html`<canvas class="rail-glow" ref=${ref} style=${`opacity:${opacity}`} aria-hidden="true"></canvas>`;
 }

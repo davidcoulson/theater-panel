@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash } from 'node:crypto';
 
 import { config, watchedEntities } from './config.mjs';
 import { HomeAssistant } from './ha.mjs';
@@ -54,7 +54,9 @@ async function applySettings() {
 const clients = new Set();
 function broadcast(event, data) {
   const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const res of clients) res.write(line);
+  for (const res of clients) {
+    try { res.write(line); } catch { clients.delete(res); }   // a panel that went away mid-write
+  }
 }
 ha.on('states', (changed) => broadcast('states', changed));
 ha.on('status', (connected) => broadcast('ha', { connected }));
@@ -68,11 +70,10 @@ async function pollSessions() {
   let next = 30000;
   if (clients.size && config.plex.url) {
     try {
-      const all = await plex.sessions();
+      // One call to Plex, read two ways: the theater's own session, and everything on the server.
+      const { sessions: all, streams: everything } = await plex.activity();
       const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName) : all;
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
-      // Everything playing on the server, for the "N streams" pill.
-      const everything = await plex.streams().catch(() => streams);
       if (JSON.stringify(everything) !== JSON.stringify(streams)) { streams = everything; broadcast('streams', streams); }
       if (mine.length) next = 5000;
     } catch (e) { /* Plex unreachable: keep the last known state */ }
@@ -97,7 +98,9 @@ async function readBody(req) {
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
-const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png']);
+const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/vote', '/vote/', '/api/vote']);
+
+const isHttps = (req) => req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
 
 function authorized(req, url, res) {
   if (!config.panelKey || PUBLIC.has(url.pathname)) return true;
@@ -106,7 +109,7 @@ function authorized(req, url, res) {
   const a = Buffer.from(given); const b = Buffer.from(config.panelKey);
   const ok = a.length === b.length && timingSafeEqual(a, b);
   if (ok && url.searchParams.get('key')) {
-    res.setHeader('set-cookie', `tp_key=${encodeURIComponent(config.panelKey)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict`);
+    res.setHeader('set-cookie', `tp_key=${encodeURIComponent(config.panelKey)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict${isHttps(req) ? '; Secure' : ''}`);
   }
   return ok;
 }
@@ -163,7 +166,7 @@ get(/^\/api\/pick$/, async (m, q) => {
 post(/^\/api\/vote\/start$/, (m, q, body) => {
   const items = (body.items || []).slice(0, 6).map((i) => ({
     id: String(i.id), title: String(i.title || '').slice(0, 120), year: i.year || null,
-    poster: typeof i.poster === 'string' ? i.poster : null, plexId: String(i.id),
+    poster: typeof i.poster === 'string' && /^\/img\//.test(i.poster) ? i.poster : null, plexId: String(i.id),
   }));
   if (items.length < 2) throw new Error('Pick at least two');
   const st = vote.start(items);
@@ -232,7 +235,7 @@ get(/^\/api\/seerr\/provider\/([a-z]+)$/, (m, q) => seerr.byProvider(m[1], q.get
 get(/^\/api\/seerr\/(movie|tv)\/(\d+)$/, (m) => seerr.details(m[1], m[2]));
 get(/^\/api\/seerr\/requests$/, (m, q) => seerr.requests(Math.min(Number(q.get('take') || 8), 30)));
 get(/^\/api\/seerr\/counts$/, () => seerr.counts());
-get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(Math.min(Number(process.env.ARRIVAL_HOURS) || 48, 24 * 14)) : []));
+get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(config.arrivalHours) : []));
 post(/^\/api\/seerr\/request$/, (m, q, body) => seerr.request(body));
 
 get(/^\/api\/music\/library$/, (m, q) => musicLibrary(ha, { type: q.get('type') || 'album', order: q.get('order') || 'timestamp_added_desc', limit: Math.min(Number(q.get('limit') || 24), 60) }));
@@ -257,6 +260,20 @@ post(/^\/api\/action$/, async (m, q, body) => { await runAction(ha, body); retur
 // The panel runs inside Home Assistant's Webpage dashboard, so it must be frameable by HA
 // (and nothing else): its own origin plus FRAME_ANCESTORS (e.g. https://home-iot.coulson.io).
 // The admin page is never frameable.
+// The panel's own pages carry a couple of inline scripts (the import map, the voting page). They
+// are allowed by hash, so a stray injected script still cannot run.
+const inlineHashes = await (async () => {
+  const files = ['index.html', 'admin.html', 'vote.html', 'fxgrid.html'];
+  const out = new Set();
+  for (const f of files) {
+    const html = await readFile(join(WEB, f), 'utf8').catch(() => '');
+    for (const m of html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
+      out.add(`'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+    }
+  }
+  return [...out].join(' ');
+})();
+
 const frameAncestors = (path) => (path.startsWith('/admin') || path.startsWith('/api/admin') ? "'none'" : ["'self'", ...config.frameAncestors].join(' '));
 
 // Admin API. Everything but sign-in needs the admin cookie; changes must be JSON (with the
@@ -265,13 +282,13 @@ async function adminApi(req, res, path) {
   const method = req.method;
   if (method === 'POST' && !/^application\/json/.test(req.headers['content-type'] || '')) throw admin.httpError(415, 'JSON only');
   const body = method === 'POST' ? await readBody(req) : undefined;
-  if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body);
+  if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body, isHttps(req));
   if (path === '/api/admin/logout' && method === 'POST') return admin.logout(res);
   if (path === '/api/admin/session') return { admin: admin.isAdmin(req), configured: Boolean(config.adminPassword) };
   if (!admin.isAdmin(req)) throw admin.httpError(401, 'Sign in first');
   if (path === '/api/admin/settings' && method === 'GET') return admin.view();
   if (path === '/api/admin/settings' && method === 'POST') { const r = admin.save(body); await applySettings(); return r; }
-  if (path === '/api/admin/import' && method === 'POST') { const r = await admin.importContainer(); await applySettings(); return r; }
+  if (path === '/api/admin/import' && method === 'POST') { const r = await admin.importContainer(body?.rev); await applySettings(); return r; }
   if (path === '/api/admin/entities') return admin.haEntities(ha);
   if (path === '/api/admin/plex-libraries') return admin.plexLibraries();
   if (path === '/api/admin/light-effects') return admin.lightEffects(ha);
@@ -283,7 +300,12 @@ async function adminApi(req, res, path) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://panel');
   const path = url.pathname;
-  res.setHeader('Content-Security-Policy', `frame-ancestors ${frameAncestors(path)}`);
+  // Tight by default: the panel loads only its own files, and nothing may be sniffed as a type
+  // it is not. Images come from our own proxy, so 'self' covers them too.
+  res.setHeader('Content-Security-Policy',
+    `default-src 'self'; script-src 'self' ${inlineHashes}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors ${frameAncestors(path)}`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
   try {
     if (!authorized(req, url, res)) {
       res.writeHead(401, { 'content-type': 'text/plain' }).end('Open this page once with ?key=<PANEL_KEY>.');

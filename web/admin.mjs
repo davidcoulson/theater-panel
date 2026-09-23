@@ -5,7 +5,7 @@ import { h, render } from 'preact';
 import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import htm from 'htm';
 import { Icon } from '/lib/ui.mjs';
-import { EffectPreview, byMood } from '/lib/effects.mjs';
+import { EffectPreview, byMood, withoutWledOwn } from '/lib/effects.mjs';
 
 const html = htm.bind(h);
 const INPUTS = ['HDMI 1', 'HDMI 2', 'HDMI 3', 'HDMI 4'];
@@ -115,7 +115,7 @@ function Settings() {
     if (!confirm(`Copy ${data.fromContainer.length} setting(s)${data.gamesSource === 'file' ? ' and the games.json sources' : ''} from the container into this page?`)) return;
     setBusy(true);
     try {
-      const r = await api('/api/admin/import', {});
+      const r = await api('/api/admin/import', { rev: data.rev });
       await load();
       setStatus({ ok: true, text: `Copied ${r.copied.length} setting(s). You can now delete them from the container (keep ADMIN_PASSWORD).` });
     } catch (e) { setStatus({ ok: false, text: e.message }); }
@@ -126,7 +126,14 @@ function Settings() {
   const isSet = (k) => { const v = data.values[k]; return typeof v.saved === 'boolean' ? v.saved || v.container : Boolean(v.saved || v.container); };
   const missing = REQUIRED.filter((k) => !isSet(k));
 
+  const panelLink = data.panelKey ? `${location.origin}/?key=${encodeURIComponent(data.panelKey)}` : location.origin;
   return html`
+    <section class="card link">
+      <div><b>Panel link</b>
+        <small>${data.panelKey ? 'The panel and any browser need this once; after that a cookie keeps them signed in.' : 'No panel key: anyone who can reach this address can control the room.'}</small>
+        <code class="linkbox">${panelLink}</code></div>
+      <button type="button" onClick=${() => navigator.clipboard?.writeText(panelLink).then(() => setStatus({ ok: true, text: 'Link copied' }), () => {})}>Copy link</button>
+    </section>
     <p class="intro">Values here override the container's settings. Leave a field blank to use the container's value, shown in grey.</p>
     ${missing.length > 0 && html`<section class="card missing"><b>Not set anywhere:</b> ${missing.map((k) => html`<code>${k}</code> `)}
       <small>The panel can't reach these services until they're filled in below.</small></section>`}
@@ -227,7 +234,7 @@ function EntityList({ value, base, domain, entities, onChange }) {
 const MAX_FAVS = 8;
 function EffectFavourites({ value, base, onChange }) {
   const [all, setAll] = useState(null);
-  useEffect(() => { api('/api/admin/light-effects').then(setAll).catch(() => setAll([])); }, []);
+  useEffect(() => { api('/api/admin/light-effects').then((l) => setAll(withoutWledOwn(l))).catch(() => setAll([])); }, []);
   const split = (v) => (v ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
   const own = value ? split(value) : null;
   const picked = own || split(base);

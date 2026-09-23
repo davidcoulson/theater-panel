@@ -46,6 +46,7 @@ export const FIELDS = [
   { group: 'Games', key: 'STEAM_API_KEY', label: 'Steam Web API key', type: 'secret', help: 'steamcommunity.com/dev/apikey' },
   { group: 'Games', key: 'STEAM_ID', label: 'SteamID64', type: 'text' },
 
+  { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },
   { group: 'Display', key: 'SHOW_NETWORK_BADGES', label: 'Streaming network labels on posters', type: 'bool', default: false },
@@ -71,16 +72,24 @@ export function isAdmin(req) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function login(res, body) {
+// Wrong passwords lock the page for a while; parallel guesses hit the same counter.
+let fails = 0;
+let lockedUntil = 0;
+
+export async function login(res, body, https = true) {
   if (!config.adminPassword) throw httpError(403, 'Set ADMIN_PASSWORD on the container to use the admin page.');
+  if (Date.now() < lockedUntil) throw httpError(429, `Too many attempts. Try again in ${Math.ceil((lockedUntil - Date.now()) / 1000)}s.`);
   const a = Buffer.from(String(body.password || '')); const b = Buffer.from(config.adminPassword);
   if (!(a.length === b.length && timingSafeEqual(a, b))) {
-    await new Promise((r) => setTimeout(r, 800)); // slow down guessing
+    fails += 1;
+    if (fails >= 5) { lockedUntil = Date.now() + Math.min(15 * 60e3, 30e3 * 2 ** (fails - 5)); }
+    await new Promise((r) => setTimeout(r, 800));
     throw httpError(401, 'Wrong password');
   }
+  fails = 0; lockedUntil = 0;
   const exp = Date.now() + 30 * DAY; const nonce = randomBytes(9).toString('base64url');
   const v = `${exp}.${nonce}.${sign(`${exp}.${nonce}`)}`;
-  res.setHeader('set-cookie', `${COOKIE}=${encodeURIComponent(v)}; Path=/; Max-Age=${30 * 86400}; HttpOnly; SameSite=Strict`);
+  res.setHeader('set-cookie', `${COOKIE}=${encodeURIComponent(v)}; Path=/; Max-Age=${30 * 86400}; HttpOnly; SameSite=Strict${https ? '; Secure' : ''}`);
   return { ok: true };
 }
 
@@ -108,6 +117,9 @@ export async function view() {
   const gamesSaved = Boolean(settings().games);
   return {
     fields: FIELDS, values, rev: settings().rev || 0,
+    // The link the wall panel (and any browser) needs: without the key everything returns 401.
+    panelKey: config.panelKey,
+    open: !config.panelKey,
     // Settings still coming from the container (what Import would copy).
     fromContainer: FIELDS.filter((f) => process.env[f.key] && !saved[f.key]).map((f) => f.key),
     games: (await loadGames()) || { switcher: {}, sources: [] },
@@ -141,8 +153,9 @@ export function save(body) {
 
 // Copy every setting that only exists on the container (tokens included) and the games.json
 // sources into the saved settings, so the container's variables can then be deleted.
-export async function importContainer() {
+export async function importContainer(rev) {
   const cur = settings();
+  if (rev !== undefined && rev !== (cur.rev || 0)) throw httpError(409, 'Settings changed since this page loaded. Reload and try again.');
   const vars = { ...cur.vars };
   const copied = [];
   for (const f of FIELDS) {

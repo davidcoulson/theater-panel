@@ -11,14 +11,15 @@
 //                                            signed so the proxy cannot be used to reach
 //                                            arbitrary hosts on the LAN.
 
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from './config.mjs';
 
 // Stable across restarts (so image links in an open page keep working), derived from the
 // configured secrets unless IMAGE_SECRET is set.
-const secret = createHash('sha256').update(process.env.IMAGE_SECRET || `${config.ha.token}|${config.plex.token}|${config.seerr.apiKey}`).digest();
+// IMAGE_SECRET is generated on first run (see config.mjs) so /img/ext links can't be forged.
+const secret = createHash('sha256').update(process.env.IMAGE_SECRET || config.imageSecret || randomBytes(32).toString('hex')).digest();
 const dir = join(config.cacheDir, 'img');
 let writesSincePrune = 0;
 
@@ -46,7 +47,8 @@ function resolve(url) {
   let m;
   if ((m = u.pathname.match(/^\/img\/plex\/(\d{2,4})x(\d{2,4})$/))) {
     const p = u.searchParams.get('p');
-    if (!p || !p.startsWith('/') || !config.plex.url) return null;
+    // Only Plex's own media paths: "//host/x" would make Plex fetch somewhere else entirely.
+    if (!p || !/^\/(library|photo|metadata)\/[^/]/.test(p) || !config.plex.url) return null;
     const q = new URLSearchParams({
       url: p, width: m[1], height: m[2], minSize: '1', upscale: '1', format: 'jpeg', quality: '80',
       'X-Plex-Token': config.plex.token,
