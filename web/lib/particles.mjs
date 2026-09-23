@@ -107,14 +107,16 @@ function drawSettled(ctx, k, ledges) {
   }
 }
 
-export function Particles({ kind, paused = false }) {
+// intensity: 1 is the usual amount, 2 twice as much, 0.5 half.
+export function Particles({ kind, intensity = 1, paused = false }) {
   const ref = useRef();
   useEffect(() => {
     const cv = ref.current, k = KINDS[kind];
     if (!cv || !k) return;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    let ps = Array.from({ length: k.n }, () => spawn(k, true));
+    const count = Math.max(1, Math.round(k.n * intensity));
+    let ps = Array.from({ length: count }, () => spawn(k, true));
     let ledges = k.land ? findLedges(cv) : [];
     let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0;
     const frame = () => {

@@ -151,6 +151,8 @@ function build(env) {
     theme: env.THEME === 'sofa' ? 'sofa' : 'classic',
     // Holiday accent on top of the theme: 'auto' follows the calendar (see accents.mjs).
     accent: env.ACCENT || 'auto',
+    // 0..100: how much weather the accent puts over the lobby (50 is the usual amount).
+    accentIntensity: Math.max(0, Math.min(100, Number(env.ACCENT_INTENSITY ?? 50) || 0)),
     birthdays: env.BIRTHDAYS || '',
     qualityBadges: env.SHOW_QUALITY_BADGES !== 'false',
     networkBadges: env.SHOW_NETWORK_BADGES === 'true',
