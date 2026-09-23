@@ -176,7 +176,7 @@ get(/^\/api\/state$/, () => ({
   sessions,
   streams,
   entities: config.entities,
-  ui: { ...config.ui, birthdays: undefined, accent: accentNow() },
+  ui: { ...config.ui, birthdays: undefined, accent: accentNow(), dogName: config.entities.dogName },
   projectorApps: config.projectorApps,
   effectFavourites: config.effectFavourites,
   build: config.build,
@@ -396,6 +396,18 @@ const server = createServer(async (req, res) => {
       const svg = await qrSvg(url.searchParams.get('url') || '/vote');
       res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" });
       res.end(svg);
+      return;
+    }
+
+    // A snapshot of the dog camera, so the panel never needs an HA token. Only that one entity,
+    // and only while it is configured, so this cannot become a general camera proxy.
+    if (path === '/api/camera.jpg') {
+      const id = config.entities.dogCamera;
+      if (!id || !config.ha.url || !config.ha.token) { res.writeHead(404).end(); return; }
+      const r = await fetch(`${config.ha.url}/api/camera_proxy/${encodeURIComponent(id)}`, { headers: { authorization: `Bearer ${config.ha.token}` } });
+      if (!r.ok) { res.writeHead(502).end(); return; }
+      res.writeHead(200, { 'content-type': r.headers.get('content-type') || 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+      res.end(Buffer.from(await r.arrayBuffer()));
       return;
     }
 

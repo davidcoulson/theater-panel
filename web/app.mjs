@@ -117,6 +117,35 @@ function Weather({ decor = '' }) {
   if (!hol?.weather || !intensity || renderFlags.has('noanim')) return null;
   return html`<${Particles} kind=${hol.weather} intensity=${intensity} decor=${decor} key=${`${hol.weather}-${acc}-${intensity}-${decor}`} paused=${theater} />`;
 }
+// The dog wants to come in: UniFi hears barking or sees an animal on the deck camera, and the
+// panel says so with a snapshot - over a film too, which a doorbell would not earn. Dismiss it,
+// or it clears itself once the sensors go quiet and a couple of minutes have passed.
+function DogAtDoor() {
+  const ents = useStore((s) => s.entities);
+  const name = useStore((s) => s.ui?.dogName) || 'The dog';
+  const states = useStore((s) => (ents.dogSensors || []).map((id) => s.states[id]?.state).join(','));
+  const ids = ents.dogSensors || [];
+  // "?dog=1" puts the card up for a look without waiting for the real thing.
+  const barking = route.params.dog === '1' || ids.some((id, i) => states.split(',')[i] === 'on');
+  const [since, setSince] = useState(0);
+  const [hidden, setHidden] = useState(0);
+  const [shot, setShot] = useState(0);
+  useEffect(() => { if (barking) { setSince(Date.now()); setShot(Date.now()); } }, [barking]);
+  // refresh the snapshot every few seconds while it is up
+  useEffect(() => {
+    if (!since) return;
+    const t = setInterval(() => setShot(Date.now()), 4000);
+    const off = setTimeout(() => setSince(0), 150000);
+    return () => { clearInterval(t); clearTimeout(off); };
+  }, [since]);
+  if (!ids.length || !since || hidden > since) return null;
+  return html`<div class="dog" role="status">
+    <img src=${`/api/camera.jpg?t=${shot}`} alt="" onError=${(e) => { e.target.style.display = 'none'; }} />
+    <div class="t"><b>${name} is at the deck door</b><span>${barking ? 'Barking now' : 'Heard a moment ago'}</span></div>
+    <button type="button" onClick=${() => setHidden(Date.now())}>Dismiss</button>
+  </div>`;
+}
+
 // A request landing in Plex is worth ten seconds of confetti, whatever the season.
 function Celebration() {
   const at = useStore((s) => s.celebrateAt) || 0;
@@ -273,12 +302,14 @@ function App() {
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
   if (r.name === 'showtime' || r.name === 'showing') return html`<${View} key=${r.name} />
     ${r.name === 'showing' && html`<${Weather} decor="tree" />`}
+    <${DogAtDoor} />
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />
     <${Weather} key=${`fx-${r.name}`} />
     <${Celebration} />
+    <${DogAtDoor} />
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
