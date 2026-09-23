@@ -38,17 +38,18 @@ function thanksgiving(year) {
   return 1 + ((4 - first + 7) % 7) + 21;                  // day of month
 }
 
-// Which accent the calendar says, or 'none'. Windows are a week or so either side of the day,
-// so the panel dresses up before and stays up through the day after.
+// Which accent the calendar says. The house rules: Halloween is all of October; Thanksgiving
+// runs from the Saturday before through the day; Christmas starts the Friday after Thanksgiving
+// and runs to the day before New Year's Eve; New Year is the Eve and the Day.
 export function byCalendar(now = new Date(), birthdays = []) {
   const m = now.getMonth() + 1, d = now.getDate(), y = now.getFullYear();
   const bday = birthdays.find((b) => b.month === m && b.day === d);
   if (bday) return { id: 'birthday', who: bday.name };
-  if (m === 10 && d >= 24) return { id: 'halloween' };
+  if (m === 10) return { id: 'halloween' };
   const tg = thanksgiving(y);
-  if (m === 11 && d >= tg - 6 && d <= tg + 1) return { id: 'thanksgiving' };
-  if (m === 12 && d >= 12 && d <= 26) return { id: 'christmas' };
-  if ((m === 12 && d >= 27) || (m === 1 && d <= 2)) return { id: 'newyear' };
+  if (m === 11 && d >= tg - 5 && d <= tg) return { id: 'thanksgiving' };
+  if ((m === 11 && d > tg) || (m === 12 && d <= 30)) return { id: 'christmas' };
+  if ((m === 12 && d === 31) || (m === 1 && d === 1)) return { id: 'newyear' };
   if (m === 2 && d >= 10 && d <= 14) return { id: 'valentines' };
   // otherwise the season (northern hemisphere, by the equinoxes and solstices)
   const doy = m * 100 + d;
