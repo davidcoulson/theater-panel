@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -57,6 +57,16 @@ export function Lobby() {
 function useArrivals() {
   const [all] = useLoad(() => get('/api/seerr/arrivals').catch(() => []), []);
   const [gone, setGone] = useState(() => { try { return JSON.parse(localStorage.getItem('tp-dismissed') || '[]'); } catch { return []; } });
+  // The first sight of a new arrival is worth confetti; after that it is just a chip.
+  useEffect(() => {
+    if (!all?.length) return;
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem('tp-seen-arrivals') || '[]'); } catch {}
+    const fresh = all.map((a) => a.id).filter((id) => !seen.includes(id));
+    if (!fresh.length) return;
+    try { localStorage.setItem('tp-seen-arrivals', JSON.stringify([...seen, ...fresh].slice(-80))); } catch {}
+    if (seen.length) celebrate();          // not on this panel's very first load
+  }, [all]);
   const dismiss = (id) => {
     const next = [...gone, id].slice(-50);
     setGone(next);

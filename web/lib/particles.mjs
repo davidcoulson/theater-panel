@@ -226,10 +226,48 @@ function drawSleigh(ctx, x, y, s, t, dir) {
   }
   ctx.restore();
 }
+// A tree in the corner, with bulbs that twinkle out of step. Drawn on screens that have floor
+// to spare (the idle board), not the lobby, where every inch is a card.
+const BULBS = ['#E24B4B', '#F2C94C', '#6FB7E8', '#7FB63C', '#F2A0B2'];
+function drawTree(ctx, x, base, h, t) {
+  const w = h * 0.52;
+  ctx.fillStyle = '#4A3018';
+  ctx.fillRect(x - h * 0.045, base - h * 0.1, h * 0.09, h * 0.1);       // trunk
+  ctx.fillStyle = '#2F5E2A';
+  for (let i = 0; i < 3; i++) {                                         // three tiers
+    const top = base - h * (0.28 + i * 0.24), half = (w / 2) * (1 - i * 0.24);
+    ctx.beginPath();
+    ctx.moveTo(x, top - h * 0.16);
+    ctx.lineTo(x + half, base - h * (0.08 + i * 0.24));
+    ctx.lineTo(x - half, base - h * (0.08 + i * 0.24));
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#F2D69B';                                            // star
+  const sx = x, sy = base - h * 0.94;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? h * 0.03 : h * 0.075, a = -Math.PI / 2 + (i * Math.PI) / 5;
+    ctx[i ? 'lineTo' : 'moveTo'](sx + r * Math.cos(a), sy + r * Math.sin(a));
+  }
+  ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 22; i++) {                                        // bulbs, twinkling out of step
+    const tier = i % 3, f = (i * 0.37) % 1;
+    const half = (w / 2) * (1 - tier * 0.24) * (0.2 + f * 0.8);
+    const bx = x + (i % 2 ? half : -half);
+    const by = base - h * (0.1 + tier * 0.24) - f * h * 0.16;
+    const lit = 0.45 + 0.55 * Math.max(0, Math.sin(t * 1.6 + i * 1.9));
+    ctx.globalAlpha = lit;
+    ctx.fillStyle = BULBS[i % BULBS.length];
+    ctx.beginPath(); ctx.arc(bx, by, h * 0.022, 0, 6.29); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
 const newSleigh = () => ({ x: 0, dir: 1, size: rnd(34, 46), y: rnd(60, 220), wait: rnd(20, 60), flying: false });
 
 function drawSettled(ctx, k, ledges) {
   for (const l of ledges) {
+    // Snowmen stand whether or not this ledge has gathered any snow.
+    for (const m of l.men) drawSnowman(ctx, m.x, l.y - heightAt(l, m.x) + 1, m.h * m.scale);
     if (k.land === 'mound') {
       if (!l.cols.some((h) => h > 0.5)) continue;
       ctx.fillStyle = '#FAF8F2';
@@ -241,7 +279,6 @@ function drawSettled(ctx, k, ledges) {
       }
       ctx.lineTo(l.x1, l.y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(160,185,200,.35)'; ctx.lineWidth = 1; ctx.stroke();
-      for (const m of l.men) drawSnowman(ctx, m.x, l.y - heightAt(l, m.x) + 1, m.h * m.scale);
     } else {
       for (const it of l.items) {
         ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot); ctx.fillStyle = it.color;
@@ -254,7 +291,7 @@ function drawSettled(ctx, k, ledges) {
 }
 
 // intensity: 1 is the usual amount, 2 twice as much, 0.5 half.
-export function Particles({ kind, intensity = 1, paused = false }) {
+export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
   const ref = useRef();
   useEffect(() => {
     const cv = ref.current, k = KINDS[kind];
@@ -284,16 +321,16 @@ export function Particles({ kind, intensity = 1, paused = false }) {
           l.men = l.men.filter((m) => m.scale > 0.4);
         }
       }
-      // Once a drift is deep enough, someone builds a snowman in it.
-      if (k.men && sinceMen > 5) {
+      // Snowmen stand on the floor at the bottom of the room, big enough to read from the sofa.
+      // They are not gated on drift depth: nearly every flake lands on a card long before it
+      // reaches the floor, so the floor never gets deep, and they would never appear.
+      if (k.men && sinceMen > 20) {
         sinceMen = 0;
-        for (const l of ledges) {
-          const room = l.x1 - l.x0 > 600 ? 3 : 1;
-          if (l.men.length >= room || Math.random() > 0.4) continue;
-          const deep = [];
-          for (let i = 2; i < l.cols.length - 2; i++) if (l.cols[i] > 7) deep.push(l.x0 + i * COL + COL / 2);
-          const spot = deep.filter((x) => l.men.every((m) => Math.abs(m.x - x) > 90));
-          if (spot.length) l.men.push({ x: pick(spot), h: rnd(26, 40), scale: 1 });
+        const floor = ledges[ledges.length - 1];
+        if (floor && floor.men.length < 3) {
+          const spots = [];
+          for (let x = 260; x < W - 160; x += 40) if (floor.men.every((m) => Math.abs(m.x - x) > 360)) spots.push(x);
+          if (spots.length) floor.men.push({ x: pick(spots), h: rnd(180, 250), scale: 1 });
         }
       }
       if (sleigh) {
@@ -308,6 +345,7 @@ export function Particles({ kind, intensity = 1, paused = false }) {
       }
       ctx.clearRect(0, 0, W, H);
       drawSettled(ctx, k, ledges);
+      if (decor === 'tree') drawTree(ctx, W - 210, H - 40, 300, t);
       if (sleigh?.flying) drawSleigh(ctx, sleigh.x, sleigh.y, sleigh.size, t, sleigh.dir);   // snow falls in front of it
       for (let i = 0; i < ghosts.length; i++) {
         const g = ghosts[i];
@@ -358,6 +396,6 @@ export function Particles({ kind, intensity = 1, paused = false }) {
     };
     frame();
     return () => { live = false; };
-  }, [kind, paused]);
+  }, [kind, intensity, decor, paused]);
   return html`<canvas class="fx-layer" ref=${ref} aria-hidden="true"></canvas>`;
 }
