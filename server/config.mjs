@@ -57,7 +57,9 @@ function build(env) {
   const c = {
   port: Number(env.PORT || 8787),
   // Optional shared key. When set, a client must present it once (?key=...) and gets a cookie.
-  panelKey: env.PANEL_KEY || '',
+  // ALLOW_OPEN=1 means "this network is trusted": no key is generated, and a key generated earlier
+  // stops being enforced (it stays in settings, so turning this off again restores it).
+  panelKey: process.env.ALLOW_OPEN === '1' ? '' : env.PANEL_KEY || '',
   // Addresses that skip the panel key (the wall panel, the house LAN). Anything else still needs it.
   trustedNetworks: list(env.TRUST_NETWORKS, []),
   // Proxies whose X-Forwarded-For may be believed. Docker's own networks by default; add the
