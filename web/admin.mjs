@@ -228,6 +228,12 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
     return html`<div class="field check"><label><input type="checkbox" checked=${eff === 'true'} onChange=${(e) => onChange(String(e.target.checked))} />${label}</label>
       ${value !== '' && html`<button type="button" class="link" onClick=${() => onChange('')}>Use container value</button>`}${note}</div>`;
   }
+  if (f.type === 'range') {
+    const eff = value === '' ? (base.container === '' ? f.default : Number(base.container)) : Number(value);
+    return html`<div class="field"><label for=${id}>${label}<b class="val">${eff}${f.unit || ''}</b></label>
+      <div class="row"><input id=${id} type="range" min=${f.min ?? 0} max=${f.max ?? 100} step=${f.step ?? 1} value=${eff} onInput=${(e) => onChange(e.target.value)} />
+      ${value !== '' && html`<button type="button" class="link" onClick=${() => onChange('')}>Reset</button>`}</div>${note}</div>`;
+  }
   if (f.type === 'select') {
     return html`<div class="field"><label for=${id}>${label}</label>
       <select id=${id} value=${value} onChange=${(e) => onChange(e.target.value)}>

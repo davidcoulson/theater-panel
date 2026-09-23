@@ -69,6 +69,8 @@ input[type=text], input[type=password], select { width: 100%; min-width: 0; heig
 input::placeholder { color: var(--muted); opacity: .8; }
 input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--acc); }
+input[type=range] { flex: 1; height: 40px; accent-color: var(--acc); }
+.lbl .val { margin-left: auto; font-family: var(--mono); font-weight: 600; color: var(--acc); }
 
 button { font: inherit; font-weight: 600; height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }

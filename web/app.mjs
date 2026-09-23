@@ -105,10 +105,13 @@ function currentAccent() {
 // Snow, leaves, petals, confetti... falling over the lobby and settling on the tops of the cards.
 function Weather() {
   const acc = useStore((s) => s.ui?.accent?.id);
+  const setting = useStore((s) => s.ui?.accentIntensity);
   const theater = useStore((s) => Boolean(s.theater?.active));
   const hol = currentAccent();
-  if (!hol?.weather || renderFlags.has('noanim')) return null;
-  return html`<${Particles} kind=${hol.weather} key=${`${hol.weather}-${acc}`} paused=${theater} />`;
+  // 0..100 from the settings page (50 is the usual amount); "?intensity=100" tries one here.
+  const intensity = Math.max(0, Math.min(100, Number(route.params.intensity ?? setting ?? 50))) / 50;
+  if (!hol?.weather || !intensity || renderFlags.has('noanim')) return null;
+  return html`<${Particles} kind=${hol.weather} intensity=${intensity} key=${`${hol.weather}-${acc}-${intensity}`} paused=${theater} />`;
 }
 let accentOverride = null;
 let accentSetting = { id: 'none' };
