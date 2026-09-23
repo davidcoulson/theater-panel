@@ -58,6 +58,12 @@ function build(env) {
   port: Number(env.PORT || 8787),
   // Optional shared key. When set, a client must present it once (?key=...) and gets a cookie.
   panelKey: env.PANEL_KEY || '',
+  // Addresses that skip the panel key (the wall panel, the house LAN). Anything else still needs it.
+  trustedNetworks: list(env.TRUST_NETWORKS, []),
+  // Proxies whose X-Forwarded-For may be believed. Docker's own networks by default; add the
+  // address of Traefik or the k3s ingress if the panel is reached through one, or a client on a
+  // trusted network will look like the proxy instead of itself.
+  trustedProxies: list(env.TRUSTED_PROXIES, ['127.0.0.1', '::1', '172.16.0.0/12']),
   imageSecret: env.IMAGE_SECRET || '',
   cacheDir: env.CACHE_DIR || './cache',
   imageCacheMb: Number(env.IMAGE_CACHE_MB || 2048),   // posters are small and never change; keep plenty
