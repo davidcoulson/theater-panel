@@ -156,6 +156,37 @@ script:
       - action: light.turn_off
         target: { entity_id: light.home_theater_wled }
 
+  # The pre-roll: the lights go down over eight seconds while a deep swell builds on the theater
+  # speakers, then the panel starts the film (it waits PREROLL_SECONDS and calls play itself).
+  # The sound is the panel's own synthesised swell at /assets/preroll.mp3 - not anybody's sound
+  # logo - served without a panel key so the speaker can fetch it.
+  theater_preroll:
+    alias: "Theater: pre-roll"
+    mode: restart
+    fields:
+      speaker:
+        description: Media player for the swell
+        example: media_player.home_theater_2
+      url:
+        description: URL of the sound
+        example: https://ht-kiosk.coulson.io/assets/preroll.mp3
+    sequence:
+      - action: light.turn_off
+        target: { entity_id: light.media_room_downlights }
+        data: { transition: 8 }
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_accent_lights }
+        data: { brightness_pct: 3, rgb_color: [255, 110, 35], transition: 8 }
+      - action: light.turn_off
+        target: { entity_id: light.home_theater_wled }
+      - condition: template
+        value_template: "{{ speaker is defined and speaker and url is defined and url }}"
+      - action: media_player.play_media
+        target: { entity_id: "{{ speaker }}" }
+        data:
+          media_content_id: "{{ url }}"
+          media_content_type: music
+
   theater_lights_intermission:
     alias: "Theater: lights for intermission"
     sequence:

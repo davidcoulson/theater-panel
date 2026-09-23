@@ -86,6 +86,13 @@ html.a-winter { --gold: #CFE0EC; }
 html.a-spring { --gold: #E39AB0; }
 html.a-summer { --gold: #F2C94C; }
 html.a-fall { --gold: #C75E12; }
+/* scan to request: the QR and a line of explanation */
+.scan-body { display: flex; gap: 34px; align-items: center; padding: 8px 4px; }
+.scan-body .qr { width: 300px; height: 300px; flex-shrink: 0; background: #F4F0E8; border-radius: 18px; padding: 14px; }
+.scan-body .scan-text { display: flex; flex-direction: column; gap: 18px; }
+.scan-body p { margin: 0; font-size: 24px; line-height: 1.45; color: var(--on-choc); max-width: 640px; }
+.scan-body code { font-family: var(--mono); font-size: 18px; color: var(--gold); }
+
 /* the weather layer: a canvas over the lobby that snow, leaves and confetti fall through */
 .fx-layer { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 6; }
 /* the emblems fidget now and then: a wobble, a wag, a beat, candles that never sit still */

@@ -19,6 +19,14 @@ export async function runAction(ha, body) {
     }
 
     case 'play': {
+      // With a pre-roll configured, the swell starts on the theater speakers while the lights go
+      // down and the film follows a few seconds later. Returns at once so the panel is not held
+      // open for the length of the swell.
+      if (config.preroll.url && !body.noPreroll) {
+        await script(ha, 'preroll', { speaker: e.musicPlayers[0] || e.musicPlayer, url: config.preroll.url });
+        setTimeout(() => runAction(ha, { ...body, noPreroll: true }).catch((err) => console.warn('[preroll] film did not start:', err.message)), config.preroll.seconds * 1000);
+        return { preroll: config.preroll.seconds };
+      }
       // Store the chosen tracks on the Plex part first, then hand over to HA, which wakes the
       // projector, opens Plex on the Apple TV, starts playback and runs Movie time.
       if (body.partId && (body.audioStreamID != null || body.subtitleStreamID != null)) {

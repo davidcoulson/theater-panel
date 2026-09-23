@@ -23,6 +23,8 @@ export function Lobby() {
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
   const arrivals = useArrivals();
   const [streamsOpen, setStreamsOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const services = useStore((s) => s.services) || {};
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
 
@@ -36,6 +38,7 @@ export function Lobby() {
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
+      ${services.seerr && html`<button type="button" class="chip" onClick=${() => setScanOpen(true)}><${Icon} name="plus" size=${20} />Scan to request</button>`}
       ${downloading > 0 && html`<button type="button" class="chip warn" onClick=${() => go('request')}><${Icon} name="dl" size=${20} />${downloading} downloading</button>`}
     <//>
     <div class="lobby-grid">
@@ -49,7 +52,30 @@ export function Lobby() {
       </div>
     </div>
     ${streamsOpen && html`<${StreamsSheet} onClose=${() => setStreamsOpen(false)} />`}
+    ${scanOpen && html`<${ScanToRequest} onClose=${() => setScanOpen(false)} />`}
   </main>`;
+}
+
+// A guest with a phone can add something to the request queue without borrowing the panel: the
+// QR opens Seerr's own search page. The panel only draws the code; Seerr handles the sign-in.
+function ScanToRequest({ onClose }) {
+  const [url] = useLoad(() => get('/api/seerr/url').catch(() => null), []);
+  const link = url?.url || '';
+  return html`<div class="sheet dark tx-suede" role="dialog" aria-label="Scan to request">
+    <div class="h">
+      <div><div class="eyebrow">Anything missing?</div><div class="t">Scan to request</div></div>
+      <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
+    </div>
+    <div class="scan-body">
+      ${link
+        ? html`<img class="qr" src=${`/api/vote/qr.svg?url=${encodeURIComponent(link)}`} alt="" />
+          <div class="scan-text">
+            <p>Point a phone at the code, search for the film or show, and ask for it. It lands in the request queue and the panel says so when it arrives in Plex.</p>
+            <code>${link.replace(/^https?:\/\//, '')}</code>
+          </div>`
+        : html`<p class="empty">Seerr is not set up yet.</p>`}
+    </div>
+  </div>`;
 }
 
 // Requested titles that landed in Plex in the last two days, newest first, minus ones dismissed on
@@ -143,7 +169,10 @@ function Continue() {
 
 export async function play(item, resume = true, extra = {}) {
   const r = await act({ action: 'play', ratingKey: item.id, type: item.type, offset: resume ? item.viewOffset : 0, ...extra });
-  if (r) { toast(`Starting ${item.showTitle ? `${item.showTitle}: ` : ''}${item.title}`); go('showtime'); }
+  if (!r) return;
+  const name = `${item.showTitle ? `${item.showTitle}: ` : ''}${item.title}`;
+  toast(r.preroll ? `Lights down… ${name} in ${r.preroll}s` : `Starting ${name}`);
+  go('showtime');
 }
 
 function Scenes() {
