@@ -103,7 +103,7 @@ async function readBody(req) {
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
-const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/vote', '/vote/', '/api/vote', '/healthz']);
+const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/assets/preroll.mp3', '/vote', '/vote/', '/api/vote', '/healthz']);
 
 // Trusted networks skip the key entirely (see TRUST_NETWORKS on the settings page).
 let isProxy = netList(config.trustedProxies);
@@ -280,6 +280,8 @@ get(/^\/api\/seerr\/provider\/([a-z]+)$/, (m, q) => seerr.byProvider(m[1], q.get
 get(/^\/api\/seerr\/(movie|tv)\/(\d+)$/, (m) => seerr.details(m[1], m[2]));
 get(/^\/api\/seerr\/requests$/, (m, q) => seerr.requests(Math.min(Number(q.get('take') || 8), 30)));
 get(/^\/api\/seerr\/counts$/, () => seerr.counts());
+// Where a guest's phone should go to ask for something. Just the address; no key.
+get(/^\/api\/seerr\/url$/, () => ({ url: config.seerr.url ? `${config.seerr.url}/discover` : '' }));
 get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(config.arrivalHours) : []));
 post(/^\/api\/seerr\/request$/, (m, q, body) => seerr.request(body));
 

@@ -133,6 +133,13 @@ function build(env) {
     if (!pkg || !/^[\w.]+$/.test(pkg)) return null;
     return { name, package: pkg, ...(icon && /^[a-z0-9-]+:[a-z0-9-]+$|^[a-z]+$/.test(icon) ? { icon } : {}) };
   }).filter(Boolean),
+  // Pre-roll: a deep swell on the theater speakers while the lights go down, before the film
+  // starts. The URL has to be one the speaker itself can fetch (the panel serves the sound at
+  // /assets/preroll.mp3, which needs no key); blank turns the whole thing off.
+  preroll: {
+    url: env.PREROLL_URL || '',
+    seconds: Math.max(3, Math.min(60, Number(env.PREROLL_SECONDS || 16))),
+  },
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
   // How far back the "Now in Plex" chip looks for requests that arrived.
