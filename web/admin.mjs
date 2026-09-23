@@ -17,8 +17,22 @@ async function api(path, body) {
   return data;
 }
 
+// The settings are split over pages, picked from the menu down the left. Unsaved edits survive
+// moving between pages: one draft holds everything, the page only decides what is on screen.
+const PAGES = [
+  { id: 'overview', label: 'Overview', icon: 'home' },
+  { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Plex', 'Seerr'], blurb: 'Where the panel gets its pictures and its room from.' },
+  { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Lights'], blurb: 'The Home Assistant entities behind each control, and the favourite moods.' },
+  { id: 'projector', label: 'Projector & games', icon: 'pad', groups: ['Projector apps', 'Games'], blurb: 'Apps launched over ADB, the HDMI switcher, consoles and the gaming PC.' },
+  { id: 'display', label: 'Display', icon: 'eye', groups: ['Display'], blurb: 'Theme, holiday accents, the idle screen and what shows on posters.' },
+  { id: 'access', label: 'Access', icon: 'user', groups: ['Access'], blurb: 'Who gets in without the panel key.' },
+];
+const pageFromHash = () => PAGES.find((p) => p.id === location.hash.replace(/^#\/?/, ''))?.id || 'overview';
+
 function App() {
   const [session, setSession] = useState(null);
+  const [page, setPage] = useState(pageFromHash());
+  useEffect(() => { const on = () => setPage(pageFromHash()); addEventListener('hashchange', on); return () => removeEventListener('hashchange', on); }, []);
   const check = () => api('/api/admin/session').then(setSession).catch((e) => setSession({ error: e.message }));
   useEffect(() => { check(); }, []);
   if (!session) return null;
@@ -26,14 +40,22 @@ function App() {
   if (!session.configured) return html`<${Shell}><section class="card"><h2>Admin is off</h2>
     <p>Set <code>ADMIN_PASSWORD</code> on the theater-panel container (Unraid: Edit, Advanced view), then reload this page.</p></section><//>`;
   if (!session.admin) return html`<${Shell}><${Login} onDone=${check} /><//>`;
-  return html`<${Shell} signOut=${() => api('/api/admin/logout', {}).then(check)}><${Settings} /><//>`;
+  return html`<${Settings} page=${page} signOut=${() => api('/api/admin/logout', {}).then(check)} />`;
 }
 
-function Shell({ children, signOut }) {
+// The frame: menu down the left, the page on the right. `dirtyPages` marks pages with unsaved
+// edits so they are not lost behind the menu.
+function Shell({ children, signOut, page, dirtyPages = new Set() }) {
   const [build, setBuild] = useState({});
   useEffect(() => { fetch('/api/state').then((r) => r.json()).then((s) => setBuild(s.build || {})).catch(() => {}); }, []);
-  return html`<header class="top"><div class="brand"><img src="/assets/icon.png" alt="" /><div><b>Theater panel</b><span>${build.version ? `v${build.version}${build.time ? ` · ${build.time}` : ''}` : 'Settings'}</span></div></div>
-    <nav>${signOut && html`<a href="/" target="_blank" rel="noopener">Open panel</a><button type="button" class="link" onClick=${signOut}>Sign out</button>`}</nav></header>
+  return html`<aside class="side">
+      <div class="brand"><img src="/assets/icon.png" alt="" /><div><b>Theater panel</b><span>${build.version ? `v${build.version}` : 'Settings'}</span></div></div>
+      ${signOut && html`<nav class="menu">${PAGES.map((p) => html`<a href=${`#/${p.id}`} aria-current=${page === p.id ? 'page' : undefined}>
+          <${Icon} name=${p.icon} size=${20} />${p.label}${dirtyPages.has(p.id) && html`<i class="dot" title="Unsaved changes"></i>`}</a>`)}</nav>`}
+      <div class="grow"></div>
+      ${signOut && html`<nav class="menu foot"><a href="/" target="_blank" rel="noopener"><${Icon} name="screen" size=${20} />Open panel</a>
+        <button type="button" onClick=${signOut}><${Icon} name="x" size=${20} />Sign out</button></nav>`}
+    </aside>
     <main>${children}</main>`;
 }
 
@@ -55,7 +77,7 @@ function Login({ onDone }) {
   </form>`;
 }
 
-function Settings() {
+function Settings({ page, signOut }) {
   const [data, setData] = useState(null);
   const [draft, setDraft] = useState({});        // key -> string (secrets: new value or '')
   const [clear, setClear] = useState({});        // secret key -> true to remove the saved one
@@ -74,12 +96,17 @@ function Settings() {
   }
   useEffect(() => { load().catch((e) => setStatus({ ok: false, text: e.message })); }, []);
   useEffect(() => { api('/api/admin/entities').then(setEntities).catch(() => setEntities([])); }, []);
+  useEffect(() => { setStatus(null); scrollTo(0, 0); }, [page]);
 
-  const dirty = useMemo(() => {
-    if (!data) return false;
-    if (gamesDirty || Object.values(clear).some(Boolean)) return true;
-    return data.fields.some((f) => (f.type === 'secret' ? draft[f.key] !== '' : draft[f.key] !== data.values[f.key].saved));
+  const fieldDirty = (f) => (f.type === 'secret' ? draft[f.key] !== '' || Boolean(clear[f.key]) : draft[f.key] !== data.values[f.key].saved);
+  const dirtyPages = useMemo(() => {
+    const out = new Set();
+    if (!data) return out;
+    for (const p of PAGES) if (p.groups && data.fields.some((f) => p.groups.includes(f.group) && fieldDirty(f))) out.add(p.id);
+    if (gamesDirty) out.add('projector');
+    return out;
   }, [data, draft, clear, gamesDirty]);
+  const dirty = dirtyPages.size > 0;
 
   useEffect(() => {
     const warn = (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
@@ -87,14 +114,13 @@ function Settings() {
     return () => removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  if (!data) return html`<p class="muted">${status?.text || 'Loading…'}</p>`;
+  if (!data) return html`<${Shell} page=${page} signOut=${signOut}><p class="muted">${status?.text || 'Loading…'}</p><//>`;
 
   const set = (k, v) => setDraft({ ...draft, [k]: v });
-  const groups = [...new Set(data.fields.map((f) => f.group))];
 
   async function save() {
     setBusy(true); setStatus(null);
-    // Only what changed on this page, so nothing else is touched.
+    // Only what changed, so nothing else is touched.
     const values = {};
     for (const f of data.fields) {
       if (f.type === 'secret') { if (clear[f.key]) values[f.key] = null; else if (draft[f.key]) values[f.key] = draft[f.key]; }
@@ -125,34 +151,52 @@ function Settings() {
   const REQUIRED = ['HA_URL', 'HA_TOKEN', 'PLEX_URL', 'PLEX_TOKEN', 'SEERR_URL', 'SEERR_API_KEY'];
   const isSet = (k) => { const v = data.values[k]; return typeof v.saved === 'boolean' ? v.saved || v.container : Boolean(v.saved || v.container); };
   const missing = REQUIRED.filter((k) => !isSet(k));
+  const current = PAGES.find((p) => p.id === page) || PAGES[0];
 
   const panelLink = data.panelKey ? `${location.origin}/?key=${encodeURIComponent(data.panelKey)}` : location.origin;
-  return html`
+  const overview = html`
+    <h1>Overview</h1>
     <section class="card link">
       <div><b>Panel link</b>
         <small>${data.panelKey ? 'The panel and any browser need this once; after that a cookie keeps them signed in.' : 'No panel key: anyone who can reach this address can control the room.'}</small>
         <code class="linkbox">${panelLink}</code></div>
       <button type="button" onClick=${() => navigator.clipboard?.writeText(panelLink).then(() => setStatus({ ok: true, text: 'Link copied' }), () => {})}>Copy link</button>
     </section>
-    <p class="intro">Values here override the container's settings. Leave a field blank to use the container's value, shown in grey.</p>
     ${missing.length > 0 && html`<section class="card missing"><b>Not set anywhere:</b> ${missing.map((k) => html`<code>${k}</code> `)}
-      <small>The panel can't reach these services until they're filled in below.</small></section>`}
+      <small>The panel can't reach these services until they're filled in under Connections.</small></section>`}
     ${pending && html`<section class="card import"><div><b>${data.fromContainer.length} setting(s)${data.gamesSource === 'file' ? ' and the game sources' : ''} still come from the container.</b>
       <small>Import copies them here, tokens included, so you can delete the container's variables afterwards. Keep ADMIN_PASSWORD on the container.</small></div>
       <button type="button" class="primary" disabled=${busy || dirty} onClick=${importAll}>Import from container</button></section>`}
-    ${!pending && html`<p class="intro ok">Everything is saved here. The container only needs ADMIN_PASSWORD.</p>`}
-    ${groups.map((g) => html`<section class="card" id=${g.toLowerCase().replace(/\W+/g, '-')}>
-      <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} />`}</div>
-      ${data.fields.filter((f) => f.group === g).map((f) => html`<${Field} f=${f} value=${draft[f.key]} base=${data.values[f.key]} entities=${entities}
-        cleared=${clear[f.key]} onClear=${(v) => setClear({ ...clear, [f.key]: v })} onChange=${(v) => set(f.key, v)} />`)}
-      ${g === 'Games' && html`<${GamesEditor} games=${games} source=${data.gamesSource} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />`}
-    </section>`)}
-    <div class=${`savebar ${dirty ? 'show' : ''}`}>
-      <span class=${status ? (status.ok ? 'ok' : 'err') : 'muted'}>${status ? status.text : dirty ? 'Unsaved changes' : 'All changes saved'}</span>
+    <section class="card">
+      <div class="card-head"><h2>Services</h2></div>
+      <div class="services">
+        ${[['Home Assistant', 'HA_URL'], ['Plex', 'PLEX_URL'], ['Seerr', 'SEERR_URL'], ['Steam', 'STEAM_API_KEY']].map(([n, k]) => html`
+          <a class=${`svc ${isSet(k) ? 'on' : ''}`} href="#/connections"><span class="dot"></span>${n}<small>${isSet(k) ? (data.values[k].saved || data.values[k].container || 'configured') : 'not set'}</small></a>`)}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Pages</h2></div>
+      <div class="pages">${PAGES.filter((p) => p.groups).map((p) => html`<a class="pg" href=${`#/${p.id}`}><${Icon} name=${p.icon} size=${22} /><div><b>${p.label}</b><small>${p.blurb}</small></div></a>`)}</div>
+    </section>
+    <p class="intro">${pending ? '' : 'Everything is saved here; the container only needs ADMIN_PASSWORD. '}Values on these pages override the container's settings; a blank field falls back to the container's value, shown in grey.</p>`;
+
+  return html`<${Shell} page=${page} signOut=${signOut} dirtyPages=${dirtyPages}>
+    ${page === 'overview' ? overview : html`
+      <h1>${current.label}</h1>
+      <p class="intro">${current.blurb}</p>
+      ${current.groups.map((g) => html`<section class="card" id=${g.toLowerCase().replace(/\W+/g, '-')}>
+        <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} />`}</div>
+        ${data.fields.filter((f) => f.group === g).map((f) => html`<${Field} f=${f} value=${draft[f.key]} base=${data.values[f.key]} entities=${entities}
+          cleared=${clear[f.key]} onClear=${(v) => setClear({ ...clear, [f.key]: v })} onChange=${(v) => set(f.key, v)} />`)}
+        ${g === 'Games' && html`<${GamesEditor} games=${games} source=${data.gamesSource} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />`}
+      </section>`)}`}
+    <div class=${`savebar ${dirty || status ? 'show' : ''}`}>
+      <span class=${status ? (status.ok ? 'ok' : 'err') : 'muted'}>${status ? status.text : dirty ? `Unsaved changes on ${[...dirtyPages].map((id) => PAGES.find((p) => p.id === id).label).join(', ')}` : 'All changes saved'}</span>
       <span class="grow"></span>
       <button type="button" disabled=${!dirty || busy} onClick=${load}>Discard</button>
       <button type="button" class="primary" disabled=${!dirty || busy} onClick=${save}>${busy ? 'Saving…' : 'Save'}</button>
-    </div>`;
+    </div>
+  <//>`;
 }
 
 const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr' };
