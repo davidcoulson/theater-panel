@@ -17,7 +17,8 @@ export const FIELDS = [
   { group: 'Plex', key: 'PLEX_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.6.3:32400' },
   { group: 'Plex', key: 'PLEX_TOKEN', label: 'Token', type: 'secret' },
   { group: 'Plex', key: 'PLEX_LIBRARIES', label: 'Libraries, in tab order', type: 'libraries', help: 'Movie libraries are merged into one Movies tab. Blank shows every movie and TV library.' },
-  { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV (its Plex app)'], ['projector', "Projector (its own Plex app)"]], help: 'Where Play and Resume start a movie or episode.' },
+  { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV — Plex app'], ['plezy', 'Projector — Plezy'], ['plex', 'Projector — Plex app']], help: 'Which app Play and Resume open. Plezy is opened with a link over ADB; the Plex apps are driven as Plex clients.' },
+  { group: 'Plex', key: 'ENTITY_PROJECTOR_PLEX_PLAYER', label: "Projector's Plex client", type: 'entity', domain: 'media_player', help: 'Only for "Projector — Plex app": HA\'s Plex client for the projector (Plex for Android (TV) - AURORA PRO).' },
   { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
