@@ -19,6 +19,7 @@ import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
 import { netList, clientIp } from './net.mjs';
+import { versions } from './version.mjs';
 import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,6 +134,10 @@ async function serveFile(res, file, cache = 'no-cache') {
 const routes = [];
 const get = (re, fn) => routes.push(['GET', re, fn]);
 const post = (re, fn) => routes.push(['POST', re, fn]);
+
+// Which build is running and whether GHCR has a newer one (Home Assistant shows this as an
+// update entity; see ha/theater.yaml).
+get(/^\/api\/version$/, () => versions());
 
 get(/^\/api\/state$/, () => ({
   ha: { connected: ha.connected, configured: ha.configured, states: ha.states },
