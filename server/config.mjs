@@ -63,6 +63,8 @@ function build(env) {
     appleTvRemote: env.ENTITY_APPLE_TV_REMOTE || 'remote.home_theater',
     // The Plex client entity HA creates for the Apple TV once "Advertise as player" is on.
     plexPlayer: env.ENTITY_PLEX_PLAYER || '',
+    // The projector's own Plex client, as HA's Plex integration names it.
+    projectorPlexPlayer: env.ENTITY_PROJECTOR_PLEX_PLAYER || '',
     musicPlayer: env.ENTITY_MUSIC_PLAYER || 'media_player.home_theater_2',
     // Music Assistant players offered under "Play on"; the first is the theater's own.
     musicPlayers: list(env.ENTITY_MUSIC_PLAYERS, []),
@@ -82,10 +84,14 @@ function build(env) {
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
   },
-  // Where "Play on projector" plays: the Apple TV's Plex app, or the Plex client on the projector
-  // itself (Plezy, opened over ADB with a plezy://play link).
-  playTarget: env.PLAY_TARGET === 'projector' ? 'projector' : 'appletv',
-  projectorPlexPackage: env.PROJECTOR_PLEX_PACKAGE || 'com.edde746.plezy',
+  // Where Play sends a title:
+  //   appletv  - the Apple TV's Plex app (HA's Plex client for it)
+  //   plezy    - Plezy on the projector, opened with a plezy://play link over ADB
+  //   plex     - the official Plex app on the projector, driven as a Plex client
+  // "projector" is the old name for plezy.
+  playTarget: ['plezy', 'plex', 'projector'].includes(env.PLAY_TARGET) ? (env.PLAY_TARGET === 'projector' ? 'plezy' : env.PLAY_TARGET) : 'appletv',
+  plezyPackage: env.PLEZY_PACKAGE || 'com.edde746.plezy',
+  projectorPlexPackage: env.PROJECTOR_PLEX_PACKAGE || 'com.plexapp.android',
   // The Plex client's name as Plex reports it (Settings > Plex Web > Devices), used to pick the
   // theater's session out of /status/sessions. Empty = the first playing session.
   plexPlayerName: env.PLEX_PLAYER_NAME || '',
@@ -126,7 +132,7 @@ export const config = build(effectiveVars());
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, ...e.musicPlayers, e.projector,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
     'input_select.theater_scene',
   ].filter(Boolean);

@@ -25,13 +25,23 @@ export async function runAction(ha, body) {
         await plex.setStreams(body.partId, body).catch((err) => console.warn('[plex] setStreams', err.message));
       }
       plex.staleMovies(); // watched / in-progress state is about to change
-      if (config.playTarget === 'projector') {
-        // The projector's own Plex client (Plezy) resumes by itself; Start over clears the position.
+      if (config.playTarget === 'plezy') {
+        // Plezy resumes by itself, so Start over clears the saved position first.
         if (!body.offset) await plex.clearProgress(body.ratingKey).catch((err) => console.warn('[plex] start over', err.message));
         const id = `plezy_${await plex.machineId()}_${Number(body.ratingKey)}`;
         return script(ha, 'play_projector', {
-          projector: e.projector, apple_tv: e.appleTv, package: config.projectorPlexPackage,
+          projector: e.projector, apple_tv: e.appleTv, package: config.plezyPackage,
           uri: `plezy://play?content_id=${id}`,
+        });
+      }
+      if (config.playTarget === 'plex') {
+        // The official Plex app on the projector: open it over ADB, then play through its Plex client.
+        return script(ha, 'play_projector_plex', {
+          projector: e.projector, apple_tv: e.appleTv, package: config.projectorPlexPackage,
+          plex_player: e.projectorPlexPlayer,
+          rating_key: String(body.ratingKey),
+          media_type: body.type === 'episode' ? 'episode' : 'movie',
+          offset: Math.round((body.offset || 0) / 1000),
         });
       }
       return script(ha, 'play_plex', {
