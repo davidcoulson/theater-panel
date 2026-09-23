@@ -140,6 +140,37 @@ const post = (re, fn) => routes.push(['POST', re, fn]);
 // update entity; see ha/theater.yaml).
 get(/^\/api\/version$/, () => versions());
 
+// The panel's look, for something outside the admin page to read and set - the Kiosk Satellite
+// plugin that shows theme, accent and weather as Home Assistant entities uses this. Same save
+// path as the admin page, so open panels follow at once. Behind the panel key like the rest.
+const LOOK = {
+  theme: { key: 'THEME', options: ['classic', 'sofa'], value: () => config.ui.theme },
+  accent: { key: 'ACCENT', options: ['auto', 'none', ...accents.IDS], value: () => config.ui.accent },
+  intensity: { key: 'ACCENT_INTENSITY', min: 0, max: 100, value: () => config.ui.accentIntensity },
+};
+const lookState = () => ({
+  theme: LOOK.theme.value(), accent: LOOK.accent.value(), intensity: LOOK.intensity.value(),
+  active: accentNow().id,
+  options: { theme: LOOK.theme.options, accent: LOOK.accent.options },
+});
+get(/^\/api\/look$/, () => lookState());
+post(/^\/api\/look$/, async (m, q, body) => {
+  const values = {};
+  for (const [name, spec] of Object.entries(LOOK)) {
+    if (body?.[name] === undefined) continue;
+    if (spec.options) {
+      if (!spec.options.includes(String(body[name]))) throw admin.httpError(400, `${name} must be one of ${spec.options.join(', ')}`);
+      values[spec.key] = String(body[name]);
+    } else {
+      const n = Number(body[name]);
+      if (!Number.isFinite(n) || n < spec.min || n > spec.max) throw admin.httpError(400, `${name} must be ${spec.min}-${spec.max}`);
+      values[spec.key] = String(Math.round(n));
+    }
+  }
+  if (Object.keys(values).length) { admin.save({ values }); await applySettings(); }
+  return lookState();
+});
+
 get(/^\/api\/state$/, () => ({
   ha: { connected: ha.connected, configured: ha.configured, states: ha.states },
   sessions,

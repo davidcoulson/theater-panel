@@ -108,8 +108,9 @@ function Weather() {
   const setting = useStore((s) => s.ui?.accentIntensity);
   const theater = useStore((s) => Boolean(s.theater?.active));
   const hol = currentAccent();
-  // 0..100 from the settings page (50 is the usual amount); "?intensity=100" tries one here.
-  const intensity = Math.max(0, Math.min(100, Number(route.params.intensity ?? setting ?? 50))) / 50;
+  // 0..100 from the settings page: 25 is the original amount, 100 four times it (MORE BATS).
+  // "?intensity=100" tries a level on this panel.
+  const intensity = Math.max(0, Math.min(100, Number(route.params.intensity ?? setting ?? 50))) / 25;
   if (!hol?.weather || !intensity || renderFlags.has('noanim')) return null;
   return html`<${Particles} kind=${hol.weather} intensity=${intensity} key=${`${hol.weather}-${acc}-${intensity}`} paused=${theater} />`;
 }
