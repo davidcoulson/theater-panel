@@ -106,7 +106,7 @@ function currentAccent() {
 }
 
 // Snow, leaves, petals, confetti... falling over the lobby and settling on the tops of the cards.
-function Weather() {
+function Weather({ decor = '' }) {
   const acc = useStore((s) => s.ui?.accent?.id);
   const setting = useStore((s) => s.ui?.accentIntensity);
   const theater = useStore((s) => Boolean(s.theater?.active));
@@ -115,8 +115,31 @@ function Weather() {
   // "?intensity=100" tries a level on this panel.
   const intensity = Math.max(0, Math.min(100, Number(route.params.intensity ?? setting ?? 50))) / 25;
   if (!hol?.weather || !intensity || renderFlags.has('noanim')) return null;
-  return html`<${Particles} kind=${hol.weather} intensity=${intensity} key=${`${hol.weather}-${acc}-${intensity}`} paused=${theater} />`;
+  return html`<${Particles} kind=${hol.weather} intensity=${intensity} decor=${decor} key=${`${hol.weather}-${acc}-${intensity}-${decor}`} paused=${theater} />`;
 }
+// A request landing in Plex is worth ten seconds of confetti, whatever the season.
+function Celebration() {
+  const at = useStore((s) => s.celebrateAt) || 0;
+  const [, tick] = useState(0);
+  useEffect(() => { if (!at) return; const timer = setTimeout(() => tick((n) => n + 1), 10500); return () => clearTimeout(timer); }, [at]);
+  if (!at || Date.now() - at > 10000) return null;
+  return html`<${Particles} kind="confetti" intensity=${2.5} key=${`cheer-${at}`} />`;
+}
+
+// Halloween only: every minute or so the room's lights gutter, the way a bulb does before it
+// goes. One overlay, opacity only - no blur or transform, which the panel's GPU dislikes.
+function useHaunting(on) {
+  const [flicker, setFlicker] = useState(0);
+  useEffect(() => {
+    if (!on) return;
+    let timer;
+    const again = () => { timer = setTimeout(() => { setFlicker(Date.now()); again(); }, 45000 + Math.random() * 75000); };
+    again();
+    return () => clearTimeout(timer);
+  }, [on]);
+  return flicker;
+}
+
 let accentOverride = null;
 let accentSetting = { id: 'none' };
 const accentNow = () => (accentOverride ? { id: accentOverride } : accentSetting);
@@ -244,13 +267,19 @@ function App() {
     return () => { clearInterval(t); offTheater(); removeEventListener('pointerdown', touch, true); };
   }, []);
 
+  const haunt = useHaunting(currentAccent()?.id === 'halloween');
   const View = VIEWS[r.name] || Lobby;
   // Showtime and the idle screen fill the panel on their own.
-  if (r.name === 'showtime' || r.name === 'showing') return html`<${View} key=${r.name} />${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
+  // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
+  if (r.name === 'showtime' || r.name === 'showing') return html`<${View} key=${r.name} />
+    ${r.name === 'showing' && html`<${Weather} decor="tree" />`}
+    ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />
     <${Weather} key=${`fx-${r.name}`} />
+    <${Celebration} />
+    ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
 }

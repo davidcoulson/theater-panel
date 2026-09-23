@@ -89,6 +89,10 @@ html.a-fall { --gold: #C75E12; }
 /* the weather layer: a canvas over the lobby that snow, leaves and confetti fall through */
 .fx-layer { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 6; }
 /* the emblems fidget now and then: a wobble, a wag, a beat, candles that never sit still */
+/* the lights guttering on Halloween: abrupt steps, opacity only */
+.haunt { position: absolute; inset: 0; background: #0B0705; pointer-events: none; z-index: 8; animation: haunt 1.5s steps(1, end) forwards; }
+@keyframes haunt { 0%, 100% { opacity: 0; } 5% { opacity: .62; } 9% { opacity: .05; } 15% { opacity: .5; } 20% { opacity: 0; } 44% { opacity: .38; } 49% { opacity: .02; } 55% { opacity: .3; } 60% { opacity: 0; } }
+
 .rail .glyph svg { overflow: visible; }
 .rail .glyph .emb { transform-box: fill-box; transform-origin: 50% 90%; }
 .rail .glyph .emb-halloween, .rail .glyph .emb-thanksgiving, .rail .glyph .emb-fall { animation: emb-wobble 9s ease-in-out infinite; }

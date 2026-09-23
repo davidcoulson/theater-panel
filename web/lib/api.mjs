@@ -47,6 +47,8 @@ export function useStore(select = (s) => s) {
 export const getState = () => state;
 // Theater mode availability/state, set by app.mjs once Kiosk Satellite answers (or not).
 export const setTheater = (theater) => set({ theater });
+// Something worth a cheer just happened (a request landed): the app throws confetti.
+export const celebrate = () => set({ celebrateAt: Date.now() });
 
 let toastTimer;
 export function toast(text, err = false) {
