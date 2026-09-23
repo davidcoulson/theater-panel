@@ -60,7 +60,7 @@ function build(env) {
   panelKey: env.PANEL_KEY || '',
   imageSecret: env.IMAGE_SECRET || '',
   cacheDir: env.CACHE_DIR || './cache',
-  imageCacheMb: Number(env.IMAGE_CACHE_MB || 512),
+  imageCacheMb: Number(env.IMAGE_CACHE_MB || 2048),   // posters are small and never change; keep plenty
 
   ha: {
     url: (env.HA_URL || '').replace(/\/$/, ''),

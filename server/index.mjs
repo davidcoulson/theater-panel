@@ -344,7 +344,7 @@ const server = createServer(async (req, res) => {
     if (ic) {
       const svg = await icons.iconSvg(ha, ic[1], ic[2]);
       if (!svg) { res.writeHead(404, { 'cache-control': 'max-age=300' }).end(); return; }
-      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'x-content-type-options': 'nosniff' });
+      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'x-content-type-options': 'nosniff' });
       res.end(svg);
       return;
     }
@@ -367,7 +367,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (path.startsWith('/img/')) return serveImage(req, res);
-    if (VENDOR[path]) return serveFile(res, join(MODULES, VENDOR[path]), 'public, max-age=86400');
+    if (VENDOR[path]) return serveFile(res, join(MODULES, VENDOR[path]), 'public, max-age=2592000');
     const f = FONTS.exec(path);
     if (f) return serveFile(res, join(MODULES, '@fontsource', f[2], 'files', f[1]), 'public, max-age=31536000, immutable');
 
