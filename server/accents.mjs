@@ -11,7 +11,7 @@
 export const ACCENTS = [
   { id: 'halloween', name: 'Halloween', gold: '#E8731C', glow: 'Halloween Eyes', weather: 'bats' },
   { id: 'thanksgiving', name: 'Thanksgiving', gold: '#C8912E', glow: 'Ember Ring', weather: 'leaves' },
-  { id: 'christmas', name: 'Christmas', gold: '#E3A865', glow: 'Fairytwinkle', weather: 'snow' },
+  { id: 'christmas', name: 'Christmas', gold: '#E3A865', glow: 'Fairytwinkle', weather: 'xmas' },
   { id: 'newyear', name: 'New Year', gold: '#F2D69B', glow: 'Fireworks Burst', weather: 'confetti' },
   { id: 'valentines', name: "Valentine's", gold: '#D9536F', glow: 'Heartbeat Pulse', weather: 'hearts' },
   { id: 'birthday', name: 'Birthday', gold: '#E3A865', glow: 'Confetti', weather: 'confetti' },

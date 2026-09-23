@@ -9,7 +9,9 @@ import { html } from './ui.mjs';
 
 const W = 1920, H = 1080;
 const KINDS = {
-  snow: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'] },
+  snow: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true },
+  // Christmas is snow with a sleigh that crosses now and then.
+  xmas: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true, sleigh: true },
   leaves: { n: 26, vy: [45, 100], sway: 40, size: [8, 13], land: 'scatter', colors: ['#C75E12', '#E8731C', '#8F4E1C', '#B3372B', '#E3A865'] },
   petals: { n: 34, vy: [30, 70], sway: 30, size: [5, 8], land: 'scatter', colors: ['#F2A0B2', '#F7C6D0', '#FBE7EC', '#E3A865'] },
   confetti: { n: 60, vy: [80, 160], sway: 36, size: [5, 8], land: 'scatter', colors: ['#D9536F', '#E3A865', '#4E7D3A', '#3F7FB5', '#F2D69B', '#E8731C'], rect: true },
@@ -43,9 +45,9 @@ function findLedges(canvas) {
     if (r.width < 60 * z || r.height < 24 * z) continue;
     const x0 = (r.left - sr.left) / z, x1 = (r.right - sr.left) / z, y = (r.top - sr.top) / z;
     if (y < 8 || y > H - 8) continue;
-    ledges.push({ x0, x1, y, cols: new Float32Array(Math.ceil((x1 - x0) / COL)), items: [] });
+    ledges.push({ x0, x1, y, cols: new Float32Array(Math.ceil((x1 - x0) / COL)), items: [], men: [] });
   }
-  ledges.push({ x0: 140, x1: W, y: H, cols: new Float32Array(Math.ceil((W - 140) / COL)), items: [] });   // the floor
+  ledges.push({ x0: 140, x1: W, y: H, cols: new Float32Array(Math.ceil((W - 140) / COL)), items: [], men: [] });   // the floor
   return ledges;
 }
 
@@ -156,6 +158,76 @@ function drawGhost(ctx, g, t) {
   ctx.restore();
 }
 
+// A snowman builds himself out of a deep enough drift, and melts away with it.
+function drawSnowman(ctx, x, base, h) {
+  const r1 = h * 0.26, r2 = h * 0.2, r3 = h * 0.15;
+  const y1 = base - r1, y2 = y1 - r1 * 0.75 - r2 * 0.75, y3 = y2 - r2 * 0.7 - r3 * 0.7;
+  ctx.strokeStyle = '#6B4A2A'; ctx.lineWidth = Math.max(1, h * 0.035); ctx.lineCap = 'round';
+  ctx.beginPath();                                                     // stick arms
+  ctx.moveTo(x - r2 * 0.9, y2); ctx.lineTo(x - r2 * 2, y2 - r2 * 0.7);
+  ctx.moveTo(x + r2 * 0.9, y2); ctx.lineTo(x + r2 * 2, y2 - r2 * 0.5);
+  ctx.stroke();
+  ctx.fillStyle = '#FAF8F2';
+  for (const [cy, r] of [[y1, r1], [y2, r2], [y3, r3]]) { ctx.beginPath(); ctx.arc(x, cy, r, 0, 6.29); ctx.fill(); }
+  ctx.fillStyle = '#2A1911';
+  ctx.beginPath(); ctx.arc(x - r3 * 0.35, y3 - r3 * 0.2, h * 0.022, 0, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + r3 * 0.35, y3 - r3 * 0.2, h * 0.022, 0, 6.29); ctx.fill();
+  for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.arc(x, y2 - r2 * 0.3 + i * r2 * 0.6, h * 0.022, 0, 6.29); ctx.fill(); }
+  ctx.fillRect(x - r3 * 1.1, y3 - r3 * 1.05, r3 * 2.2, h * 0.03);      // hat brim
+  ctx.fillRect(x - r3 * 0.6, y3 - r3 * 1.05 - h * 0.11, r3 * 1.2, h * 0.11);
+  ctx.fillStyle = '#E8731C';                                            // carrot
+  ctx.beginPath(); ctx.moveTo(x, y3 - h * 0.01); ctx.lineTo(x + r3 * 1.1, y3 + h * 0.01); ctx.lineTo(x, y3 + h * 0.035); ctx.fill();
+}
+
+// Two reindeer and a sleigh, as a silhouette, crossing above the room.
+function drawSleigh(ctx, x, y, s, t, dir) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = '#1B1210'; ctx.strokeStyle = '#1B1210'; ctx.lineCap = 'round';
+  const bob = Math.sin(t * 3) * s * 0.05;
+  // sleigh: a curled runner and a body, with a driver
+  ctx.lineWidth = s * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(-s * 1.05, s * 0.36 + bob); ctx.lineTo(-s * 0.3, s * 0.36 + bob);
+  ctx.quadraticCurveTo(-s * 0.12, s * 0.36 + bob, -s * 0.16, s * 0.2 + bob);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-s * 1.0, s * 0.3 + bob); ctx.lineTo(-s * 1.0, -s * 0.05 + bob);
+  ctx.quadraticCurveTo(-s * 0.6, -s * 0.1 + bob, -s * 0.3, -s * 0.02 + bob);
+  ctx.lineTo(-s * 0.3, s * 0.3 + bob); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(-s * 0.78, -s * 0.2 + bob, s * 0.13, 0, 6.29); ctx.fill();          // driver
+  ctx.beginPath(); ctx.ellipse(-s * 0.72, -s * 0.02 + bob, s * 0.17, s * 0.14, -0.3, 0, 6.29); ctx.fill();
+  // harness
+  ctx.lineWidth = s * 0.035;
+  ctx.beginPath(); ctx.moveTo(-s * 0.3, s * 0.06 + bob); ctx.lineTo(s * 1.9, s * 0.02); ctx.stroke();
+  // two reindeer, legs galloping out of step
+  for (let i = 0; i < 2; i++) {
+    const rx = s * (0.75 + i * 1.0), ry = Math.sin(t * 3 + i * 0.8) * s * 0.05;
+    ctx.beginPath(); ctx.ellipse(rx, ry, s * 0.34, s * 0.19, 0, 0, 6.29); ctx.fill();          // body
+    ctx.beginPath(); ctx.ellipse(rx + s * 0.46, ry - s * 0.24, s * 0.16, s * 0.1, -0.5, 0, 6.29); ctx.fill();   // head
+    ctx.lineWidth = s * 0.07;
+    ctx.beginPath(); ctx.moveTo(rx + s * 0.2, ry - s * 0.08); ctx.lineTo(rx + s * 0.42, ry - s * 0.22); ctx.stroke();   // neck
+    ctx.lineWidth = s * 0.05;
+    ctx.beginPath();                                                                           // antlers
+    ctx.moveTo(rx + s * 0.5, ry - s * 0.32); ctx.lineTo(rx + s * 0.44, ry - s * 0.56);
+    ctx.moveTo(rx + s * 0.46, ry - s * 0.46); ctx.lineTo(rx + s * 0.32, ry - s * 0.54);
+    ctx.moveTo(rx + s * 0.58, ry - s * 0.3); ctx.lineTo(rx + s * 0.66, ry - s * 0.54);
+    ctx.moveTo(rx + s * 0.62, ry - s * 0.44); ctx.lineTo(rx + s * 0.76, ry - s * 0.5);
+    ctx.stroke();
+    ctx.lineWidth = s * 0.055;
+    ctx.beginPath();                                                                           // legs mid-gallop
+    for (let leg = 0; leg < 4; leg++) {
+      const lx = rx - s * 0.24 + leg * s * 0.17, swing = Math.sin(t * 9 + i * 1.3 + leg * 1.7) * s * 0.16;
+      ctx.moveTo(lx, ry + s * 0.14); ctx.lineTo(lx + swing, ry + s * 0.42);
+    }
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rx - s * 0.33, ry - s * 0.06); ctx.lineTo(rx - s * 0.46, ry - s * 0.18); ctx.lineTo(rx - s * 0.3, ry + s * 0.06); ctx.fill();  // tail
+  }
+  ctx.restore();
+}
+const newSleigh = () => ({ x: 0, dir: 1, size: rnd(34, 46), y: rnd(60, 220), wait: rnd(20, 60), flying: false });
+
 function drawSettled(ctx, k, ledges) {
   for (const l of ledges) {
     if (k.land === 'mound') {
@@ -169,6 +241,7 @@ function drawSettled(ctx, k, ledges) {
       }
       ctx.lineTo(l.x1, l.y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(160,185,200,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      for (const m of l.men) drawSnowman(ctx, m.x, l.y - heightAt(l, m.x) + 1, m.h * m.scale);
     } else {
       for (const it of l.items) {
         ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot); ctx.fillStyle = it.color;
@@ -193,20 +266,49 @@ export function Particles({ kind, intensity = 1, paused = false }) {
     // Halloween at 50% and up brings out the ghosts: one more for every notch of the slider.
     const ghosts = k.bats ? Array.from({ length: Math.max(0, Math.floor(intensity) - 1) }, () => spawnGhost(true)) : [];
     let ledges = k.land ? findLedges(cv) : [];
-    let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0;
+    const sleigh = k.sleigh ? { ...newSleigh(), wait: rnd(6, 14) } : null;
+    let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0, sinceMen = 0;
     const frame = () => {
       if (!live) return;
       const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
       if (paused || document.hidden) { setTimeout(() => requestAnimationFrame(frame), 500); return; }
-      t += dt; sinceLedges += dt; sinceMelt += dt;
+      t += dt; sinceLedges += dt; sinceMelt += dt; sinceMen += dt;
       if (k.land && sinceLedges > 3) { sinceLedges = 0; const fresh = findLedges(cv); if (fresh.length !== ledges.length) ledges = fresh; }
       // what has settled clears slowly, so an evening of snow does not bury the buttons
       if (k.land && sinceMelt > 60) {
         sinceMelt = 0;
-        for (const l of ledges) { for (let i = 0; i < l.cols.length; i++) l.cols[i] *= 0.8; l.items.splice(0, Math.ceil(l.items.length * 0.25)); }
+        for (const l of ledges) {
+          for (let i = 0; i < l.cols.length; i++) l.cols[i] *= 0.8;
+          l.items.splice(0, Math.ceil(l.items.length * 0.25));
+          for (const m of l.men) m.scale *= 0.82;
+          l.men = l.men.filter((m) => m.scale > 0.4);
+        }
+      }
+      // Once a drift is deep enough, someone builds a snowman in it.
+      if (k.men && sinceMen > 5) {
+        sinceMen = 0;
+        for (const l of ledges) {
+          const room = l.x1 - l.x0 > 600 ? 3 : 1;
+          if (l.men.length >= room || Math.random() > 0.4) continue;
+          const deep = [];
+          for (let i = 2; i < l.cols.length - 2; i++) if (l.cols[i] > 7) deep.push(l.x0 + i * COL + COL / 2);
+          const spot = deep.filter((x) => l.men.every((m) => Math.abs(m.x - x) > 90));
+          if (spot.length) l.men.push({ x: pick(spot), h: rnd(26, 40), scale: 1 });
+        }
+      }
+      if (sleigh) {
+        if (sleigh.flying) {
+          sleigh.x += 150 * sleigh.dir * dt;
+          if (sleigh.x < -300 || sleigh.x > W + 300) Object.assign(sleigh, newSleigh());
+        } else if ((sleigh.wait -= dt) <= 0) {
+          sleigh.flying = true;
+          sleigh.dir = Math.random() < 0.5 ? 1 : -1;
+          sleigh.x = sleigh.dir > 0 ? -280 : W + 280;
+        }
       }
       ctx.clearRect(0, 0, W, H);
       drawSettled(ctx, k, ledges);
+      if (sleigh?.flying) drawSleigh(ctx, sleigh.x, sleigh.y, sleigh.size, t, sleigh.dir);   // snow falls in front of it
       for (let i = 0; i < ghosts.length; i++) {
         const g = ghosts[i];
         g.x += g.vx * dt; g.life += dt;
