@@ -86,34 +86,66 @@ function drawBat(ctx, x, y, s, t, flap) {
 // Ghosts and ghouls: only when the weather is turned up. They drift across slowly, half
 // see-through, bobbing; a ghoul is the greener, grinning kind.
 function spawnGhost(fresh) {
-  const ghoul = Math.random() < 0.35;
-  return { ghoul, x: fresh ? rnd(200, W - 200) : (Math.random() < 0.5 ? -120 : W + 120), y: rnd(120, H - 260), vx: rnd(18, 34) * (Math.random() < 0.5 ? 1 : -1),
-    size: rnd(70, 110), phase: rnd(0, 6.28), bob: rnd(0.6, 1.1), life: 0, span: rnd(18, 30) };
+  const slimer = Math.random() < 0.6;                                   // the green, greedy kind
+  return { slimer, x: fresh ? rnd(200, W - 200) : (Math.random() < 0.5 ? -140 : W + 140), y: rnd(120, H - 260), vx: rnd(18, 34) * (Math.random() < 0.5 ? 1 : -1),
+    size: rnd(95, 140), phase: rnd(0, 6.28), bob: rnd(0.6, 1.1), life: 0, span: rnd(18, 30) };
 }
+// A blobby little spook: Slimer's cousin, drawn green with a fat belly, stubby arms and a tongue
+// out, or the classic sheet ghost. Solid enough to read across the room, still see-through.
 function drawGhost(ctx, g, t) {
   const s = g.size, x = g.x, y = g.y + Math.sin(t * g.bob + g.phase) * 10;
   const fade = Math.min(1, g.life / 3, (g.span - g.life) / 3);
+  const wob = Math.sin(t * 2 + g.phase) * s * 0.02;
   ctx.save();
-  ctx.globalAlpha = Math.max(0, fade) * (g.ghoul ? 0.5 : 0.42);
+  ctx.globalAlpha = Math.max(0, fade) * (g.slimer ? 0.72 : 0.64);
   ctx.translate(x, y);
   if (g.vx < 0) ctx.scale(-1, 1);
-  ctx.fillStyle = g.ghoul ? '#B9D4B2' : '#F4F0E8';
-  ctx.beginPath();
-  ctx.arc(0, -s * 0.15, s * 0.42, Math.PI, 0);                          // head
-  ctx.lineTo(s * 0.42, s * 0.45);
-  for (let i = 4; i >= 0; i--) {                                        // wavy hem
-    const hx = -s * 0.42 + (s * 0.84 * i) / 4;
-    ctx.quadraticCurveTo(hx + s * 0.105, s * 0.45 + (i % 2 ? -1 : 1) * s * 0.12 + Math.sin(t * 3 + i) * 3, hx, s * 0.45);
+
+  if (g.slimer) {
+    // body: a pear of a thing, wider at the belly, with a trailing wisp
+    ctx.fillStyle = '#7FB63C';
+    ctx.beginPath();
+    ctx.moveTo(0, -s * 0.5);
+    ctx.bezierCurveTo(s * 0.44, -s * 0.5, s * 0.5, -s * 0.02, s * 0.36, s * 0.2);
+    ctx.bezierCurveTo(s * 0.5, s * 0.34 + wob, s * 0.22, s * 0.58, 0, s * 0.46);
+    ctx.bezierCurveTo(-s * 0.24, s * 0.6, -s * 0.5, s * 0.32 - wob, -s * 0.36, s * 0.2);
+    ctx.bezierCurveTo(-s * 0.5, -s * 0.02, -s * 0.44, -s * 0.5, 0, -s * 0.5);
+    ctx.fill();
+    // stubby arms
+    ctx.beginPath();
+    ctx.ellipse(-s * 0.42, s * 0.04, s * 0.16, s * 0.1, -0.5 + wob * 0.04, 0, 6.29);
+    ctx.ellipse(s * 0.42, s * 0.04, s * 0.16, s * 0.1, 0.5 - wob * 0.04, 0, 6.29);
+    ctx.fill();
+    // a lighter belly, so he reads as round rather than a flat blob
+    ctx.fillStyle = '#9BD155';
+    ctx.beginPath(); ctx.ellipse(0, s * 0.18, s * 0.26, s * 0.2, 0, 0, 6.29); ctx.fill();
+    // eyes: whites with pupils, one lid heavier than the other
+    ctx.fillStyle = '#F7F4EA';
+    ctx.beginPath(); ctx.ellipse(-s * 0.15, -s * 0.24, s * 0.13, s * 0.15, -0.1, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.17, -s * 0.25, s * 0.11, s * 0.13, 0.1, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#1B1210';
+    ctx.beginPath(); ctx.arc(-s * 0.12, -s * 0.22, s * 0.055, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.19, -s * 0.23, s * 0.05, 0, 6.29); ctx.fill();
+    // open mouth and tongue
+    ctx.fillStyle = '#2A1911';
+    ctx.beginPath(); ctx.ellipse(s * 0.02, s * 0.02, s * 0.17, s * 0.13, 0.08, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#E2708C';
+    ctx.beginPath(); ctx.ellipse(s * 0.04, s * 0.09 + wob, s * 0.1, s * 0.07, 0.1, 0, 6.29); ctx.fill();
+  } else {
+    ctx.fillStyle = '#F7F4EA';
+    ctx.beginPath();
+    ctx.arc(0, -s * 0.15, s * 0.42, Math.PI, 0);                        // head
+    ctx.lineTo(s * 0.42, s * 0.45);
+    for (let i = 4; i >= 0; i--) {                                      // wavy hem
+      const hx = -s * 0.42 + (s * 0.84 * i) / 4;
+      ctx.quadraticCurveTo(hx + s * 0.105, s * 0.45 + (i % 2 ? -1 : 1) * s * 0.12 + Math.sin(t * 3 + i) * 3, hx, s * 0.45);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1B1210';
+    ctx.beginPath(); ctx.ellipse(-s * 0.14, -s * 0.2, s * 0.07, s * 0.1, 0, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.14, -s * 0.2, s * 0.07, s * 0.1, 0, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, s * 0.06, s * 0.07, s * 0.1, 0, 0, 6.29); ctx.fill();   // "oooo"
   }
-  ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = Math.max(0, fade) * 0.85;
-  ctx.fillStyle = '#1B1210';
-  ctx.beginPath(); ctx.ellipse(-s * 0.14, -s * 0.2, s * 0.06, s * 0.09, 0, 0, 6.29); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s * 0.14, -s * 0.2, s * 0.06, s * 0.09, 0, 0, 6.29); ctx.fill();
-  ctx.beginPath();
-  if (g.ghoul) { ctx.moveTo(-s * 0.16, s * 0.02); ctx.quadraticCurveTo(0, s * 0.18, s * 0.16, s * 0.02); ctx.quadraticCurveTo(0, s * 0.1, -s * 0.16, s * 0.02); }   // grin
-  else ctx.ellipse(0, s * 0.05, s * 0.06, s * 0.09, 0, 0, 6.29);                                                                                          // "oooo"
-  ctx.fill();
   ctx.restore();
 }
 
