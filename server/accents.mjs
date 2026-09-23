@@ -6,13 +6,20 @@
 // ACCENT is 'auto' (by the calendar), 'none', or one of the ids below. BIRTHDAYS is a list of
 // "Name=MM-DD"; on the day, the birthday accent wins over whatever holiday is running.
 
+// gold: the highlight colour; glow: the rail's idle effect; weather: what falls over the lobby
+// (web/lib/particles.mjs) - snow and leaves settle on the cards, hearts and fireflies drift.
 export const ACCENTS = [
-  { id: 'halloween', name: 'Halloween', glyph: 'pumpkin', gold: '#E8731C', glow: 'Halloween Eyes' },
-  { id: 'thanksgiving', name: 'Thanksgiving', glyph: 'leaf', gold: '#C8912E', glow: 'Ember Ring' },
-  { id: 'christmas', name: 'Christmas', glyph: 'snowflake', gold: '#E3A865', glow: 'Fairytwinkle' },
-  { id: 'newyear', name: 'New Year', glyph: 'sparkle', gold: '#F2D69B', glow: 'Fireworks Burst' },
-  { id: 'valentines', name: "Valentine's", glyph: 'heart', gold: '#D9536F', glow: 'Heartbeat Pulse' },
-  { id: 'birthday', name: 'Birthday', glyph: 'cake', gold: '#E3A865', glow: 'Confetti' },
+  { id: 'halloween', name: 'Halloween', gold: '#E8731C', glow: 'Halloween Eyes', weather: 'bats' },
+  { id: 'thanksgiving', name: 'Thanksgiving', gold: '#C8912E', glow: 'Ember Ring', weather: 'leaves' },
+  { id: 'christmas', name: 'Christmas', gold: '#E3A865', glow: 'Fairytwinkle', weather: 'snow' },
+  { id: 'newyear', name: 'New Year', gold: '#F2D69B', glow: 'Fireworks Burst', weather: 'confetti' },
+  { id: 'valentines', name: "Valentine's", gold: '#D9536F', glow: 'Heartbeat Pulse', weather: 'hearts' },
+  { id: 'birthday', name: 'Birthday', gold: '#E3A865', glow: 'Confetti', weather: 'confetti' },
+  // the seasons fill in between the holidays when the accent is on auto
+  { id: 'winter', name: 'Winter', gold: '#CFE0EC', glow: 'Rolling Fog', weather: 'snow' },
+  { id: 'spring', name: 'Spring', gold: '#E39AB0', glow: 'Aurora (Pastel Dream)', weather: 'petals' },
+  { id: 'summer', name: 'Summer', gold: '#F2C94C', glow: 'Firefly Jar', weather: 'fireflies' },
+  { id: 'fall', name: 'Fall', gold: '#C75E12', glow: 'Ember Ring', weather: 'leaves' },
 ];
 export const IDS = ACCENTS.map((a) => a.id);
 
@@ -43,12 +50,17 @@ export function byCalendar(now = new Date(), birthdays = []) {
   if (m === 12 && d >= 12 && d <= 26) return { id: 'christmas' };
   if ((m === 12 && d >= 27) || (m === 1 && d <= 2)) return { id: 'newyear' };
   if (m === 2 && d >= 10 && d <= 14) return { id: 'valentines' };
-  return { id: 'none' };
+  // otherwise the season (northern hemisphere, by the equinoxes and solstices)
+  const doy = m * 100 + d;
+  if (doy >= 1221 || doy < 320) return { id: 'winter' };
+  if (doy < 621) return { id: 'spring' };
+  if (doy < 922) return { id: 'summer' };
+  return { id: 'fall' };
 }
 
 // The accent in effect for a setting: a fixed id, 'auto' by the calendar, or nothing.
 export function resolve(setting, birthdays = [], now = new Date()) {
   const pick = setting === 'auto' ? byCalendar(now, birthdays) : { id: IDS.includes(setting) ? setting : 'none' };
   const def = ACCENTS.find((a) => a.id === pick.id);
-  return def ? { id: def.id, name: def.name, glyph: def.glyph, gold: def.gold, glow: def.glow, who: pick.who || '' } : { id: 'none' };
+  return def ? { id: def.id, name: def.name, gold: def.gold, glow: def.glow, weather: def.weather, who: pick.who || '' } : { id: 'none' };
 }

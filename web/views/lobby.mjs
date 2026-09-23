@@ -307,8 +307,8 @@ function EffectSheet({ id, onClose }) {
 
   return html`<div class="fx-sheet" role="dialog" aria-label="Choose an effect">
     <div class="h">
-      <div><div class="eyebrow">${st?.attributes?.friendly_name || 'Lights'}</div>
-        <div class="t">Moods<span> · ${section}</span></div></div>
+      <div><div class="eyebrow">${(st?.attributes?.friendly_name || 'Lights').replace(/^home theater\s+/i, '')}</div>
+        <div class="t">Moods</div></div>
       <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
     </div>
     <div class="fx-scroll scroll" ref=${scroller}>
