@@ -146,6 +146,12 @@ function build(env) {
   // Poster labels. Network is off by default because Plex posters decorated by Kometa already
   // carry the network; the detail pane always shows it.
   ui: {
+    // 'classic' is the room as built (chocolate, copper); 'sofa' re-skins the dark surfaces in the
+    // couch's slate tweed. The panel can still try one with #/lobby?theme=sofa.
+    theme: env.THEME === 'sofa' ? 'sofa' : 'classic',
+    // Holiday accent on top of the theme: 'auto' follows the calendar (see accents.mjs).
+    accent: env.ACCENT || 'auto',
+    birthdays: env.BIRTHDAYS || '',
     qualityBadges: env.SHOW_QUALITY_BADGES !== 'false',
     networkBadges: env.SHOW_NETWORK_BADGES === 'true',
     // Plex sessions are only the theater's own when the player name is set.

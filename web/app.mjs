@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe } from './lib/api.mjs';
 import { RailGlow } from './lib/effects.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
@@ -31,6 +31,8 @@ let setRoute = () => {};
 let lastManual = 0;
 export function go(name, params = {}) {
   setRender(params.render);
+  setTheme(params.theme);
+  setAccent(params.accent);
   route.name = VIEWS[name] ? name : 'lobby';
   route.params = params;
   if (!params.auto) lastManual = Date.now();
@@ -60,6 +62,48 @@ export function setRender(value) {
   for (const f of ['noshadow', 'notex', 'noanim', 'shadows']) document.documentElement.classList.toggle(`r-${f}`, renderFlags.has(f));
   fit();
 }
+// Theme: the settings page picks it (Display > Theme, arrives with the rest of /api/state);
+// "#/lobby?theme=sofa" overrides it on this panel until "theme=" clears the override.
+const THEMES = ['classic', 'sofa'];
+let themeOverride = null;
+let themeSetting = 'classic';
+function applyTheme() {
+  const t = themeOverride || themeSetting;
+  for (const name of THEMES) document.documentElement.classList.toggle(`t-${name}`, t === name && name !== 'classic');
+}
+export function setTheme(value) {
+  if (value === undefined) return;
+  themeOverride = THEMES.includes(value) ? value : null;
+  applyTheme();
+}
+subscribe(() => { const t = getState().ui?.theme; if (THEMES.includes(t) && t !== themeSetting) { themeSetting = t; applyTheme(); } });
+
+// Holiday accent (server/accents.mjs): the server resolves the calendar and sends { id, glyph,
+// glow, gold }; "?accent=halloween" tries one on this panel, "accent=" clears the override.
+const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valentines', 'birthday'];
+// Glyph and idle glow per accent, for a route override (the server sends these with its own pick).
+const ACCENT_DEFS = {
+  halloween: { id: 'halloween', name: 'Halloween', glyph: 'pumpkin', glow: 'Halloween Eyes' },
+  thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glyph: 'leaf', glow: 'Ember Ring' },
+  christmas: { id: 'christmas', name: 'Christmas', glyph: 'snowflake', glow: 'Fairytwinkle' },
+  newyear: { id: 'newyear', name: 'New Year', glyph: 'sparkle', glow: 'Fireworks Burst' },
+  valentines: { id: 'valentines', name: "Valentine's", glyph: 'heart', glow: 'Heartbeat Pulse' },
+  birthday: { id: 'birthday', name: 'Birthday', glyph: 'cake', glow: 'Confetti' },
+};
+let accentOverride = null;
+let accentSetting = { id: 'none' };
+const accentNow = () => (accentOverride ? { id: accentOverride } : accentSetting);
+function applyAccent() {
+  const id = accentNow().id;
+  for (const a of ACCENT_IDS) document.documentElement.classList.toggle(`a-${a}`, id === a);
+}
+export function setAccent(value) {
+  if (value === undefined) return;
+  accentOverride = ACCENT_IDS.includes(value) ? value : null;
+  applyAccent();
+}
+subscribe(() => { const a = getState().ui?.accent; if (a && a.id !== accentSetting.id) { accentSetting = a; applyAccent(); } });
+
 // The panel's GPU sprinkles specks along blurred box-shadows (confirmed with render=noshadow),
 // and a crisp 2px version still speckled on pages that repaint often, so on the panel every
 // blurred shadow is dropped and only hairlines (0 blur) and inset shadows are kept.
@@ -114,15 +158,22 @@ function Rail({ current }) {
   const theater = useStore((s) => Boolean(s.theater?.active));
   const build = useStore((s) => s.build) || {};
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
+  // The holiday accent: its glow fills the rail while the accents are off, and its glyph sits
+  // over the clock. An override from the route only knows the id, so look the rest up.
+  const holiday = useStore((s) => s.ui?.accent);
+  const hol = route.params.accent ? (ACCENT_DEFS[route.params.accent] || null) : holiday?.id && holiday.id !== 'none' ? holiday : null;
+  const lightsOn = accent?.state === 'on';
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
-    <${RailGlow} name=${route.params.glow || (accent?.state === 'on' ? accent.attributes?.effect : null)} speed=${speed} opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : glow)} paused=${theater} />
+    <${RailGlow} name=${route.params.glow || (lightsOn ? accent.attributes?.effect : hol?.glow || null)} speed=${lightsOn ? speed : 0.3}
+      opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : lightsOn ? glow : 0.3)} paused=${theater} />
     <div class="logo"><b>BC</b><span>Theater</span></div>
     ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}
     <div class="grow"></div>
     ${ha.live === false ? html`<div class="offline">Server offline</div>` : ha.live && !ha.ok ? html`<div class="offline">${ha.configured ? 'HA offline' : 'HA not set up'}</div>` : null}
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
+    ${hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Icon} name=${hol.glyph} size=${30} w=${1.8} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
     ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''}>
       <span>${build.version.split('.').slice(0, 3).join('.')}</span>
@@ -184,6 +235,8 @@ function goRoute(r) {
 }
 
 setRender(route.params.render ?? '');
+setTheme(route.params.theme ?? '');
+setAccent(route.params.accent ?? '');
 startLive({ navigate: goRoute });
 // Is Kiosk Satellite's theater mode reachable (directly, or relayed by the HA page around us)?
 detectTheater().then((t) => {
