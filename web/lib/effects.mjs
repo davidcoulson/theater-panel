@@ -7,19 +7,6 @@ import { html } from './ui.mjs';
 
 // name -> family. First match wins, so put the specific ones first.
 const FAMILIES = [
-  // WLED's particle-system effects ("PS ...", WLED 0.15+): things fall, bounce, spray and collide.
-  [/^ps .*(geq|nova)|geq/i, 'geq'],
-  [/^ps .*(waterfall|drip|spray|fountain|fuzzy)/i, 'spray'],
-  [/^ps .*(box|hourglass|sand)/i, 'sand'],
-  [/^ps .*(impact|pinball|collide|bounce)/i, 'impact'],
-  [/^ps .*(ballpit|blob|bubble)/i, 'bubbles'],
-  [/^ps .*(attractor|ghost rider|orbit|galaxy)/i, 'orbit'],
-  [/^ps .*(dancing shadows|shadow)/i, 'shadows'],
-  [/^ps .*(firework|rocket)/i, 'fireworks'],
-  [/^ps .*(fire|flame)/i, 'fire'],
-  [/^ps .*(sparkler|glitter|star)/i, 'stars'],
-  [/^ps .*(chase|wrap)/i, 'chase'],
-  [/^ps /i, 'party'],   // any other particle effect
   // The accents' own effects first, most specific first, then general Home Assistant / WLED names.
   [/pac-?man/i, 'pacman'],
   [/lighthouse/i, 'lighthouse'],
@@ -104,11 +91,6 @@ const PALETTE = {
   firefly: ['#060A04', '#16240C', '#38571A', '#87C23A', '#E8FFB0'],
   metronome: ['#0C0A06', '#2E2614', '#6B5A2A', '#C0A64F', '#FFEFC0'],
   flicker: ['#160603', '#4A1206', '#96300B', '#DE6E1E', '#FFD79B'],
-  geq: ['#06060E', '#141A40', '#2E7A6B', '#9CD24A', '#FFF07A'],
-  spray: ['#03141C', '#0B3A4C', '#177C93', '#5FC3D6', '#F0FCFF'],
-  sand: ['#100B04', '#33240E', '#6E5222', '#C09A4A', '#F5E3B8'],
-  impact: ['#120407', '#3D0E1C', '#8C2340', '#E05C72', '#FFD3D8'],
-  shadows: ['#06070A', '#181C26', '#3A4457', '#7C8AA3', '#D8E0EC'],
   rainbow: ['#000000'],   // drawn from hue instead of a ramp
   confetti: ['#000000'],
 };
@@ -157,11 +139,6 @@ function level(family, x, t) {
     case 'orbit': { const p = (t * 0.12) % 1; const d = Math.min(Math.abs(x - p), 1 - Math.abs(x - p)); return Math.max(0.08, 1 - d * 10); }
     case 'firefly': { const s3 = Math.abs(noise(Math.floor(x * 24) * 9.1)); const blink = 0.5 + 0.5 * Math.sin(t * 2 + s3 * 20); return s3 > 0.7 ? 0.2 + 0.8 * Math.pow(blink, 3) : 0.05; }
     case 'metronome': { const p = 0.5 + 0.42 * Math.sin(t * 3.2); const d = Math.abs(x - p); return Math.max(0.05, 1 - d * 14); }
-    case 'geq': { const band = Math.floor(x * 12); const h2 = 0.25 + 0.75 * Math.abs(Math.sin(t * (1.4 + band * 0.27) + band)); return Math.abs((x * 12) % 1 - 0.5) < 0.38 ? h2 : 0.05; }
-    case 'spray': { let v = 0.06; for (let k = 0; k < 6; k++) { const born = (t * 0.5 + k * 0.17) % 1; const p = 0.08 + born * 0.9; const d = Math.abs(x - p); v = Math.max(v, (1 - d * 26) * (1 - born * 0.8)); } return v; }
-    case 'sand': { const fill = 0.5 + 0.45 * Math.sin(t * 0.5); const settled = x < fill ? 0.85 : 0.08; const grain = 0.15 * Math.abs(noise(Math.floor(x * 40) + Math.floor(t * 4))); return Math.min(1, settled + grain); }
-    case 'impact': { const hit = (t * 0.8) % 1; const p = Math.abs(Math.sin(t * 1.7)); const d = Math.abs(x - p); return Math.max(0.05, (1 - d * 14) * (0.4 + 0.6 * Math.exp(-6 * hit))); }
-    case 'shadows': { const a = wave(x, t, 2.5, 0.5) * wave(x, t, 7, -0.8); return 0.12 + 0.7 * a; }
     case 'flicker': { const n = Math.abs(noise(Math.floor(t * 12) + Math.floor(x * 8))); return 0.2 + 0.8 * n * (0.6 + 0.4 * wave(x, t, 4, 1.2)); }
     default: return 0.35 + 0.3 * wave(x, t, 1.5, 0.25);
   }
@@ -248,11 +225,15 @@ export function EffectPreview({ name, family, speed = 0.5, h = 46, round = 10, s
   return html`<canvas class=${`fx ${cls}`} ref=${ref} style=${`height:${h}px;border-radius:${round}px`} aria-hidden="true"></canvas>`;
 }
 
-// WLED ships hundreds of its own effects (the "PS ..." particle system and the classic list). They
-// are noise next to the room's own named moods, so the panel hides them unless asked.
-const WLED_OWN = /^(PS |Solid$|Blink|Breathe$|Wipe|Sweep|Dynamic|Colorloop|Rainbow$|Rainbow Runner|Scan$|Scan Dual|Dual Scan|Fade$|Theater$|Theater Rainbow|Running$|Saw$|Twinkle$|Dissolve|Sparkle|Flash Sparkle|Hyper Sparkle|Strobe|Blink Rainbow|Android$|Chase$|Chase Random|Chase Rainbow|Chase Flash|Colorful$|Traffic Light|Sweep Random|Chase 2|Aurora$|Stream|Scanner$|Lighthouse$|Fireworks$|Rain$|Merry Christmas|Fire Flicker$|Gradient|Loading|Police|Two Dots|Fairy$|Two Areas|Running Dual|Halloween$|Tri |Tetrix|Ripple$|Percent|Heartbeat$|Pacifica$|Candle$|Sunrise|Phased|Twinkleup|Noise Pal|Sine|Flow|Chunchun$|Dancing Shadows$|Washing Machine|Blends|TV Simulator|Dynamic Smooth)/i;
-export const isWledOwn = (name) => WLED_OWN.test(name || '');
-export const withoutWledOwn = (list) => { const kept = list.filter((e) => !isWledOwn(e)); return kept.length ? kept : list; };
+// The room's own moods are the effects built for the accent lights (about 50 named ones). WLED
+// also ships ~215 of its own — the particle system and the classic list — which are noise here, so
+// a light only offers what the accents offer. A light with nothing in common keeps its own list.
+export function curated(list, accentList) {
+  if (!accentList?.length) return list;
+  const named = new Set(accentList);
+  const kept = list.filter((e) => named.has(e));
+  return kept.length ? kept : list;
+}
 
 // Ambient glow down the nav rail. Silent when nothing is running, and blended into the wood.
 export function RailGlow({ name, speed = 0.4, opacity = 0.55, paused = false }) {
