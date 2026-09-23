@@ -30,7 +30,10 @@ function parseHash() {
 }
 export const route = parseHash();
 let setRoute = () => {};
-let lastManual = 0;
+// When the panel was last touched (or navigated by hand). It starts at the moment the page
+// loads, not 0: at 0 every "has it been idle for N minutes" test is true straight away, so a
+// panel that reloaded and was not touched fell to the Now Showing screen within 15 seconds.
+let lastManual = Date.now();
 export function go(name, params = {}) {
   setRender(params.render);
   setTheme(params.theme);
@@ -87,7 +90,7 @@ const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valent
 const ACCENT_DEFS = {
   halloween: { id: 'halloween', name: 'Halloween', glow: 'Halloween Eyes', weather: 'bats' },
   thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glow: 'Ember Ring', weather: 'leaves' },
-  christmas: { id: 'christmas', name: 'Christmas', glow: 'Fairytwinkle', weather: 'snow' },
+  christmas: { id: 'christmas', name: 'Christmas', glow: 'Fairytwinkle', weather: 'xmas' },
   newyear: { id: 'newyear', name: 'New Year', glow: 'Fireworks Burst', weather: 'confetti' },
   valentines: { id: 'valentines', name: "Valentine's", glow: 'Heartbeat Pulse', weather: 'hearts' },
   birthday: { id: 'birthday', name: 'Birthday', glow: 'Confetti', weather: 'confetti' },
