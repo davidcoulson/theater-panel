@@ -7,6 +7,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
 import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
+import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
@@ -81,16 +82,34 @@ subscribe(() => { const t = getState().ui?.theme; if (THEMES.includes(t) && t !=
 
 // Holiday accent (server/accents.mjs): the server resolves the calendar and sends { id, glyph,
 // glow, gold }; "?accent=halloween" tries one on this panel, "accent=" clears the override.
-const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valentines', 'birthday'];
-// Glyph and idle glow per accent, for a route override (the server sends these with its own pick).
+const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valentines', 'birthday', 'winter', 'spring', 'summer', 'fall'];
+// Idle glow and weather per accent, for a route override (the server sends these with its pick).
 const ACCENT_DEFS = {
-  halloween: { id: 'halloween', name: 'Halloween', glyph: 'pumpkin', glow: 'Halloween Eyes' },
-  thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glyph: 'leaf', glow: 'Ember Ring' },
-  christmas: { id: 'christmas', name: 'Christmas', glyph: 'snowflake', glow: 'Fairytwinkle' },
-  newyear: { id: 'newyear', name: 'New Year', glyph: 'sparkle', glow: 'Fireworks Burst' },
-  valentines: { id: 'valentines', name: "Valentine's", glyph: 'heart', glow: 'Heartbeat Pulse' },
-  birthday: { id: 'birthday', name: 'Birthday', glyph: 'cake', glow: 'Confetti' },
+  halloween: { id: 'halloween', name: 'Halloween', glow: 'Halloween Eyes', weather: 'bats' },
+  thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glow: 'Ember Ring', weather: 'leaves' },
+  christmas: { id: 'christmas', name: 'Christmas', glow: 'Fairytwinkle', weather: 'snow' },
+  newyear: { id: 'newyear', name: 'New Year', glow: 'Fireworks Burst', weather: 'confetti' },
+  valentines: { id: 'valentines', name: "Valentine's", glow: 'Heartbeat Pulse', weather: 'hearts' },
+  birthday: { id: 'birthday', name: 'Birthday', glow: 'Confetti', weather: 'confetti' },
+  winter: { id: 'winter', name: 'Winter', glow: 'Rolling Fog', weather: 'snow' },
+  spring: { id: 'spring', name: 'Spring', glow: 'Aurora (Pastel Dream)', weather: 'petals' },
+  summer: { id: 'summer', name: 'Summer', glow: 'Firefly Jar', weather: 'fireflies' },
+  fall: { id: 'fall', name: 'Fall', glow: 'Ember Ring', weather: 'leaves' },
 };
+// The accent in effect for the rail and the weather layer: a route override or the server's pick.
+function currentAccent() {
+  const s = getState().ui?.accent;
+  return accentOverride ? ACCENT_DEFS[accentOverride] : s?.id && s.id !== 'none' ? s : null;
+}
+
+// Snow, leaves, petals, confetti... falling over the lobby and settling on the tops of the cards.
+function Weather() {
+  const acc = useStore((s) => s.ui?.accent?.id);
+  const theater = useStore((s) => Boolean(s.theater?.active));
+  const hol = currentAccent();
+  if (!hol?.weather || renderFlags.has('noanim')) return null;
+  return html`<${Particles} kind=${hol.weather} key=${`${hol.weather}-${acc}`} paused=${theater} />`;
+}
 let accentOverride = null;
 let accentSetting = { id: 'none' };
 const accentNow = () => (accentOverride ? { id: accentOverride } : accentSetting);
@@ -161,14 +180,13 @@ function Rail({ current }) {
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   // The holiday accent: its glow fills the rail while the accents are off, and its glyph sits
   // over the clock. An override from the route only knows the id, so look the rest up.
-  const holiday = useStore((s) => s.ui?.accent);
-  const hol = route.params.accent ? (ACCENT_DEFS[route.params.accent] || null) : holiday?.id && holiday.id !== 'none' ? holiday : null;
+  useStore((s) => s.ui?.accent?.id);              // re-render when the server's pick changes
+  const hol = currentAccent();
   const lightsOn = accent?.state === 'on';
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
     <${RailGlow} name=${route.params.glow || (lightsOn ? accent.attributes?.effect : hol?.glow || null)} speed=${lightsOn ? speed : 0.3}
       opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : lightsOn ? glow : 0.3)} paused=${theater} />
-    <div class="logo"><b>BC</b><span>Theater</span></div>
     ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}
     <div class="grow"></div>
@@ -225,6 +243,7 @@ function App() {
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />
+    <${Weather} key=${`fx-${r.name}`} />
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
 }

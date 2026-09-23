@@ -21,7 +21,8 @@ export const useStreams = () => {
 export function StreamsChip({ onClick, dark = false }) {
   const streams = useStreams();
   const n = streams.length;
-  return html`<button type="button" class=${`chip ${dark ? 'dark-chip' : ''} ${n ? 'live' : ''}`} onClick=${onClick}
+  if (!n) return null;                       // nothing playing, nothing to say
+  return html`<button type="button" class=${`chip ${dark ? 'dark-chip' : ''} live`} onClick=${onClick}
     aria-label=${`${n} Plex stream${n === 1 ? '' : 's'}`}>
     <span class=${`dot ${n ? 'on' : ''}`}></span>${n} stream${n === 1 ? '' : 's'}
   </button>`;
