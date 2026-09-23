@@ -442,6 +442,53 @@ intent_script:
       text: "Showing {{ screen }}"
 
 automation:
+  # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
+  # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
+  # a few minutes.
+  - id: theater_reload_apple_tv
+    alias: "Theater: reload the Apple TV integration when it stops answering"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: unavailable
+        for: "00:05:00"
+    actions:
+      - action: homeassistant.reload_config_entry
+        target: { entity_id: media_player.home_theater }
+
+  # The Android Debug Bridge integration can take many minutes to notice the projector has booted.
+  # Give it a nudge once the projector is awake: when the Apple TV comes on (its HDMI-CEC wakes the
+  # projector), and again while the projector's entity is still unavailable.
+  - id: theater_reload_projector_adb
+    alias: "Theater: reload the projector's ADB connection once it is awake"
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: media_player.home_theater
+        from: "off"
+        to: [idle, playing, paused, standby]
+        id: woke
+      - trigger: state
+        entity_id: media_player.theater_projector
+        to: unavailable
+        for: "00:03:00"
+        id: stuck
+    conditions:
+      - condition: state
+        entity_id: media_player.theater_projector
+        state: unavailable
+    actions:
+      - if:
+          - condition: trigger
+            id: woke
+        then:
+          - delay: "00:00:45"      # let the projector finish booting
+      - action: homeassistant.reload_config_entry
+        target: { entity_id: media_player.theater_projector }
+      - delay: "00:01:00"          # don't spin if it is genuinely off
+
   # Lights follow playback on the Apple TV or on the projector's own Plex client (Plezy, seen by
   # HA's Plex integration as "Plezy - AURORA PRO"): dark while playing, 30% when paused for a
   # while, back up when playback ends. The 10 s pause delay stops a quick pause from lighting
