@@ -83,6 +83,40 @@ function drawBat(ctx, x, y, s, t, flap) {
   ctx.fill();
 }
 
+// Ghosts and ghouls: only when the weather is turned up. They drift across slowly, half
+// see-through, bobbing; a ghoul is the greener, grinning kind.
+function spawnGhost(fresh) {
+  const ghoul = Math.random() < 0.35;
+  return { ghoul, x: fresh ? rnd(200, W - 200) : (Math.random() < 0.5 ? -120 : W + 120), y: rnd(120, H - 260), vx: rnd(18, 34) * (Math.random() < 0.5 ? 1 : -1),
+    size: rnd(70, 110), phase: rnd(0, 6.28), bob: rnd(0.6, 1.1), life: 0, span: rnd(18, 30) };
+}
+function drawGhost(ctx, g, t) {
+  const s = g.size, x = g.x, y = g.y + Math.sin(t * g.bob + g.phase) * 10;
+  const fade = Math.min(1, g.life / 3, (g.span - g.life) / 3);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, fade) * (g.ghoul ? 0.5 : 0.42);
+  ctx.translate(x, y);
+  if (g.vx < 0) ctx.scale(-1, 1);
+  ctx.fillStyle = g.ghoul ? '#B9D4B2' : '#F4F0E8';
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.15, s * 0.42, Math.PI, 0);                          // head
+  ctx.lineTo(s * 0.42, s * 0.45);
+  for (let i = 4; i >= 0; i--) {                                        // wavy hem
+    const hx = -s * 0.42 + (s * 0.84 * i) / 4;
+    ctx.quadraticCurveTo(hx + s * 0.105, s * 0.45 + (i % 2 ? -1 : 1) * s * 0.12 + Math.sin(t * 3 + i) * 3, hx, s * 0.45);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = Math.max(0, fade) * 0.85;
+  ctx.fillStyle = '#1B1210';
+  ctx.beginPath(); ctx.ellipse(-s * 0.14, -s * 0.2, s * 0.06, s * 0.09, 0, 0, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(s * 0.14, -s * 0.2, s * 0.06, s * 0.09, 0, 0, 6.29); ctx.fill();
+  ctx.beginPath();
+  if (g.ghoul) { ctx.moveTo(-s * 0.16, s * 0.02); ctx.quadraticCurveTo(0, s * 0.18, s * 0.16, s * 0.02); ctx.quadraticCurveTo(0, s * 0.1, -s * 0.16, s * 0.02); }   // grin
+  else ctx.ellipse(0, s * 0.05, s * 0.06, s * 0.09, 0, 0, 6.29);                                                                                          // "oooo"
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawSettled(ctx, k, ledges) {
   for (const l of ledges) {
     if (k.land === 'mound') {
@@ -117,6 +151,8 @@ export function Particles({ kind, intensity = 1, paused = false }) {
     const ctx = cv.getContext('2d');
     const count = Math.max(1, Math.round(k.n * intensity));
     let ps = Array.from({ length: count }, () => spawn(k, true));
+    // Halloween at 50% and up brings out the ghosts: one more for every notch of the slider.
+    const ghosts = k.bats ? Array.from({ length: Math.max(0, Math.floor(intensity) - 1) }, () => spawnGhost(true)) : [];
     let ledges = k.land ? findLedges(cv) : [];
     let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0;
     const frame = () => {
@@ -132,6 +168,12 @@ export function Particles({ kind, intensity = 1, paused = false }) {
       }
       ctx.clearRect(0, 0, W, H);
       drawSettled(ctx, k, ledges);
+      for (let i = 0; i < ghosts.length; i++) {
+        const g = ghosts[i];
+        g.x += g.vx * dt; g.life += dt;
+        if (g.life > g.span || g.x < -160 || g.x > W + 160) { ghosts[i] = spawnGhost(false); continue; }
+        drawGhost(ctx, g, t);
+      }
       for (let i = 0; i < ps.length; i++) {
         const p = ps[i];
         if (k.wander) {
