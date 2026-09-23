@@ -46,6 +46,9 @@ export const FIELDS = [
   { group: 'Games', key: 'STEAM_API_KEY', label: 'Steam Web API key', type: 'secret', help: 'steamcommunity.com/dev/apikey' },
   { group: 'Games', key: 'STEAM_ID', label: 'SteamID64', type: 'text' },
 
+  { group: 'Access', key: 'TRUST_NETWORKS', label: 'Addresses that skip the panel key', type: 'list', placeholder: '10.2.0.0/16', help: 'The wall panel and anything on these networks get straight in. Everything else needs the key. Blank means everyone needs it.' },
+  { group: 'Access', key: 'TRUSTED_PROXIES', label: 'Proxies whose forwarded address is believed', type: 'list', help: 'Traefik and the k3s ingress. Private ranges by default.' },
+
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },
@@ -120,6 +123,8 @@ export async function view() {
     // The link the wall panel (and any browser) needs: without the key everything returns 401.
     panelKey: config.panelKey,
     open: !config.panelKey,
+    // Who is asking right now, so the page can suggest a sensible trusted network.
+    trustedNetworks: config.trustedNetworks,
     // Settings still coming from the container (what Import would copy).
     fromContainer: FIELDS.filter((f) => process.env[f.key] && !saved[f.key]).map((f) => f.key),
     games: (await loadGames()) || { switcher: {}, sources: [] },

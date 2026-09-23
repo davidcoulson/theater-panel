@@ -18,6 +18,7 @@ import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
+import { netList, clientIp } from './net.mjs';
 import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,6 +48,8 @@ const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entit
 // After the admin page saves: reconnect HA if its URL, token or the entity list changed, and tell
 // open panels to reload their settings.
 async function applySettings() {
+  isProxy = netList(config.trustedProxies);
+  isTrusted = netList(config.trustedNetworks);
   entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
   ha.reconfigure({ url: config.ha.url, token: config.ha.token, entities });
   broadcast('settings', {});
@@ -100,10 +103,15 @@ async function readBody(req) {
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
 const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/vote', '/vote/', '/api/vote']);
 
+// Trusted networks skip the key entirely (see TRUST_NETWORKS on the settings page).
+let isProxy = netList(config.trustedProxies);
+let isTrusted = netList(config.trustedNetworks);
+
 const isHttps = (req) => req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
 
 function authorized(req, url, res) {
   if (!config.panelKey || PUBLIC.has(url.pathname)) return true;
+  if (config.trustedNetworks.length && isTrusted(clientIp(req, isProxy))) return true;
   const cookie = /(?:^|;\s*)tp_key=([^;]+)/.exec(req.headers.cookie || '')?.[1];
   const given = url.searchParams.get('key') || (cookie && decodeURIComponent(cookie)) || '';
   const a = Buffer.from(given); const b = Buffer.from(config.panelKey);
