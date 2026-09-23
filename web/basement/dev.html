@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Basement panel — dev</title>
+<!-- The card with a pretend Home Assistant: states for the basement lights, and a callService
+     that applies the call to those states so the UI answers like the real thing.
+     ?page=moods opens the moods page; ?zone=3 selects a zone. Screenshot at 1280x800. -->
+<style>html, body { margin: 0; height: 100%; background: #0d0907; } basement-panel-card { height: 100vh; display: block; }</style>
+</head>
+<body>
+<basement-panel-card id="card"></basement-panel-card>
+<script type="module">
+import './basement-panel.js';
+const q = new URLSearchParams(location.search);
+const ct = (name, on, pct, k) => ({ state: on ? 'on' : 'off', attributes: { friendly_name: name, supported_color_modes: ['color_temp'], min_color_temp_kelvin: 2700, max_color_temp_kelvin: 6500,
+  brightness: on ? Math.round(pct * 2.55) : null, color_temp_kelvin: on ? k : null } });
+const sw = (name, on, avail = true) => ({ state: !avail ? 'unavailable' : on ? 'on' : 'off', attributes: { friendly_name: name, supported_color_modes: ['onoff'] } });
+const EFFECTS = ['None', '2D Aurora (Pastel Dream)', '2D Aurora (Red Sky)', '2D Aurora (Solar Storm)', '2D Pacifica', '2D Pacifica (Calm Lagoon)', '2D Pacifica (Storm)', '2D Plasma',
+  '2D Radar Sweep', '2D Ripple', '2D Weather', 'Aurora Breathing', 'Bubbles', 'Candle Flicker', 'Fireflies', 'Fireplace Embers', 'Fireworks Burst', 'Flicker', 'Gentle Tide',
+  'Heartbeat Pulse', 'Lava Lamp', 'Lightning Storm', 'Lullaby Stars', 'Metronome', 'Moonrise', 'Northern Lights Whisper', 'Pacifica', 'Plasma', 'Rolling Fog', 'Soft Glow',
+  'TwinkleCat (Picker)', 'Warm Ember Glow', 'Water Caustics'];
+const states = {
+  'light.basement_front_center_lights': ct('Basement Front Center Lights', true, 60, 3000),
+  'light.basement_center_lights': ct('Basement Center Lights', true, 35, 2700),
+  'light.basement_back_center_lights': ct('Basement Back Center Lights', false, 0, 2700),
+  'light.basement_alley_lights': sw('Basement Alley Lights', true),
+  'light.basement_basement_stairs': sw('Basement Stairs', false, false),
+  'light.basement_accent_lights': { state: 'on', attributes: { friendly_name: 'Basement Accent Lights', supported_color_modes: ['rgb'], brightness: 115, effect: 'Candle Flicker', effect_list: EFFECTS } },
+  'input_number.basement_accent_speed': { state: '128', attributes: {} },
+};
+const card = document.getElementById('card');
+const push = () => { card.hass = { states: JSON.parse(JSON.stringify(states)), callService }; };
+function callService(domain, service, data) {
+  console.log('callService', domain, service, JSON.stringify(data));
+  const s = states[data.entity_id]; if (!s) return;
+  const a = s.attributes;
+  if (service === 'turn_off') s.state = 'off';
+  if (service === 'toggle') s.state = s.state === 'on' ? 'off' : 'on';
+  if (service === 'turn_on') {
+    s.state = 'on';
+    if (data.brightness_pct != null) a.brightness = Math.round(data.brightness_pct * 2.55);
+    if (data.brightness_step_pct != null) a.brightness = Math.max(3, Math.min(255, (a.brightness || 0) + Math.round(data.brightness_step_pct * 2.55)));
+    if (data.color_temp_kelvin != null) a.color_temp_kelvin = data.color_temp_kelvin;
+    if (data.effect) a.effect = data.effect;
+    if (a.brightness == null && a.supported_color_modes.some((m) => m !== 'onoff')) a.brightness = 200;
+  }
+  push();
+}
+card.setConfig({ page: q.get('page') || 'zones' });
+push();
+if (q.get('zone')) setTimeout(() => card.shadowRoot.querySelectorAll('.zpick')[Number(q.get('zone'))]?.click(), 300);
+</script>
+</body>
+</html>
