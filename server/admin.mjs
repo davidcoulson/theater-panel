@@ -37,6 +37,9 @@ export const FIELDS = [
   { group: 'Entities', key: 'ENTITY_PICTURE_MODE', label: 'Picture mode (input_select)', type: 'entity', domain: 'input_select' },
   { group: 'Entities', key: 'ENTITY_TEMPERATURE', label: 'Temperature', type: 'entity', domain: 'sensor' },
   { group: 'Entities', key: 'ENTITY_OCCUPANCY', label: 'Occupancy', type: 'entity', domain: 'binary_sensor' },
+  { group: 'Entities', key: 'ENTITY_DOG_SENSORS', label: 'Dog at the door (binary sensors)', type: 'list', domain: 'binary_sensor', help: 'Any of these turning on puts a card on the panel with a camera snapshot - the deck camera\'s barking and animal detections. Blank turns it off.' },
+  { group: 'Entities', key: 'ENTITY_DOG_CAMERA', label: 'Dog camera', type: 'entity', domain: 'camera', help: 'The snapshot on that card.' },
+  { group: 'Entities', key: 'DOG_NAME', label: 'Dog\'s name', type: 'text', placeholder: 'Ruby' },
   { group: 'Entities', key: 'ENTITY_TAUTULLI', label: 'Tautulli watching', type: 'entity', domain: 'sensor' },
 
   { group: 'Lights', key: 'ACCENT_FAVOURITES', label: 'Favourite effects (up to 8)', type: 'effects', help: 'Shown first in the panel\'s Moods sheet. The rest stay under the mood tabs.' },

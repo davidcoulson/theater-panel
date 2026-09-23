@@ -112,6 +112,11 @@ function build(env) {
     // Accent-light effect speed and intensity helpers (input_number), shown in the effect picker.
     accentSpeed: env.ENTITY_ACCENT_SPEED || 'input_number.home_theater_accent_speed',
     accentIntensity: env.ENTITY_ACCENT_INTENSITY || 'input_number.home_theater_accent_intensity',
+    // "The dog is at the door": UniFi's barking and animal detections on the deck camera, and
+    // the camera itself for the snapshot. Empty turns the alert off.
+    dogSensors: list(env.ENTITY_DOG_SENSORS, []),
+    dogCamera: env.ENTITY_DOG_CAMERA || '',
+    dogName: env.DOG_NAME || 'The dog',
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
   },
@@ -182,6 +187,7 @@ export function watchedEntities() {
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
+    ...e.dogSensors,
     'input_select.theater_scene',
   ].filter(Boolean);
 }

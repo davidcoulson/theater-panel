@@ -86,6 +86,15 @@ html.a-winter { --gold: #CFE0EC; }
 html.a-spring { --gold: #E39AB0; }
 html.a-summer { --gold: #F2C94C; }
 html.a-fall { --gold: #C75E12; }
+/* the dog at the deck door: a card that earns its interruption, even over a film */
+.dog { position: absolute; right: 26px; bottom: 26px; z-index: 20; display: flex; align-items: center; gap: 18px; padding: 16px 20px 16px 16px;
+  border-radius: 22px; background: var(--choc); color: var(--on-choc); border: 2px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.dog img { width: 220px; height: 124px; object-fit: cover; border-radius: 14px; background: #1B1210; }
+.dog .t { display: flex; flex-direction: column; gap: 4px; }
+.dog .t b { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; color: #F4ECE0; }
+.dog .t span { font-size: 17px; color: var(--on-choc2); }
+.dog button { height: 56px; padding: 0 24px; border: 0; border-radius: 28px; background: var(--acc); color: #fff; font-size: 19px; font-weight: 600; }
+
 /* scan to request: the QR and a line of explanation */
 .scan-body { display: flex; gap: 34px; align-items: center; padding: 8px 4px; }
 .scan-body .qr { width: 300px; height: 300px; flex-shrink: 0; background: #F4F0E8; border-radius: 18px; padding: 14px; }
