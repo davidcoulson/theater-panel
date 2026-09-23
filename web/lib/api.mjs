@@ -27,7 +27,7 @@ export async function act(data) {
 let state = { vote: null, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
-const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
+export const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
 // Re-render only when the selected slice changes (compared shallowly by JSON for objects).
 export function useStore(select = (s) => s) {
   const [, force] = useState(0);

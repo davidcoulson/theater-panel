@@ -53,6 +53,34 @@ html.r-noanim #stage * { animation: none !important; transition: none !important
 /* The floor's grey grain for the nav rail, darkened a little so light labels read. */
 .tx-planks-rail { background: linear-gradient(rgba(28, 24, 20, .34), rgba(28, 24, 20, .34)), #6F6760 url(/assets/planks-rail.jpg) center / cover; }
 
+/* ---------- theme: sofa ----------
+   The Alexvale couch (body 9419/9351) is a cool slate charcoal in an otherwise warm room. The
+   wall, rail and copper accent stay; the "upholstered" surfaces - dark cards, pressed chips,
+   Showtime - take the couch's colour and its tweed (assets/tweed.jpg, cropped from the swatch).
+   Set on the settings page (Display > Theme) or tried with #/lobby?theme=sofa. */
+html.t-sofa {
+  --choc: #333C3F; --choc2: #232B2E; --on-choc: #E4E4DC; --on-choc2: #B7BDB9;
+  --d-text: #C69A5C; --d-dim: #7E6A48; --d-line: #1E272B; --d-fill: rgba(16, 22, 26, .88);
+}
+html.t-sofa, html.t-sofa body { background: #10161A; }
+html.t-sofa .tx-suede { background: #333C3F url(/assets/tweed.jpg) center / cover; }
+html.t-sofa .tx-walnut { background: #232B2E url(/assets/tweed.jpg) center / cover; }
+html.t-sofa .dark { box-shadow: 0 10px 26px rgba(10, 16, 20, .4); }
+html.t-sofa .scene[aria-pressed="true"], html.t-sofa .game-src[aria-pressed="true"] { border-color: #141A1C; }
+html.t-sofa .showtime { background-color: #10161A; }
+html.t-sofa .showtime::before { background: rgba(14, 19, 23, .93); }
+html.t-sofa .rail a.to-showtime { background: rgba(16, 22, 26, .5); }
+
+/* ---------- holiday accents ----------
+   A second axis on top of the theme (server/accents.mjs): only the highlight colour moves here;
+   the rail's idle glow and the glyph by the clock come from the accent definition. */
+html.a-halloween { --gold: #E8731C; }
+html.a-thanksgiving { --gold: #C8912E; }
+html.a-newyear { --gold: #F2D69B; }
+html.a-valentines { --gold: #D9536F; }
+.rail .glyph { color: var(--gold); display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 6px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+.rail .glyph span { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+
 .app { display: flex; width: 1920px; height: 1080px; }
 
 /* ---------- rail ---------- */

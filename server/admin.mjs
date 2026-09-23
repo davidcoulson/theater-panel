@@ -49,6 +49,9 @@ export const FIELDS = [
   { group: 'Access', key: 'TRUST_NETWORKS', label: 'Addresses that skip the panel key', type: 'list', placeholder: '10.2.0.0/16', help: 'The wall panel and anything on these networks get straight in. Everything else needs the key. Blank means everyone needs it.' },
   { group: 'Access', key: 'TRUSTED_PROXIES', label: 'Proxies whose forwarded address is believed', type: 'list', help: 'Traefik and the k3s ingress. Private ranges by default.' },
 
+  { group: 'Display', key: 'THEME', label: 'Theme', type: 'select', options: [['classic', 'Classic — chocolate & copper'], ['sofa', 'Sofa — slate tweed & copper']], help: 'Sofa keeps the plaster wall and copper accent, and re-skins the dark cards, chips and Showtime in the couch\'s slate tweed. Open panels switch as soon as you save.' },
+  { group: 'Display', key: 'ACCENT', label: 'Holiday accent', type: 'select', options: [['auto', 'Auto — by the calendar'], ['none', 'None'], ['halloween', 'Halloween'], ['thanksgiving', 'Thanksgiving'], ['christmas', 'Christmas'], ['newyear', 'New Year'], ['valentines', "Valentine's"], ['birthday', 'Birthday']], help: 'Sits on top of the theme: the highlight colour, the rail\'s idle glow and a glyph by the clock. Auto dresses up about a week ahead of each holiday.' },
+  { group: 'Display', key: 'BIRTHDAYS', label: 'Birthdays', type: 'text', placeholder: 'Dave=03-14, Sam=11-02', help: 'Name=MM-DD, comma separated. On the day the birthday accent wins.' },
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },

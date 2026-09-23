@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theater panel × Alexvale couch</title>
+<!--
+  What the new couch does to the panel's palette. Left is the panel today (all warm: plaster,
+  chocolate, maple, copper). Right keeps the warm room but re-skins the "upholstered" surfaces -
+  the dark cards, the chips, the Showtime screen - in the couch's slate charcoal, with copper
+  still doing the work of the accent. Textures on the right are cropped from the swatch photos:
+  /assets/tweed.jpg is body 9419, /assets/oatmeal.jpg is accent pillow 8802.
+-->
+<style>
+  @font-face { font-family: 'Big Shoulders Display'; font-weight: 800; src: url(/fonts/big-shoulders-display-latin-800-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Big Shoulders Display'; font-weight: 700; src: url(/fonts/big-shoulders-display-latin-700-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 400; src: url(/fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; src: url(/fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-weight: 600; src: url(/fonts/ibm-plex-mono-latin-600-normal.woff2) format('woff2'); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0d0907; overflow: hidden; display: grid; place-items: center;
+               font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #25170F; }
+  #page { width: 1920px; height: 1080px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 26px 30px 30px;
+          background: #D3CBC2 url(/assets/plaster.jpg) center / cover; flex-shrink: 0; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .col > h2 { margin: 0; font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 40px; text-transform: uppercase; letter-spacing: 1px; }
+  .col > h2 small { display: block; font-family: 'IBM Plex Sans'; font-weight: 400; font-size: 16px; letter-spacing: 0; text-transform: none; color: #5F5249; margin-top: 4px; }
+
+  /* tokens: the right column is the only thing that changes */
+  .col { --card: #F4F0E8; --line: #D6CCC0; --ink: #25170F; --muted: #5F5249; --track: #E4DCD2;
+         --acc: #8F4E1C; --gold: #E3A865; --dark: #3A2419; --dark-line: #241710; --on-dark: #E9DCCB;
+         --dark-tex: url(/assets/suede.jpg); --night: #0d0907; }
+  .col.after { --dark: #333C3F; --dark-line: #141A1C; --on-dark: #DDE0DC; --dark-tex: url(/assets/tweed.jpg); --night: #10161A; }
+
+  .swatches { display: flex; gap: 8px; }
+  .sw { flex: 1; height: 74px; border-radius: 12px; border: 1px solid rgba(0,0,0,.15); display: flex; align-items: flex-end; padding: 6px 8px;
+        font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 20px 24px; box-shadow: 0 2px 0 rgba(255,255,255,.6) inset, 0 8px 22px rgba(58,36,25,.10); }
+  .card.dark { background: var(--dark); background-image: var(--dark-tex); background-size: cover; background-position: center; border-color: var(--dark-line); color: var(--on-dark); }
+  h3 { margin: 0 0 14px; font-family: 'Big Shoulders Display'; font-weight: 700; font-size: 28px; text-transform: uppercase; letter-spacing: .5px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .chip { height: 52px; padding: 0 20px; border: 1px solid var(--line); border-radius: 26px; background: var(--card); font-size: 18px; font-weight: 600; display: inline-flex; align-items: center; }
+  .chip.on { background: var(--dark); border-color: var(--dark); color: var(--on-dark); }
+  .btn { height: 58px; padding: 0 26px; border-radius: 29px; background: var(--acc); color: #fff; font-size: 19px; font-weight: 600; display: inline-flex; align-items: center;
+         box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 8px 18px rgba(143,78,28,.3); }
+  .btn.ghost { background: var(--track); color: var(--ink); box-shadow: none; }
+  .lights { display: flex; gap: 14px; align-items: center; }
+  .lights .bar { flex-grow: 1; height: 44px; border-radius: 14px; background: rgba(255,255,255,.14); overflow: hidden; }
+  .lights .bar i { display: block; height: 100%; width: 62%; background: linear-gradient(90deg, #C07A34, var(--gold)); }
+  .lights .pc { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 20px; color: var(--gold); }
+  .night { border-radius: 22px; padding: 22px 26px; background: var(--night); color: var(--gold); border: 1px solid rgba(255,255,255,.08); }
+  .night .big { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 46px; text-transform: uppercase; line-height: 1; }
+  .night .sub { font-size: 16px; color: #9A6436; margin-top: 6px; }
+  .note { font-size: 15px; line-height: 1.5; color: #5F5249; }
+  .col.after .note { color: #46514F; }
+  .pill-tex { height: 86px; border-radius: 14px; background: url(/assets/oatmeal.jpg) center / cover; border: 1px solid rgba(0,0,0,.12); }
+  .rail { height: 86px; border-radius: 14px; background: linear-gradient(rgba(28,24,20,.34), rgba(28,24,20,.34)), #6F6760 url(/assets/planks-rail.jpg) center / cover; border: 1px solid rgba(0,0,0,.12); }
+  .half { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cap { font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div id="page">
+
+  <div class="col">
+    <h2>The panel today<small>Plaster wall, chocolate suede cards, maple and copper. Everything warm.</small></h2>
+    <div class="swatches">
+      <div class="sw" style="background:#F4F0E8">#F4F0E8</div>
+      <div class="sw" style="background:#3A2419;color:#E9DCCB">#3A2419</div>
+      <div class="sw" style="background:#8F4E1C;color:#fff">#8F4E1C</div>
+      <div class="sw" style="background:#E3A865">#E3A865</div>
+      <div class="sw" style="background:#0d0907;color:#9A6436">#0D0907</div>
+    </div>
+    <section class="card dark">
+      <h3>Lights</h3>
+      <div class="lights"><span style="font-size:19px;font-weight:600">Accents</span><div class="bar"><i></i></div><span class="pc">62%</span></div>
+    </section>
+    <section class="card">
+      <h3>Scenes</h3>
+      <div class="row"><span class="chip on">Movie</span><span class="chip">Game night</span><span class="chip">Bright</span><span class="chip">All off</span></div>
+      <div class="row" style="margin-top:16px"><span class="btn">Play on projector</span><span class="btn ghost">Start over</span></div>
+    </section>
+    <div class="night"><div class="big">Showtime</div><div class="sub">Dim controls on near-black, so nothing glows in a dark room.</div></div>
+    <div class="half">
+      <div><div class="cap">Nav rail</div><div class="rail"></div></div>
+      <div><div class="cap">Dark card</div><div class="rail" style="background:#3A2419 url(/assets/suede.jpg) center / cover"></div></div>
+    </div>
+    <div class="note">Nothing in the room is cool-toned, so the palette has no counterweight — the amber accent has to carry every "on" state on its own.</div>
+  </div>
+
+  <div class="col after">
+    <h2>With the Alexvale couch<small>Body 9419 / 9351 is a cool slate charcoal. Keep the warm room, re-skin the upholstered surfaces.</small></h2>
+    <div class="swatches">
+      <div class="sw" style="background:#F4F0E8">#F4F0E8</div>
+      <div class="sw" style="background:#333C3F;color:#DDE0DC">#333C3F</div>
+      <div class="sw" style="background:#4D595A;color:#DDE0DC">#4D595A</div>
+      <div class="sw" style="background:#8F4E1C;color:#fff">#8F4E1C</div>
+      <div class="sw" style="background:#D8D6C3">#D8D6C3</div>
+    </div>
+    <section class="card dark">
+      <h3>Lights</h3>
+      <div class="lights"><span style="font-size:19px;font-weight:600">Accents</span><div class="bar"><i></i></div><span class="pc">62%</span></div>
+    </section>
+    <section class="card">
+      <h3>Scenes</h3>
+      <div class="row"><span class="chip on">Movie</span><span class="chip">Game night</span><span class="chip">Bright</span><span class="chip">All off</span></div>
+      <div class="row" style="margin-top:16px"><span class="btn">Play on projector</span><span class="btn ghost">Start over</span></div>
+    </section>
+    <div class="night"><div class="big">Showtime</div><div class="sub">Same amber text, but the black goes slate — the colour the room actually is with the lights down.</div></div>
+    <div class="half">
+      <div><div class="cap">Nav rail (unchanged)</div><div class="rail"></div></div>
+      <div><div class="cap">Dark card → couch tweed</div><div class="rail" style="background:#333C3F url(/assets/tweed.jpg) center / cover"></div></div>
+    </div>
+    <div class="note">Copper on slate is the pillow's own contrast, and the grey plank rail finally has something to agree with. The oatmeal swatch (#D8D6C3, from pillow 8802) is the light card tint if you want the cream to carry through.</div>
+  </div>
+
+</div>
+</body>
+</html>

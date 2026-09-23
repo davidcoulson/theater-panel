@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
 import { config, watchedEntities } from './config.mjs';
+import * as accents from './accents.mjs';
 import { HomeAssistant } from './ha.mjs';
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
@@ -144,7 +145,7 @@ get(/^\/api\/state$/, () => ({
   sessions,
   streams,
   entities: config.entities,
-  ui: config.ui,
+  ui: { ...config.ui, birthdays: undefined, accent: accentNow() },
   projectorApps: config.projectorApps,
   effectFavourites: config.effectFavourites,
   build: config.build,
@@ -275,8 +276,14 @@ post(/^\/api\/action$/, async (m, q, body) => { await runAction(ha, body); retur
 // The admin page is never frameable.
 // The panel's own pages carry a couple of inline scripts (the import map, the voting page). They
 // are allowed by hash, so a stray injected script still cannot run.
+// The holiday accent in effect right now; re-checked hourly so a panel left on overnight dresses
+// up (or down) on the day without anyone touching it.
+const accentNow = () => accents.resolve(config.ui.accent, accents.parseBirthdays(config.ui.birthdays));
+let lastAccent = accentNow().id;
+setInterval(() => { const id = accentNow().id; if (id !== lastAccent) { lastAccent = id; broadcast('settings', {}); } }, 60 * 60e3).unref();
+
 const inlineHashes = await (async () => {
-  const files = ['index.html', 'admin.html', 'vote.html', 'fxgrid.html'];
+  const files = ['index.html', 'admin.html', 'vote.html', 'fxgrid.html', 'basement.html', 'basement/dev.html'];
   const out = new Set();
   for (const f of files) {
     const html = await readFile(join(WEB, f), 'utf8').catch(() => '');
