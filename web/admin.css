@@ -110,3 +110,5 @@ td.center { text-align: center; }
 .fx-pick .opt { height: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 13px; text-align: left; }
 .fx-pick .opt.on { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
 .fx-pick .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card.link { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.card.link .linkbox { display: block; margin-top: 8px; font-size: 13px; word-break: break-all; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }

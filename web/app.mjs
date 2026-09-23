@@ -116,7 +116,7 @@ function Rail({ current }) {
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
-    <${RailGlow} name=${route.params.glow || (accent?.state === 'on' ? accent.attributes?.effect : null)} speed=${speed} opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : glow)} />
+    <${RailGlow} name=${route.params.glow || (accent?.state === 'on' ? accent.attributes?.effect : null)} speed=${speed} opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : glow)} paused=${theater} />
     <div class="logo"><b>BC</b><span>Theater</span></div>
     ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}

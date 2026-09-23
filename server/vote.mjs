@@ -23,10 +23,14 @@ export function state() {
 
 // One vote per phone: the voter id is a random value the phone keeps, so a second tap changes
 // that phone's vote instead of adding another.
+const MAX_VOTERS = 60;      // a living room, not an election
+
 export function vote(roundId, voter, itemId) {
   if (!round || round.id !== roundId) throw new Error('That vote has finished');
   if (!round.items.some((i) => i.id === itemId)) throw new Error('Unknown choice');
-  round.votes.set(String(voter).slice(0, 64), itemId);
+  const id = String(voter).slice(0, 64);
+  if (!round.votes.has(id) && round.votes.size >= MAX_VOTERS) throw new Error('Too many voters');
+  round.votes.set(id, itemId);
   return state();
 }
 

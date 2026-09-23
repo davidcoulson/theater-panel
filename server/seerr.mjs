@@ -80,13 +80,17 @@ export async function byProvider(brandId, mediaType = 'movie', page = 1) {
 
 // Brand list with TMDB logos (fetched once through Seerr's network endpoint).
 let logos = null;
+// Built once, and only published when it is complete: a caller arriving mid-fetch used to get an
+// empty map and keep it forever.
+let logosPromise = null;
 export async function networks() {
   if (!logos) {
-    logos = {};
-    await Promise.all(BRANDS.map(async (b) => {
+    logosPromise ??= Promise.all(BRANDS.map(async (b) => {
       const n = await seerr(`/network/${b.network}`).catch(() => null);
-      logos[b.id] = n?.logoPath ? tmdbImage(n.logoPath, 'w300') : null;
-    }));
+      return [b.id, n?.logoPath ? tmdbImage(n.logoPath, 'w300') : null];
+    })).then((pairs) => { logos = Object.fromEntries(pairs); return logos; })
+      .finally(() => { logosPromise = null; });
+    await logosPromise;
   }
   return BRANDS.map((b) => ({ id: b.id, name: b.name, short: b.short, logo: logos[b.id] }));
 }
@@ -108,6 +112,7 @@ export async function details(mediaType, id) {
         }))
       : undefined,
   };
+  if (detailCache.size > 500) detailCache.clear();   // browsing a big library shouldn't grow forever
   detailCache.set(key, { t: Date.now(), v });
   return v;
 }

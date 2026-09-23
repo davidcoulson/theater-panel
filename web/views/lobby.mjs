@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
-import { EffectPreview, EffectTile, byMood, familyOf } from '../lib/effects.mjs';
+import { EffectPreview, EffectTile, byMood, familyOf, withoutWledOwn } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
 
 const SCENES = [
@@ -282,7 +282,7 @@ function EffectSheet({ id, onClose }) {
   const chosen = useStore((stt) => stt.effectFavourites);
   const [section, setSection] = useState('Favourites');
   const scroller = useRef();
-  const all = (st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e));
+  const all = withoutWledOwn((st?.attributes?.effect_list || []).filter((e) => e !== 'None' && !/^Calibrate/i.test(e)));
   const current = st?.attributes?.effect;
   const speed = Math.max(0.05, Math.min(1, (Number(speedEnt?.state) || 128) / 255));
   const favs = (chosen?.length ? chosen : FAVOURITES).filter((f) => all.includes(f)).slice(0, 8);

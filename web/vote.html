@@ -53,9 +53,14 @@ function draw(state) {
     b.className = 'pick';
     b.type = 'button';
     b.setAttribute('aria-pressed', String(mine === item.id));
-    b.innerHTML = `${item.poster ? `<img src="${item.poster}" alt="">` : ''}<span><span class="t"></span><br><span class="y"></span></span><span class="count">${state.tally[item.id] ?? 0}</span>`;
-    b.querySelector('.t').textContent = item.title;
-    b.querySelector('.y').textContent = item.year || '';
+    // Built through the DOM: nothing from the server is ever parsed as HTML.
+    if (item.poster) { const img = document.createElement('img'); img.src = item.poster; img.alt = ''; b.append(img); }
+    const text = document.createElement('span');
+    const t = document.createElement('span'); t.className = 't'; t.textContent = item.title;
+    const y = document.createElement('span'); y.className = 'y'; y.textContent = item.year || '';
+    text.append(t, document.createElement('br'), y);
+    const count = document.createElement('span'); count.className = 'count'; count.textContent = state.tally[item.id] ?? 0;
+    b.append(text, count);
     b.onclick = () => send(state.id, item.id);
     return b;
   }));

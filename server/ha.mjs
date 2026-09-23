@@ -41,7 +41,11 @@ export class HomeAssistant extends EventEmitter {
     const wsUrl = this.url.replace(/^http/, 'ws') + '/api/websocket';
     const ws = new WebSocket(wsUrl);
     this.ws = ws;
-    ws.addEventListener('message', (ev) => this.#onMessage(JSON.parse(ev.data)));
+    ws.addEventListener('message', (ev) => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch { return console.warn('[ha] unreadable frame'); }
+      try { this.#onMessage(msg); } catch (e) { console.warn('[ha] message handler:', e.message); }
+    });
     ws.addEventListener('close', () => this.#onClose());
     ws.addEventListener('error', (e) => console.warn('[ha] socket error', e.message || ''));
   }
@@ -57,7 +61,19 @@ export class HomeAssistant extends EventEmitter {
     this.retryMs = Math.min(this.retryMs * 2, 30000);
   }
 
-  #send(msg) { this.ws.send(JSON.stringify(msg)); }
+  #send(msg) { this.ws?.send(JSON.stringify(msg)); }
+
+  // A half-open socket looks connected but never delivers: ping, and drop it if HA stops answering.
+  #heartbeat() {
+    clearInterval(this.pingTimer);
+    this.pingTimer = setInterval(() => {
+      this.request({ type: 'ping' }, 10000).catch(() => {
+        console.warn('[ha] no answer to ping; reconnecting');
+        clearInterval(this.pingTimer);
+        try { this.ws?.close(); } catch {}
+      });
+    }, 30000);
+  }
 
   #onMessage(msg) {
     if (msg.type === 'auth_required') return this.#send({ type: 'auth', access_token: this.token });
@@ -69,9 +85,15 @@ export class HomeAssistant extends EventEmitter {
       this.subId = this.nextId++;
       this.#send({ id: this.subId, type: 'subscribe_entities', entity_ids: this.entities });
       this.emit('status', true);
+      this.#heartbeat();
       return;
     }
     if (msg.type === 'event' && msg.id === this.subId) return this.#applyEntityEvent(msg.event);
+    if (msg.type === 'pong') {
+      const p = this.pending.get(msg.id);
+      if (p) { clearTimeout(p.timer); this.pending.delete(msg.id); p.resolve(true); }
+      return;
+    }
     if (msg.type === 'result') {
       const p = this.pending.get(msg.id);
       if (!p) return;
