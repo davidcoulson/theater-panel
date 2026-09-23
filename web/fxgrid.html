@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Effect families</title>
+<style>
+  body { margin: 0; background: #17100B; color: #F4ECE0; font: 15px/1.4 system-ui, sans-serif; padding: 18px; }
+  h1 { font-size: 20px; margin: 0 0 14px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .cell { background: rgba(0,0,0,.3); border-radius: 12px; padding: 8px; }
+  .cell span { display: block; margin-top: 6px; font-size: 13px; color: #C7B39E; }
+  canvas { display: block; width: 100%; border-radius: 8px; }
+</style>
+<script type="importmap">{ "imports": { "preact": "/vendor/preact.mjs", "preact/hooks": "/vendor/preact-hooks.mjs", "htm": "/vendor/htm.mjs" } }</script>
+</head>
+<body>
+<h1>Effect families — every animation the panel draws</h1>
+<div class="grid" id="g"></div>
+<script type="module">
+// Dev page: one tile per family, so a new effect's look can be checked at a glance.
+import { familyOf } from '/lib/effects.mjs';
+const NAMES = ['Candle Flicker', '2D Pacifica', '2D Aurora (Solar Storm)', 'TwinkleFox', 'Rolling Fog', 'Theater Chase',
+  'Disco Mirror Ball', 'Heartbeat Pulse', 'Plasma', 'Bubbles', 'Chunchun', '2D Weather', 'Halloween Eyes',
+  'Fireworks Burst', 'Pac-Man Muncher', 'Lighthouse', 'Pinwheel', '2D Radar Sweep', '2D Shockwave', 'Ripple',
+  'Comet Swarm', 'Sinelon', 'Scanner', 'Slow Star Orbit', 'Firefly Jar', 'Metronome', 'Radial Flicker',
+  'Rainbow Chase', 'Confetti', 'PS GEQ Nova', 'PS Waterfall', 'PS Box', 'PS Impact', 'PS Dancing Shadows', 'Solid'];
+const { EffectPreview } = await import('/lib/effects.mjs');
+const { h, render } = await import('preact');
+const g = document.getElementById('g');
+render(NAMES.map((n) => h('div', { class: 'cell' }, h(EffectPreview, { name: n, h: 44 }), h('span', null, `${n} — ${familyOf(n)}`))), g);
+</script>
+</body>
+</html>
