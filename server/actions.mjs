@@ -9,6 +9,14 @@ import { extImage } from './images.mjs';
 import * as games from './games.mjs';
 
 const SCENES = ['pre_show', 'movie_time', 'intermission', 'lights_up', 'all_off'];
+// When the room's speaker is not there, a sound goes to the wall panel instead (it plays it
+// through its own speaker). index.mjs wires this to the live connection.
+let toPanels = () => {};
+export const onPanelSound = (fn) => { toPanels = fn; };
+const up = (ha, id) => Boolean(id) && !['unavailable', 'unknown', undefined].includes(ha.states[id]?.state);
+// The panel can only play what it serves itself, so a sound is handed over by its path.
+const panelPath = (url) => { try { const u = new URL(url); return u.pathname.startsWith('/assets/') ? u.pathname : null; } catch { return null; } };
+
 export const script = (ha, name, variables = {}) => ha.callService('script', 'turn_on', { variables }, { target: { entity_id: `script.theater_${name}` } });
 
 export async function runAction(ha, body) {
@@ -19,8 +27,11 @@ export async function runAction(ha, body) {
       const run = await script(ha, body.name);
       // The break gets its jingle: the panel shows the snack bar, the room hears the march.
       if (body.name === 'intermission' && config.intermission.url && body.quiet !== true) {
-        script(ha, 'snipe', { speaker: e.musicPlayers[0] || e.musicPlayer, url: config.intermission.url })
-          .catch((err) => console.warn('[intermission] no march:', err.message));
+        const speaker = e.musicPlayers[0] || e.musicPlayer;
+        if (up(ha, speaker)) {
+          script(ha, 'snipe', { speaker, url: config.intermission.url })
+            .catch((err) => console.warn('[intermission] no march:', err.message));
+        } else if (panelPath(config.intermission.url)) toPanels({ url: panelPath(config.intermission.url) });
       }
       return run;
     }
@@ -31,7 +42,13 @@ export async function runAction(ha, body) {
       // open for the length of the swell. A film gets it; the next episode of a sitcom does not,
       // unless the Play button says otherwise (body.preroll true or false decides).
       if (!body.noPreroll && wantsPreroll(body)) {
-        await script(ha, 'preroll', { speaker: e.musicPlayers[0] || e.musicPlayer, url: prerollUrl() });
+        // The theater's speaker is the Apple TV over AirPlay, which is asleep whenever a film
+        // plays on the projector. Then the lights still go down and the panel plays the swell.
+        const speaker = e.musicPlayers[0] || e.musicPlayer;
+        const url = prerollUrl();
+        const onSpeaker = up(ha, speaker);
+        await script(ha, 'preroll', { speaker, url: onSpeaker ? url : '' });
+        if (!onSpeaker && panelPath(url)) toPanels({ url: panelPath(url) });
         setTimeout(() => runAction(ha, { ...body, noPreroll: true }).catch((err) => console.warn('[preroll] film did not start:', err.message)), config.preroll.seconds * 1000);
         return { preroll: config.preroll.seconds };
       }
