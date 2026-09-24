@@ -638,3 +638,41 @@ canvas.fx { display: block; width: 100%; }
 .creature-card .c2 { font-family: var(--disp); font-weight: 800; font-size: 86px; line-height: .9; text-transform: uppercase; color: #9BE07A;
   text-shadow: 3px 3px 0 #2A0B33, 6px 6px 0 rgba(42,11,51,.5), 0 0 34px rgba(120,220,110,.45); }
 .creature-card .c3 { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; color: #C7B39E; }
+
+/* ---------- cinema mode ----------
+   The room is dark but nothing is playing (the break, the credits, someone reading the case of
+   a disc): the panel stops being a lamp. Same layout, same theme, a third of the light. It comes
+   on with the Movie time and Intermission scenes, or whenever the downlights are down and the
+   accents are up, and goes again when the lights do. "#/lobby?cinema=1" forces it on this panel. */
+html.cinema {
+  --card: #130F0C; --line: #272019; --ink: #C6B9A6; --muted: #8A7B6B; --track: #221B15;
+  --acc: #97551F; --acc-soft: #2B2016; --gold: #B4834A;
+  --choc: #0E0B08; --choc2: #090705; --on-choc: #B8AA97; --on-choc2: #7E7160;
+  --ok: #5E8266; --ok-soft: #17201A; --amb: #97763A; --amb-soft: #241D13;
+}
+/* and a wash over everything, so posters, artwork and the odd white button come down with the
+   rest rather than each being dimmed by hand */
+html.cinema #stage::after { content: ''; position: absolute; inset: 0; z-index: 40; pointer-events: none; background: rgba(6,4,2,.3); }
+html.cinema, html.cinema body { background: #06050A; }
+/* the room's textures are all lit surfaces; in the dark they are just noise */
+html.cinema .tx-plaster { background: #0B0907; }
+html.cinema .tx-maple { background: #1E160F; }
+html.cinema .tx-walnut, html.cinema .tx-suede { background: #14100B; }
+html.cinema .tx-planks-rail { background: #141009; }
+html.cinema .card, html.cinema .hero, html.cinema .scenes, html.cinema .dark { box-shadow: none; }
+/* posters and artwork carry their own light, so they come down too */
+html.cinema .poster img, html.cinema .sh-art, html.cinema .art img, html.cinema .album img, html.cinema .nowplaying .cover { opacity: .62; }
+/* the sofa theme's oatmeal Play button is a lamp in a dark room */
+html.cinema .btn.primary { background: #6E3F17; color: #EBD9C2; }
+html.cinema input.range::-webkit-slider-thumb { background: #8A7B6B; box-shadow: none; }
+html.cinema .btn.primary { box-shadow: none; }
+html.cinema .rail a[aria-current] { box-shadow: none; }
+html.cinema .toast { box-shadow: none; }
+/* the few places that paint dark-on-light by hand rather than through the tokens */
+html.cinema header.top h1, html.cinema .net-tile .net-name, html.cinema .h2 h2, html.cinema .foryou-head h2 { color: var(--ink); }
+html.cinema .chip { background: rgba(255,238,214,.09); border-color: rgba(255,238,214,.16); color: var(--ink); }
+html.cinema .chip.arrival, html.cinema .pill[aria-pressed="true"] { color: #160F09; }
+html.cinema .scene { background: rgba(255,238,214,.07); border-color: rgba(255,238,214,.14); color: var(--ink); }
+html.cinema .scene[aria-pressed="true"] { background: var(--acc-soft); border-color: var(--acc); color: var(--ink); }
+html.cinema .seg button[aria-pressed="true"], html.cinema .filter[aria-pressed="true"] { background: var(--acc-soft); border-color: var(--acc); color: var(--ink); }
+html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07); }
