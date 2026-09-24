@@ -473,3 +473,52 @@ function mapSession(m) {
     user: m.User?.title,
   });
 }
+
+// ---------- Watch history ----------
+
+// Plex keeps its own history, so "because you watched" needs no Tautulli and no Trakt account.
+// One row per title, newest first: a week of one series is a single seed, not twenty episodes.
+// accounts (Plex account ids) narrows it to whoever's taste should drive the panel; empty is
+// the whole house.
+export async function history({ size = 200, accounts = [] } = {}) {
+  const mc = await plex('/status/sessions/history/all', {
+    sort: 'viewedAt:desc', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(Math.min(Number(size) || 200, 500)),
+  });
+  const only = accounts.map(Number).filter(Number.isFinite);
+  const out = new Map();
+  for (const m of mc.Metadata || []) {
+    if (only.length && !only.includes(m.accountID)) continue;
+    const isEp = m.type === 'episode';
+    // History rows name the show by its key, not a ratingKey of its own.
+    const key = String(isEp ? (m.grandparentKey || '').split('/').pop() : m.ratingKey || '');
+    if (!key || out.has(key)) continue;
+    out.set(key, {
+      key,
+      type: isEp ? 'show' : 'movie',
+      title: (isEp ? m.grandparentTitle : m.title) || '',
+      viewedAt: m.viewedAt ? m.viewedAt * 1000 : null,
+      account: m.accountID,
+    });
+  }
+  return [...out.values()];
+}
+
+// The Plex accounts that have watched anything, for the settings page's "whose taste" field.
+export const accounts = () => cached('accounts', 3600e3, async () => {
+  const mc = await plex('/accounts');
+  return (mc.Account || []).filter((a) => a.name).map((a) => ({ id: Number(a.id), name: a.name }));
+});
+
+// What a history row needs to become a recommendation seed: its TMDB id (Plex stores it as a
+// guid) and its genres. Cached for the day - neither changes.
+export const seedDetails = (ratingKey) => cached(`seed:${ratingKey}`, 12 * 3600e3, async () => {
+  const m = (await plex(`/library/metadata/${ratingKey}`, { includeGuids: '1' })).Metadata?.[0];
+  if (!m) return null;
+  const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
+  return {
+    id: String(m.ratingKey), type: m.type, title: m.title, year: m.year,
+    poster: plexImage(m.thumb, 200, 300),
+    genres: tags(m.Genre, 5),
+    tmdbId: tmdb ? Number(tmdb.slice(7)) : null,
+  };
+});

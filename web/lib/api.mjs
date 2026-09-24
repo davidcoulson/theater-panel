@@ -24,7 +24,7 @@ export async function act(data) {
 
 // ---------- live store ----------
 
-let state = { vote: null, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
+let state = { vote: null, sleep: null, preroll: {}, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
 export const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
@@ -62,7 +62,7 @@ export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   // Open the live stream before anything else so it gets a connection ahead of the posters.
   const es = new EventSource('/api/events');
-  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8 })).catch(() => {});
+  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {} })).catch(() => {});
   loadSettings();
   es.addEventListener('hello', (e) => {
     const d = JSON.parse(e.data);
@@ -80,6 +80,12 @@ export async function startLive({ navigate } = {}) {
   es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
   // Saved on the admin page: pick up the new entities, apps and display options.
   es.addEventListener('settings', loadSettings);
+  // The sleep timer, armed from Showtime and counted down by the server.
+  es.addEventListener('sleep', (e) => {
+    const d = JSON.parse(e.data);
+    set({ sleep: d.mode ? d : null });
+    if (d.fired) toast(`Room off ${d.fired}`);
+  });
   // Movie night: the shortlist and the running tally.
   es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
   // Home Assistant (or anything with access to the panel's API) can move the panel to a route.

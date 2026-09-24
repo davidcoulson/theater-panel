@@ -19,6 +19,7 @@ export const FIELDS = [
   { group: 'Plex', key: 'PLEX_LIBRARIES', label: 'Libraries, in tab order', type: 'libraries', help: 'Movie libraries are merged into one Movies tab. Blank shows every movie and TV library.' },
   { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV — Plex app'], ['plezy', 'Projector — Plezy'], ['plex', 'Projector — Plex app']], help: 'Which app Play and Resume open. Plezy is opened with a link over ADB; the Plex apps are driven as Plex clients.' },
   { group: 'Plex', key: 'ENTITY_PROJECTOR_PLEX_PLAYER', label: "Projector's Plex client", type: 'entity', domain: 'media_player', help: 'Only for "Projector — Plex app": HA\'s Plex client for the projector (Plex for Android (TV) - AURORA PRO).' },
+  { group: 'Plex', key: 'HISTORY_ACCOUNTS', label: 'Whose taste to follow', type: 'list', help: "Plex account names whose watch history feeds \u201cYou'll love this\u201d and the Mystery box. Blank follows the whole house." },
   { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
@@ -58,6 +59,7 @@ export const FIELDS = [
   { group: 'Display', key: 'BIRTHDAYS', label: 'Birthdays', type: 'text', placeholder: 'Michelle=01-01, David=03-16', help: 'Name=MM-DD, comma separated. On the day the birthday accent wins.' },
   { group: 'Projector apps', key: 'PREROLL_URL', label: 'Pre-roll sound URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/preroll.mp3', help: 'A deep swell on the theater speakers while the lights go down, before the film starts. Must be a URL the speaker itself can fetch; the panel serves its own at /assets/preroll.mp3 with no key needed. Blank turns pre-roll off.' },
   { group: 'Projector apps', key: 'PREROLL_SECONDS', label: 'Pre-roll length (seconds)', type: 'text', placeholder: '16', help: 'How long to wait before the film starts. The panel\'s own swell runs 17 seconds.' },
+  { group: 'Projector apps', key: 'PREROLL_MOVIES_ONLY', label: 'Pre-roll for films only', type: 'bool', default: true, help: 'A swell before a film is an event; before the fourth episode of a sitcom it is a delay. Off plays it for episodes too. Either way the Play button offers it for the title in front of you.' },
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },

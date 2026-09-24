@@ -360,6 +360,15 @@ input.range.thin { height: 40px; }
 .transport .pp { width: 260px; height: 260px; border: 2px solid var(--d-dim); border-radius: 130px; background: #000; display: flex; align-items: center; justify-content: center; }
 .warn-dim { color: #8A3A22; font-size: 18px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
 
+/* the sleep timer, over the dark screen: big targets, nothing bright */
+.sleep-picker { position: absolute; right: 64px; bottom: 210px; z-index: 8; width: 720px; padding: 22px; border: 1.5px solid var(--d-line); border-radius: 30px; background: #000; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.7); animation: fx-in .16s ease-out; }
+.sleep-picker .h { display: flex; align-items: center; justify-content: space-between; }
+.sleep-picker .lbl { font-size: 18px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--d-dim); }
+.sleep-picker .opts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.sleep-picker .dbtn { height: 110px; }
+.sleep-picker .dbtn .big { font-size: 34px; }
+.sleep-picker .dbtn.wide { height: 84px; flex-direction: row; gap: 14px; }
+
 /* ---------- networks and poster labels ---------- */
 .net-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; padding: 8px 8px 20px; align-content: start; }
 .net-tile { height: 180px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: 0 8px 20px rgba(58,36,25,.12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 18px; }
@@ -520,3 +529,40 @@ canvas.fx { display: block; width: 100%; }
 .streams-sheet .time { text-align: right; flex-shrink: 0; }
 .streams-sheet .time .state { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
 .streams-sheet .time .left { font-family: var(--mono); font-size: 20px; }
+
+/* ---------- "you'll love this" rows ---------- */
+.foryou { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 26px; padding: 4px 8px 20px; }
+.foryou-head { display: flex; flex-direction: column; gap: 2px; }
+.foryou-head h2 { font-family: var(--disp); font-weight: 800; font-size: 46px; line-height: 1; text-transform: uppercase; margin: 0; }
+.foryou-head span { font-size: 17px; color: var(--muted); }
+.tasterow { display: flex; flex-direction: column; gap: 12px; }
+.tasterow .seed { display: flex; align-items: center; gap: 14px; font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.tasterow .seed img { width: 40px; height: 60px; border-radius: 6px; object-fit: cover; background: #ccc; }
+.tasterow .seed b { font-family: var(--disp); font-weight: 800; font-size: 30px; letter-spacing: 0; color: var(--ink); }
+.tasterow .strip { display: flex; gap: 18px; }
+.tasterow .poster-btn { width: 180px; flex-shrink: 0; }
+.tasterow .tag { position: absolute; top: 8px; left: 8px; padding: 3px 9px; border-radius: 7px; font-size: 13px; font-weight: 700; background: rgba(244,240,232,.94); color: var(--ink); }
+.tasterow .tag.in { background: rgba(221,232,218,.95); color: var(--ok); }
+.tasterow .tag.soon { background: rgba(242,227,198,.95); color: var(--amb); }
+.tasterow .tag.ask { background: rgba(143,78,28,.92); color: #fff; }
+
+/* ---------- mystery box ---------- */
+.mystery-sheet { position: absolute; inset: 170px 80px 170px; z-index: 7; background: var(--choc2); color: #F4ECE0; border-radius: 26px; padding: 26px 30px 30px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.5); animation: fx-in .18s ease-out; }
+.mystery-sheet .h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mystery-sheet .h .t { font-family: var(--disp); font-weight: 800; font-size: 46px; line-height: 1; text-transform: uppercase; }
+/* the shuffle: five blank poster slots dealing themselves out while Plex answers */
+.mystery-sheet .reels { flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 26px; }
+.mystery-sheet .reel { width: 150px; height: 225px; border-radius: 14px; background: linear-gradient(160deg, #4A3527, #2A1C14); box-shadow: 0 12px 26px rgba(0,0,0,.4); animation: deal 1s ease-in-out infinite; }
+@keyframes deal { 0%, 100% { transform: translateY(0) rotate(-2deg); opacity: .45; } 50% { transform: translateY(-26px) rotate(2deg); opacity: 1; } }
+.mystery-sheet .reveal { flex-grow: 1; display: flex; gap: 34px; min-height: 0; animation: fx-in .3s ease-out; }
+.mystery-sheet .reveal .art { width: 400px; flex-shrink: 0; }
+.mystery-sheet .reveal .info { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.mystery-sheet .reveal h2 { font-family: var(--disp); font-weight: 800; font-size: 68px; line-height: .95; text-transform: uppercase; margin: 0; }
+.mystery-sheet .reveal .why { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; }
+.mystery-sheet .reveal .meta { font-size: 19px; color: #C7B39E; }
+.mystery-sheet .reveal p { margin: 0; font-size: 22px; line-height: 1.45; color: var(--on-choc); }
+.mystery-sheet .endsat.dark { background: rgba(0,0,0,.28); color: #F2E3C6; }
+/* the countdown: it empties, and when it is gone the film starts */
+.mystery-sheet .count { height: 8px; border-radius: 4px; background: rgba(244,236,224,.12); overflow: hidden; }
+.mystery-sheet .count i { display: block; height: 100%; background: var(--gold); transition: width 1s linear; }
+.mystery-sheet .acts { display: flex; gap: 16px; }

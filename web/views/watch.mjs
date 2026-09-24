@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Play, Poster, Seg, Header, useDebounced } from '../lib/ui.mjs';
-import { get, act, useLoad, runtime, endsAt, toast } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, runtime, endsAt, toast } from '../lib/api.mjs';
 import { play } from './lobby.mjs';
-import { route } from '../app.mjs';
+import { go, route } from '../app.mjs';
 import { useNetworks, NetworkPicker, PosterLabels } from './networks.mjs';
+import { MysterySheet } from './mystery.mjs';
 
 const FILTERS = [
   { key: 'unwatched', label: 'Unwatched' },
@@ -35,17 +36,20 @@ export function Watch() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [seed, setSeed] = useState(0);
   const [brand, setBrand] = useState(route.params.brand || null);
+  const [mystery, setMystery] = useState(false);
   const networks = useNetworks();
   const gridRef = useRef();
 
   const libId = lib || libs?.find((l) => l.title === 'Movies')?.id || libs?.[0]?.id;
   const byNetwork = libId === 'networks';
+  const forYou = libId === 'foryou';
   const libType = byNetwork ? null : libs?.find((l) => l.id === libId)?.type;
   const activeFilters = filters.filter((f) => !(FILTERS.find((x) => x.key === f)?.movieOnly && libType !== 'movie')).join(',');
   const brandName = networks.find((n) => n.id === brand)?.name;
 
   useEffect(() => {
     if (!libId && !q) return;
+    if (forYou && !q) { setItems([]); setTotal(0); return; }
     if (byNetwork && !brand && !q) { setItems([]); setTotal(0); return; }
     let live = true;
     setItems(null);
@@ -59,7 +63,7 @@ export function Watch() {
       gridRef.current?.scrollTo(0, 0);
     }).catch((e) => live && (setItems([]), toast(e.message, true)));
     return () => { live = false; };
-  }, [libId, activeFilters, sort, q, seed, brand]);
+  }, [libId, activeFilters, sort, q, seed, brand, forYou]);
 
   async function more() {
     if (loadingMore || q || byNetwork || !items || items.length >= total) return;
@@ -74,7 +78,7 @@ export function Watch() {
   const libTitle = libs?.find((l) => l.id === libId)?.title;
 
   return html`<main class="view">
-    <${Header} title="Watch" kicker=${q ? `Plex search · ${total} results` : byNetwork ? `Plex · ${brandName ? `${brandName} · ${total} titles` : 'Pick a network'}` : `Plex · ${libTitle || ''}${total ? ` · ${total.toLocaleString()} titles` : ''}`}>
+    <${Header} title="Watch" kicker=${q ? `Plex search · ${total} results` : forYou ? 'Plex · picked from what you watch' : byNetwork ? `Plex · ${brandName ? `${brandName} · ${total} titles` : 'Pick a network'}` : `Plex · ${libTitle || ''}${total ? ` · ${total.toLocaleString()} titles` : ''}`}>
       <label class="search" style="width:420px"><${Icon} name="search" color="var(--muted)" /><span class="sr">Search Plex</span>
         <input type="search" placeholder="Search Plex" value=${query} onInput=${(e) => setQuery(e.target.value)} />
         ${query && html`<button type="button" class="icon-btn" aria-label="Clear search" style="width:40px;height:40px" onClick=${() => setQuery('')}><${Icon} name="x" size=${20} /></button>`}
@@ -82,27 +86,60 @@ export function Watch() {
     <//>
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:620px;flex-shrink:0">
-        <${Seg} options=${[...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
+        <${Seg} options=${[...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'foryou', label: 'For you' }, { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
       </div>
       <div class="hscroll" style="display:flex;gap:10px;min-width:0">
+        ${forYou && !q ? html`<button type="button" class="filter" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${18} />Mystery box</button>` : null}
         ${byNetwork && brand && html`<button type="button" class="filter" onClick=${() => { setBrand(null); setSelected(null); }}><${Icon} name="left" size=${18} />All networks</button>`}
-        ${byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
+        ${forYou ? null : byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
           ${filters.includes(f.key) && html`<${Icon} name="check" size=${18} />`}${f.label}</button>`)}
-        ${!byNetwork && SORTS.map((s) => html`<button type="button" class="filter" aria-pressed=${sort === s.value ? 'true' : 'false'} disabled=${!!q}
+        ${!byNetwork && !forYou && SORTS.map((s) => html`<button type="button" class="filter" aria-pressed=${sort === s.value ? 'true' : 'false'} disabled=${!!q}
           onClick=${() => { setSort(s.value); if (s.value === 'random') setSeed(seed + 1); }}>
           ${s.value === 'random' && html`<${Icon} name="dice" size=${18} />`}${s.label}</button>`)}
       </div>
     </div>
     <div class="watch-body">
-      ${byNetwork && !brand && !q ? html`<div class="scroll" style="flex-grow:1;min-width:0"><${NetworkPicker} networks=${networks} onPick=${(b) => { setBrand(b); setSelected(null); }} hint="Movies and shows in your Plex library from each network." /></div>` : html`
+      ${forYou && !q ? html`<${ForYou} onPlex=${(id) => setSelected(id)} />`
+      : byNetwork && !brand && !q ? html`<div class="scroll" style="flex-grow:1;min-width:0"><${NetworkPicker} networks=${networks} onPick=${(b) => { setBrand(b); setSelected(null); }} hint="Movies and shows in your Plex library from each network." /></div>` : html`
       <div class="poster-grid scroll" ref=${gridRef} onScroll=${onScroll}>
         ${items === null ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
           : !items.length ? html`<div class="empty" style="grid-column:1/-1">Nothing matches. Try removing a filter.</div>`
           : items.map((m) => html`<${Tile} m=${m} selected=${m.id === selected} onSelect=${() => setSelected(m.id)} />`)}
       </div>`}
-      ${byNetwork && !brand && !q ? null : selected ? html`<${Detail} id=${selected} key=${selected} onOpen=${setSelected} />` : html`<aside class="detail"><div class="empty" style="flex-grow:1">Pick a title</div></aside>`}
+      ${(byNetwork && !brand && !q) || (forYou && !q && !selected) ? null : selected ? html`<${Detail} id=${selected} key=${selected} onOpen=${setSelected} />` : html`<aside class="detail"><div class="empty" style="flex-grow:1">Pick a title</div></aside>`}
     </div>
+    ${mystery && html`<${MysterySheet} onClose=${() => setMystery(false)} />`}
   </main>`;
+}
+
+// "You'll love this": rows built from what the house finished lately (server/taste.mjs). A title
+// already in Plex opens in the detail pane and plays like anything else; one we do not have goes
+// to Request with its name already typed in.
+function ForYou({ onPlex }) {
+  const [data, err] = useLoad(() => get('/api/taste'), []);
+  const rows = data?.rows || [];
+  if (err) return html`<div class="scroll foryou"><div class="empty">${err.message}</div></div>`;
+  if (!data) return html`<div class="scroll foryou"><div class="empty">Reading what you have been watching…</div></div>`;
+  if (!rows.length) return html`<div class="scroll foryou"><div class="empty">Nothing to go on yet. Watch something and come back.</div></div>`;
+  return html`<div class="scroll foryou">
+    <div class="foryou-head"><h2>You'll love this</h2><span>Picked from the last few things the house finished</span></div>
+    ${rows.map((row) => html`<section class="tasterow" key=${row.seed.id}>
+      <div class="seed">
+        ${row.seed.poster && html`<img src=${row.seed.poster} alt="" />`}
+        <span>You watched<br /><b>${row.seed.title}</b></span>
+      </div>
+      <div class="strip hscroll">
+        ${row.items.map((r) => html`<button type="button" class="poster-btn" key=${r.id}
+          onClick=${() => (r.plexKey ? onPlex(String(r.plexKey)) : go('request', { q: r.title }))}>
+          <${Poster} src=${r.poster} title=${r.title}>
+            ${r.plexKey ? html`<span class="tag in">In Plex</span>` : r.status !== 'none' ? html`<span class="tag soon">${r.status === 'available' ? 'In Plex' : 'On its way'}</span>` : html`<span class="tag ask">Request</span>`}
+          <//>
+          <span class="t ellipsis">${r.title}</span>
+          <span class="y">${r.year || ''}${r.rating ? ` · ${r.rating.toFixed(1)}★` : ''}</span>
+        </button>`)}
+      </div>
+    </section>`)}
+  </div>`;
 }
 
 function Tile({ m, selected, onSelect }) {
@@ -123,6 +160,8 @@ function Detail({ id, onOpen }) {
   const [it, err] = useLoad(() => get(`/api/plex/item/${id}`), [id]);
   const [season, setSeason] = useState(null);
   const [subs, setSubs] = useState(undefined);
+  const preroll = useStore((s) => s.preroll) || {};
+  const [swell, setSwell] = useState(null);       // null: whatever the rule says for this title
   const [eps] = useLoad(() => (season ? get(`/api/plex/episodes/${season}`) : Promise.resolve(null)), [season]);
 
   if (err) return html`<aside class="detail"><div class="empty" style="flex-grow:1">${err.message}</div></aside>`;
@@ -134,6 +173,10 @@ function Detail({ id, onOpen }) {
   const subOptions = it.subtitles?.length ? [{ value: 0, label: 'Off' }, ...pickSubs(it.subtitles)] : null;
   const currentSub = subs !== undefined ? subs : (it.subtitles?.find((s) => s.selected)?.id ?? 0);
   const meta = [it.year, runtime(it.duration), it.contentRating, ...(it.genres || []).slice(0, 2)].filter(Boolean).join(' · ');
+  // The swell belongs before a film, not before the next episode of a sitcom; that is the rule
+  // on the settings page, and this button overrides it for the title in front of you.
+  const swellByRule = Boolean(preroll.enabled) && !(preroll.moviesOnly && target?.type === 'episode');
+  const swellOn = swell ?? swellByRule;
 
   return html`<aside class="detail">
     <div class="backdrop" style=${it.art ? `background-image:url('${it.art}')` : ''}>
@@ -158,10 +201,12 @@ function Detail({ id, onOpen }) {
         ${subOptions && html`<div><div class="label" style="margin-bottom:6px">Subtitles</div><${Seg} options=${subOptions} value=${currentSub} onChange=${setSubs} /></div>`}
       `}
       <div style="flex-grow:1"></div>
-      ${target ? html`<button type="button" class="btn primary big" onClick=${() => play(target, true, { partId: it.partId, subtitleStreamID: subs })}>
+      ${preroll.enabled && target && html`<button type="button" class="filter" style="align-self:flex-start" aria-pressed=${swellOn ? 'true' : 'false'} onClick=${() => setSwell(!swellOn)}>
+        <${Icon} name="spk" size=${18} />Pre-roll swell${swellOn ? ` · ${preroll.seconds}s` : ''}</button>`}
+      ${target ? html`<button type="button" class="btn primary big" onClick=${() => play(target, true, { partId: it.partId, subtitleStreamID: subs, preroll: swellOn })}>
           <${Play} size=${30} />${target.viewOffset ? 'Resume on projector' : 'Play on projector'}</button>`
         : html`<button type="button" class="btn big" disabled>Nothing to play</button>`}
-      ${!isShow && it.viewOffset > 0 && html`<button type="button" class="btn sm" onClick=${() => play(it, false, { partId: it.partId, subtitleStreamID: subs })}>Start over</button>`}
+      ${!isShow && it.viewOffset > 0 && html`<button type="button" class="btn sm" onClick=${() => play(it, false, { partId: it.partId, subtitleStreamID: subs, preroll: swellOn })}>Start over</button>`}
     </div>
   </aside>`;
 }

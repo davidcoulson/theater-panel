@@ -11,7 +11,7 @@ const STATUS_LABEL = { available: 'In library', partial: 'Partly in library', pr
 export function Request() {
   const [mode, setMode] = useState(route.params.mode || (route.params.brand ? 'networks' : 'trending'));
   const [kind, setKind] = useState('all');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(route.params.q || '');
   const q = useDebounced(query.trim(), 450);
   const [picked, setPicked] = useState(null);
   const [reqs, , reloadReqs] = useLoad(() => get('/api/seerr/requests?take=6'), []);

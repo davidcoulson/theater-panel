@@ -11,7 +11,7 @@ const W = 1920, H = 1080;
 const KINDS = {
   snow: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true },
   // Christmas is snow with a sleigh that crosses now and then.
-  xmas: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true, sleigh: true },
+  xmas: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true, sleigh: true, santa: true },
   leaves: { n: 26, vy: [45, 100], sway: 40, size: [8, 13], land: 'scatter', colors: ['#C75E12', '#E8731C', '#8F4E1C', '#B3372B', '#E3A865'] },
   petals: { n: 34, vy: [30, 70], sway: 30, size: [5, 8], land: 'scatter', colors: ['#F2A0B2', '#F7C6D0', '#FBE7EC', '#E3A865'] },
   confetti: { n: 60, vy: [80, 160], sway: 36, size: [5, 8], land: 'scatter', colors: ['#D9536F', '#E3A865', '#4E7D3A', '#3F7FB5', '#F2D69B', '#E8731C'], rect: true },
@@ -179,6 +179,62 @@ function drawSnowman(ctx, x, base, h) {
   ctx.beginPath(); ctx.moveTo(x, y3 - h * 0.01); ctx.lineTo(x + r3 * 1.1, y3 + h * 0.01); ctx.lineTo(x, y3 + h * 0.035); ctx.fill();
 }
 
+// Santa himself, checking the room over the top of the drift: he rises from behind the floor,
+// waves for a few seconds and ducks back down. Everything below the floor line is clipped, so he
+// really does come up from behind it rather than sliding in.
+function drawSanta(ctx, x, base, h, t, rise) {
+  const r = h * 0.2;                         // head radius
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();      // he comes up past the bottom edge
+  ctx.translate(x, base + h * (1 - rise));
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  ctx.fillStyle = '#C8322B';                                            // body
+  ctx.beginPath();
+  ctx.moveTo(-h * 0.3, h);
+  ctx.quadraticCurveTo(-h * 0.36, -r * 0.6, 0, -r * 0.7);
+  ctx.quadraticCurveTo(h * 0.36, -r * 0.6, h * 0.3, h);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#2A1911';                                            // belt
+  ctx.fillRect(-h * 0.33, h * 0.16, h * 0.66, h * 0.11);
+  ctx.fillStyle = '#E3A865';
+  ctx.fillRect(-h * 0.07, h * 0.16, h * 0.14, h * 0.11);                // buckle
+
+  const wave = Math.sin(t * 6) * 0.5;                                   // the waving arm
+  ctx.strokeStyle = '#C8322B'; ctx.lineWidth = h * 0.14;
+  ctx.beginPath(); ctx.moveTo(h * 0.26, -r * 0.1);
+  ctx.lineTo(h * 0.26 + Math.cos(wave - 0.9) * h * 0.4, -r * 0.1 - Math.sin(wave + 1.1) * h * 0.42);
+  ctx.stroke();
+  ctx.fillStyle = '#FAF8F2';                                            // mitten
+  ctx.beginPath(); ctx.arc(h * 0.26 + Math.cos(wave - 0.9) * h * 0.4, -r * 0.1 - Math.sin(wave + 1.1) * h * 0.42, h * 0.1, 0, 6.29); ctx.fill();
+
+  ctx.fillStyle = '#F6E4C8';                                            // face
+  ctx.beginPath(); ctx.arc(0, -r * 1.1, r, 0, 6.29); ctx.fill();
+  ctx.fillStyle = '#FAF8F2';                                            // beard
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.95, -r * 1.2);
+  ctx.quadraticCurveTo(-r * 0.8, r * 0.75, 0, r * 0.8);
+  ctx.quadraticCurveTo(r * 0.8, r * 0.75, r * 0.95, -r * 1.2);
+  ctx.quadraticCurveTo(0, -r * 0.2, -r * 0.95, -r * 1.2);
+  ctx.fill();
+  ctx.fillStyle = '#2A1911';                                            // eyes
+  ctx.beginPath(); ctx.arc(-r * 0.36, -r * 1.35, r * 0.12, 0, 6.29); ctx.fill();
+  ctx.beginPath(); ctx.arc(r * 0.36, -r * 1.35, r * 0.12, 0, 6.29); ctx.fill();
+  ctx.fillStyle = '#E3796F';                                            // nose and cheeks
+  ctx.beginPath(); ctx.arc(0, -r * 1.05, r * 0.16, 0, 6.29); ctx.fill();
+
+  ctx.fillStyle = '#C8322B';                                            // hat
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.05, -r * 1.85);
+  ctx.quadraticCurveTo(0, -r * 3.3, r * 1.5, -r * 2.5);
+  ctx.quadraticCurveTo(r * 0.5, -r * 2.1, r * 1.05, -r * 1.85);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#FAF8F2';
+  ctx.fillRect(-r * 1.15, -r * 2, r * 2.3, r * 0.34);                   // hat band
+  ctx.beginPath(); ctx.arc(r * 1.5, -r * 2.5, r * 0.28, 0, 6.29); ctx.fill();   // pom
+  ctx.restore();
+}
+
 // Santa's sleigh: red and gold, a stack of presents in the back, two reindeer in harness with
 // Rudolph up front, and a wake of glitter that fades behind them.
 const GIFTS = ['#C8322B', '#2F5E2A', '#3F7FB5', '#E2708C', '#F2C94C'];
@@ -324,11 +380,13 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
     let ledges = k.land ? findLedges(cv) : [];
     const sleigh = k.sleigh ? { ...newSleigh(), wait: rnd(10, 22) } : null;
     let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0, sinceMen = 0;
+    // Santa: how long since he was last up, and the visit he is in the middle of.
+    let sinceSanta = rnd(26, 38), santa = null;
     const frame = () => {
       if (!live) return;
       const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
       if (paused || document.hidden) { setTimeout(() => requestAnimationFrame(frame), 500); return; }
-      t += dt; sinceLedges += dt; sinceMelt += dt; sinceMen += dt;
+      t += dt; sinceLedges += dt; sinceMelt += dt; sinceMen += dt; sinceSanta += dt;
       if (k.land && sinceLedges > 3) { sinceLedges = 0; const fresh = findLedges(cv); if (fresh.length !== ledges.length) ledges = fresh; }
       // what has settled clears slowly, so an evening of snow does not bury the buttons
       if (k.land && sinceMelt > 60) {
@@ -352,6 +410,18 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
           if (spots.length) floor.men.push({ x: pick(spots), h: rnd(180, 250), scale: 1 });
         }
       }
+      // Santa comes up from behind the drift about every 40 seconds, waves, and goes back down.
+      if (k.santa) {
+        const floor = ledges[ledges.length - 1];
+        if (!santa && sinceSanta > 40 && floor) {
+          sinceSanta = 0;
+          const away = (x) => floor.men.every((m) => Math.abs(m.x - x) > 260);
+          const spots = [];
+          for (let x = 320; x < W - 220; x += 60) if (away(x)) spots.push(x);
+          if (spots.length) santa = { x: pick(spots), h: rnd(150, 190), life: 0, span: 9 };
+        }
+        if (santa && (santa.life += dt) > santa.span) santa = null;
+      }
       if (sleigh) {
         if (sleigh.flying) {
           sleigh.x += 150 * sleigh.dir * dt;
@@ -368,6 +438,11 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
       ctx.clearRect(0, 0, W, H);
       drawSettled(ctx, k, ledges);
       if (decor === 'tree') drawTree(ctx, W - 210, H - 40, 300, t);
+      if (santa) {
+        // up over a second, a good long wave, then down again
+        const u = Math.min(1, santa.life / 1.1), d = Math.min(1, (santa.span - santa.life) / 1.1);
+        drawSanta(ctx, santa.x, H - santa.h * 0.34, santa.h, t, Math.min(u, d) ** 0.7);
+      }
       if (sleigh?.trail.length) {
         for (const p of sleigh.trail) { p.age += dt; p.y += p.vy * dt; }
         sleigh.trail = sleigh.trail.filter((p) => p.age < p.span);

@@ -7,7 +7,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { html, Icon, Pause, Play } from '../lib/ui.mjs';
 import { act, useStore, useEntity, livePosition, mmss, clock, getState } from '../lib/api.mjs';
 import { enterTheater, exitTheater, wake } from '../lib/ks.mjs';
-import { go } from '../app.mjs';
+import { go, route } from '../app.mjs';
+import { SleepPicker, sleepLabel } from './sleep.mjs';
 
 export function Showtime() {
   const ents = useStore((s) => s.entities);
@@ -16,6 +17,8 @@ export function Showtime() {
   const [, tick] = useState(0);
   const [awake, setAwake] = useState(true);
   const [muted, setMuted] = useState(false);
+  const [sleepOpen, setSleepOpen] = useState(route.params.sleep === '1');
+  const sleep = useStore((s) => s.sleep);
 
   const native = useStore((s) => Boolean(s.theater));
   // Showtime owns theater mode: on while this screen is up, off when it goes (Full controls,
@@ -79,9 +82,12 @@ export function Showtime() {
           <span class="big"><${Icon} name="cup" size=${40} w=${1.8} />Intermission</span><span class="s">Pause · lights 30%</span></button>
         <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => act({ action: 'scene', name: 'lights_up' })}>
           <span class="big"><${Icon} name="sun" size=${40} w=${1.8} />Lights up</span><span class="s">End show</span></button>
-        <button type="button" class="dbtn" style="width:300px;height:150px;background:#000" onClick=${() => go('lobby', { manual: true })}>
+        <button type="button" class="dbtn" style="width:280px;height:150px" aria-pressed=${sleep ? 'true' : 'false'} onClick=${() => setSleepOpen(true)}>
+          <span class="big"><${Icon} name="moon" size=${40} w=${1.8} />Sleep</span><span class="s">${sleep ? sleepLabel(sleep) : 'Off'}</span></button>
+        <button type="button" class="dbtn" style="width:260px;height:150px;background:#000" onClick=${() => go('lobby', { manual: true })}>
           <${Icon} name="home" size=${36} w=${1.8} color="var(--d-dim)" /><span class="s">Full controls</span></button>
       </div>
+      ${sleepOpen && html`<${SleepPicker} onClose=${() => setSleepOpen(false)} />`}
     </div>
   </div>`;
 }
