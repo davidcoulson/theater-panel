@@ -34,7 +34,7 @@ export function Music() {
           ${err ? html`<div class="empty" style="grid-column:1/-1">${err.message}</div>`
             : !lib ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
             : !lib.length ? html`<div class="empty" style="grid-column:1/-1">Nothing here</div>`
-            : lib.map((m) => html`<button type="button" class="album" aria-label=${`Play ${m.name}`} onClick=${() => act({ action: 'music', cmd: 'play_media', uri: m.uri, media_type: m.type, entity_id: id })}>
+            : lib.map((m) => html`<button type="button" class="album" key=${m.uri} aria-label=${`Play ${m.name}`} onClick=${() => act({ action: 'music', cmd: 'play_media', uri: m.uri, media_type: m.type, entity_id: id })}>
                 ${m.image ? html`<img src=${m.image} alt="" loading="lazy" onError=${(e) => { e.target.style.visibility = 'hidden'; }} />` : html`<div class="ph"></div>`}
                 <span class="t ellipsis">${m.name}</span><span class="a ellipsis">${m.artist || m.type}</span></button>`)}
         </div>
