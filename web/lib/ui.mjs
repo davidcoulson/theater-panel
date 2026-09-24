@@ -54,18 +54,20 @@ const PATHS = {
   snowflake: 'M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
   sparkle: 'M12 3c.6 4.5 3.5 7.4 9 9-5.5 1.6-8.4 4.5-9 9-.6-4.5-3.5-7.4-9-9 5.5-1.6 8.4-4.5 9-9zM5 3l.5 2M4 6l2-1M19 17l.5 2M18 20l2-1',
   heart: 'M12 20.5s-8-5.2-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 5.8-8 11-8 11z',
+  // the "how was it?" card
+  star: 'M12 3.2l2.7 5.9 6.3.8-4.7 4.4 1.2 6.2L12 17.4 6.5 20.5l1.2-6.2L3 9.9l6.3-.8z',
   cake: 'M4 20h16M5 20v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M5 15c1.5 1.5 3 1.5 4.5 0s3 1.5 4.5 0 3 1.5 4.5 0M12 11V8M12 8c-1.5-1-1.5-3 0-4 1.5 1 1.5 3 0 4z',
 };
 
 // Built-in outline icons by name, or any "prefix:name" icon (mdi:, cbi:, fa7-brands: ...) served by
 // the panel from Home Assistant's icon sets, drawn in the current text colour with a CSS mask.
-export function Icon({ name, size = 24, color = 'currentColor', w = 2 }) {
+export function Icon({ name, size = 24, color = 'currentColor', w = 2, fill = 'none' }) {
   if (name && name.includes(':')) {
     const [prefix, icon] = name.split(':');
     // Only an explicit colour is inline, so CSS can colour it like the built-in icons.
     return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;${color !== 'currentColor' ? `color:${color};` : ''}--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
   }
-  return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
+  return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill=${fill} stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
 }
 export const Play = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill=${color} /></svg>`;
 export const Pause = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4" width="4.5" height="16" rx="1" fill=${color} /><rect x="14" y="4" width="4.5" height="16" rx="1" fill=${color} /></svg>`;

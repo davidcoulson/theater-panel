@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -136,6 +136,44 @@ function applyCinema() {
   document.documentElement.classList.toggle('cinema', Boolean(on));
 }
 subscribe(applyCinema);
+
+// "How was it?" - the film finished and ran to the end, so the panel asks on its way out and
+// writes the answer back to Plex as a star rating. Everyone on the sofa can tap: the card keeps
+// the tally and Plex is told the average, so one person's five does not stand for the room. It
+// shows over whatever screen is up, the way the dog does, and takes no for an answer.
+function RateCard() {
+  const live = useStore((s) => s.rate);
+  const [hover, setHover] = useState(0);
+  const [mine, setMine] = useState(0);
+  // "?rate=1" puts the card up for a look without sitting through a film first.
+  const v = route.params.rate === '1' ? { id: 'demo', title: 'Dune: Part Two', year: 2024, poster: null, votes: [5, 4] } : live;
+  useEffect(() => { setMine(0); setHover(0); }, [v?.id]);
+  if (!v?.id) return null;
+  const votes = v.votes || [];
+  const average = votes.length ? votes.reduce((a, b) => a + b, 0) / votes.length : 0;
+  const send = async (stars) => {
+    setMine(stars);
+    try { await post('/api/rate', { id: v.id, stars, title: v.title, year: v.year }); }
+    catch (e) { toast(e.message, true); }
+    setTimeout(() => { setMine(0); setHover(0); }, 1200);       // ready for the next person
+  };
+  return html`<div class="rate" role="dialog" aria-label=${`How was ${v.title}?`}>
+    ${v.poster && html`<img src=${v.poster} alt="" />`}
+    <div class="t">
+      <b>How was it?</b>
+      <span>${v.title}${v.year ? ` · ${v.year}` : ''}</span>
+      <div class="stars" onPointerLeave=${() => setHover(0)}>
+        ${[1, 2, 3, 4, 5].map((n) => html`<button type="button" class="star" aria-label=${`${n} out of 5`}
+          onPointerEnter=${() => setHover(n)} onClick=${() => send(n)}>
+          <${Icon} name="star" size=${46} w=${1.6} color="var(--gold)" fill=${n <= (hover || mine) ? 'var(--gold)' : 'none'} /></button>`)}
+      </div>
+      <span class="tally">${votes.length
+        ? `${average.toFixed(1)} from ${votes.length} ${votes.length === 1 ? 'person' : 'people'} · anyone else?`
+        : 'Everyone gets a say'}</span>
+    </div>
+    <button type="button" class="skip" onClick=${() => post('/api/rate', { dismiss: true }).catch(() => {})}>${votes.length ? 'Done' : 'Skip'}</button>
+  </div>`;
+}
 
 // Snow, leaves, petals, confetti... falling over the lobby and settling on the tops of the cards.
 function Weather({ decor = '' }) {
@@ -347,6 +385,7 @@ function App() {
   if (r.name === 'showtime' || r.name === 'showing' || r.name === 'intermission') return html`<${View} key=${r.name} />
     ${r.name === 'showing' && html`<${Weather} decor="tree" />`}
     <${DogAtDoor} />
+    <${RateCard} />
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
@@ -354,6 +393,7 @@ function App() {
     <${Weather} key=${`fx-${r.name}`} />
     <${Celebration} />
     <${DogAtDoor} />
+    <${RateCard} />
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
@@ -368,6 +408,7 @@ function goRoute(r) {
 setRender(route.params.render ?? '');
 setTheme(route.params.theme ?? '');
 setAccent(route.params.accent ?? '');
+setCinema(route.params.cinema ?? '');
 startLive({ navigate: goRoute });
 // Is Kiosk Satellite's theater mode reachable (directly, or relayed by the HA page around us)?
 detectTheater().then((t) => {

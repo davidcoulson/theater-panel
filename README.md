@@ -28,6 +28,8 @@ Kiosk Satellite ──http──▶ theater-panel ──▶ Plex        (library
 | **Games** | Console and PC buttons (HDMI switcher and projector input, through Home Assistant), Steam library with launch, gaming PC stats from HA |
 | **Music** | Music Assistant now playing, albums/playlists/artists/radio, search, queue, which player to use |
 | **Showtime** | The dark screen while something plays: pause, skip, volume, intermission, lights up, sleep timer. Opens by itself when the Apple TV starts playing and dims the panel's backlight through Kiosk Satellite. |
+| **Intermission** | The break: a 1950s drive-in snack bar with a marquee, a countdown and the concessions marching past, while a march plays in the room |
+| **Year in review** | The house's year out of Plex's history: hours, the top ten, who watched what, the longest sitting |
 | **Now Showing** | After a few idle minutes the panel drifts to a poster wall of what's in progress, what just arrived and what is on its way. Any touch brings it back. |
 
 <p>
@@ -104,6 +106,13 @@ else's film. The parade dresses for the season, too.
 ![Intermission](docs/img/intermission.jpg)
 
 ![The snack bar in witch hats](docs/img/snacks.jpg)
+
+**How was it?** When a film runs to the end, the panel asks on the way out: five stars, and
+everyone on the sofa can tap. The card keeps the tally and Plex is told the *average*, so one
+person's five doesn't stand for the room, and the rating feeds back into what gets recommended.
+Skip takes no for an answer, and the card goes by itself after twenty minutes.
+
+![How was it?](docs/img/rate.jpg)
 
 **The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
 card with a snapshot appears - even over a film - with a button to let her in.

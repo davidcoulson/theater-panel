@@ -72,6 +72,15 @@ ha.on('status', (connected) => broadcast('ha', { connected }));
 let sessions = [];
 let streams = [];
 let pollTimer = null;
+// The film that just finished, waiting for a verdict: when the theater's own session disappears
+// after most of a film, the panel asks how it was and writes the answer back to Plex. Only for
+// films, only when the session belongs to this room (PLEX_PLAYER_NAME), and only if it really
+// ran to the end - nobody wants to rate something they gave up on after ten minutes. Everyone
+// on the sofa can have a say: the card stays up for a while and Plex gets the average.
+let playing = null;
+let verdict = null;
+const WATCHED_ENOUGH = 0.8;
+const ASK_FOR = 20 * 60e3;        // how long the card waits for the room's verdict
 async function pollSessions() {
   clearTimeout(pollTimer);
   let next = 30000;
@@ -81,6 +90,18 @@ async function pollSessions() {
       const { sessions: all, streams: everything } = await plex.activity();
       const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName) : all;
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
+      if (mine.length) playing = mine[0];
+      else if (playing) {
+        const done = playing;
+        playing = null;
+        const pct = done.duration ? done.viewOffset / done.duration : 0;
+        if (config.plexPlayerName && done.type === 'movie' && pct >= WATCHED_ENOUGH) {
+          verdict = { id: String(done.id), title: done.title, year: done.year, poster: done.poster, at: Date.now(), votes: [] };
+          broadcast('rate', verdict);
+        }
+      }
+      // Nobody said anything: take the card away again rather than leaving it up all week.
+      if (verdict && Date.now() - verdict.at > ASK_FOR) { verdict = null; broadcast('rate', { id: null }); }
       if (JSON.stringify(everything) !== JSON.stringify(streams)) { streams = everything; broadcast('streams', streams); }
       if (mine.length) next = 5000;
     } catch (e) { /* Plex unreachable: keep the last known state */ }
@@ -226,6 +247,24 @@ get(/^\/api\/mystery$/, (m, q) => taste.mystery({
 
 // Year in review: the house's year from Plex's history (the Home screen's chip, and #/year).
 get(/^\/api\/year$/, (m, q) => taste.review({ year: Math.min(Math.max(Number(q.get('year')) || new Date().getFullYear(), 2000), 2100) }));
+
+// How was it? The film that just finished, and the popcorn boxes' answer on its way to Plex.
+get(/^\/api\/rate$/, () => verdict || { id: null });
+post(/^\/api\/rate$/, async (m, q, body) => {
+  if (body?.dismiss) { verdict = null; broadcast('rate', { id: null }); return { ok: true }; }
+  const id = String(body?.id || verdict?.id || '');
+  const stars = Math.max(1, Math.min(5, Number(body?.stars) || 0));
+  if (!id || !stars) throw new Error('Which film, and how many?');
+  // Everyone in the room can add a star rating; Plex is told the average, so the last word is
+  // the room's, not whoever tapped last.
+  if (!verdict || verdict.id !== id) verdict = { id, title: body?.title || '', year: body?.year, poster: null, at: Date.now(), votes: [] };
+  verdict.votes.push(stars);
+  const average = verdict.votes.reduce((a, b) => a + b, 0) / verdict.votes.length;
+  const r = await plex.rate(id, Math.round(average * 2 * 10) / 10);   // Plex counts in halves of a star
+  broadcast('rate', verdict);
+  taste.forget();                                      // the recommendations have something new to go on
+  return { ...r, votes: verdict.votes.length, average: Math.round(average * 10) / 10 };
+});
 
 // The sleep timer lives on the server so it outlives the panel's own screen.
 get(/^\/api\/sleep$/, () => sleep.get() || { mode: null });
