@@ -24,10 +24,14 @@ export function netList(rules) {
 const clean = (ip) => String(ip || '').trim().replace(/^::ffff:/, '').replace(/^\[|\]$/g, '');
 
 // The client's address: the socket's peer, or the last hop named in X-Forwarded-For when that peer
-// is a proxy we trust.
+// is a proxy we trust. A forwarded request from a peer that is not a trusted proxy is nobody we
+// can name: using the peer's own address would let an unlisted proxy (or anyone who can add the
+// header) sit inside TRUST_NETWORKS on behalf of every visitor, so it returns null, which no
+// network rule matches. Direct connections without the header are still the peer itself.
 export function clientIp(req, isTrustedProxy) {
   const peer = clean(req.socket.remoteAddress);
-  if (!isTrustedProxy(peer)) return peer;
-  const chain = String(req.headers['x-forwarded-for'] || '').split(',').map(clean).filter(Boolean);
+  const forwarded = req.headers['x-forwarded-for'];
+  if (!isTrustedProxy(peer)) return forwarded === undefined ? peer : null;
+  const chain = String(forwarded || '').split(',').map(clean).filter(Boolean);
   return chain.length ? chain[chain.length - 1] : peer;
 }

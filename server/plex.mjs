@@ -5,6 +5,7 @@
 import { config } from './config.mjs';
 import { plexImage } from './images.mjs';
 import { BRANDS, brandById, brandForName } from './networks.mjs';
+import { httpError } from './admin.mjs';
 
 const FAMILY_RATINGS = ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-Y7-FV', 'TV-G', 'TV-PG'];
 const SORTS = {
@@ -12,17 +13,26 @@ const SORTS = {
   rating: 'audienceRating:desc', random: 'random', released: 'originallyAvailableAt:desc',
 };
 
-async function plex(path, params = {}, method = 'GET') {
+async function plex(path, params = {}, { method = 'GET', timeoutMs = 15000 } = {}) {
   if (!config.plex.url) throw new Error('PLEX_URL is not set');
   const q = new URLSearchParams({ ...params, 'X-Plex-Token': config.plex.token });
   const res = await fetch(`${config.plex.url}${path}${path.includes('?') ? '&' : '?'}${q}`, {
     method,
     headers: { Accept: 'application/json', 'X-Plex-Client-Identifier': 'theater-panel', 'X-Plex-Product': 'Theater Panel' },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
-  if (!res.ok) throw new Error(`Plex ${res.status} for ${path}`);
+  // An item Plex no longer has is the caller's 404; anything else is Plex misbehaving.
+  if (!res.ok) throw httpError(res.status === 404 ? 404 : 502, `Plex ${res.status} for ${path}`);
   const text = await res.text();
   return text ? JSON.parse(text).MediaContainer : {};
+}
+
+// Ids that end up as path segments on the Plex server. Anything but digits could walk out of
+// /library/metadata into another endpoint with the owner's token.
+function plexId(v, what) {
+  const s = String(v ?? '');
+  if (!/^\d+$/.test(s)) throw httpError(400, `Bad ${what}`);
+  return s;
 }
 
 const tags = (arr, n = 99) => (arr || []).slice(0, n).map((t) => t.tag);
@@ -117,14 +127,16 @@ function bestCopies(list) {
 // minutes (the full listing is ~35 MB, so it is not fetched per page). A film counts as watched
 // when any copy is.
 const INDEX_TTL = 30 * 60e3;   // the full listing is ~35 MB, so rebuild it rarely (play invalidates it)
-let index = null; let indexAt = 0; let building = null;
+const INDEX_RETRY = 60e3;      // after a failed build, wait this long before asking Plex again
+const INDEX_TIMEOUT = 60e3;    // the ~35 MB listing can take far longer than an ordinary call
+let index = null; let indexAt = 0; let retryAt = 0; let building = null;
 function buildIndex() {
   building ??= (async () => {
     const movies = (await sections()).filter((l) => l.type === 'movie');
     const rows = new Map();
     for (const lib of movies) {
       const [mc, hdr] = await Promise.all([
-        plex(`/library/sections/${lib.id}/all`, { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }),
+        plex(`/library/sections/${lib.id}/all`, { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }, { timeoutMs: INDEX_TIMEOUT }),
         hdrKeys(lib.id).catch(() => new Set()),
       ]);
       for (const m of mc.Metadata || []) {
@@ -141,14 +153,23 @@ function buildIndex() {
     index = [...rows.values()]; indexAt = Date.now();
     return index;
   })().catch((e) => {
-    indexAt = Date.now();   // don't hammer Plex while it is down; try again after the TTL
+    // Don't hammer Plex while it is down: whether or not an older index exists, the next attempt
+    // waits INDEX_RETRY. Without this a failed first build would re-download the listing on every
+    // request to the Movies tab.
+    retryAt = Date.now() + INDEX_RETRY;
     throw e;
   }).finally(() => { building = null; });
   return building;
 }
 async function movieIndex() {
+  const fresh = index && Date.now() - indexAt <= INDEX_TTL;
+  if (fresh) return index;
+  if (Date.now() < retryAt && !building) {
+    if (index) return index;
+    throw httpError(502, 'Plex movie listing is unavailable; retrying shortly');
+  }
   if (!index) return buildIndex();
-  if (Date.now() - indexAt > INDEX_TTL) buildIndex().catch((e) => console.warn('[plex] movie index:', e.message));
+  buildIndex().catch((e) => console.warn('[plex] movie index:', e.message));
   return index;
 }
 // Warm the index at startup so the first visit to Watch is quick.
@@ -231,7 +252,7 @@ async function brandFilter(sectionId, brandId) {
 // Which items in a movie section are HDR (Plex can filter on it but doesn't list it).
 function hdrKeys(sectionId) {
   return cached(`hdr:${sectionId}`, 1800e3, async () => {
-    const mc = await plex(`/library/sections/${sectionId}/all`, { hdr: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' });
+    const mc = await plex(`/library/sections/${sectionId}/all`, { hdr: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }, { timeoutMs: INDEX_TIMEOUT });
     return new Set((mc.Metadata || []).map((m) => m.ratingKey));
   });
 }
@@ -287,9 +308,11 @@ export async function listLibrary(sectionId, { filters = [], genre, brand, sort 
 }
 
 export async function item(id) {
-  const mc = await plex(`/library/metadata/${id}`);
+  id = plexId(id, 'item id');
+  // includeOnDeck answers the "what plays next" question for a show in the same call.
+  const mc = await plex(`/library/metadata/${id}`, { includeOnDeck: '1' });
   const m = mc.Metadata?.[0];
-  if (!m) throw new Error('Not found');
+  if (!m) throw httpError(404, 'Not found');
   const out = {
     ...mapItem(m, { poster: [400, 600] }),
     directors: tags(m.Director, 2),
@@ -310,8 +333,11 @@ export async function item(id) {
       /atmos/i.test(media.audioProfile || '') ? 'Dolby Atmos' : /dts:x/i.test(media.audioProfile || '') ? 'DTS:X' : null,
     ].filter(Boolean);
   }
-  out.brand = m.type === 'movie' ? brandForName(m.studio)
-    : m.type === 'show' ? (await showBrands(m.librarySectionID).catch(() => new Map())).get(String(id)) : undefined;
+  // For a show, its network and its seasons are independent lookups; ask for both at once.
+  const [brands, seasons] = m.type === 'show'
+    ? await Promise.all([showBrands(m.librarySectionID).catch(() => new Map()), plex(`/library/metadata/${id}/children`)])
+    : [null, null];
+  out.brand = m.type === 'movie' ? brandForName(m.studio) : m.type === 'show' ? brands.get(String(id)) : undefined;
   const part = m.Media?.[0]?.Part?.[0];
   if (part) {
     const streams = part.Stream || [];
@@ -324,11 +350,9 @@ export async function item(id) {
     }));
   }
   if (m.type === 'show' || m.type === 'season') {
-    const seasons = m.type === 'show' ? await plex(`/library/metadata/${id}/children`) : null;
     out.seasons = (seasons?.Metadata || []).map((s) => ({ id: s.ratingKey, title: s.title, index: s.index, leafCount: s.leafCount, viewedLeafCount: s.viewedLeafCount }));
     // The episode to play next: Plex's own on-deck choice for this show.
-    const deck = await plex(`/library/metadata/${id}`, { includeOnDeck: '1' }).catch(() => null);
-    const od = deck?.Metadata?.[0]?.OnDeck?.Metadata?.[0];
+    const od = m.OnDeck?.Metadata?.[0];
     if (od) out.next = mapItem(od);
     else {
       // Nothing in progress: start at the first unwatched episode (or the first one).
@@ -342,7 +366,7 @@ export async function item(id) {
 }
 
 export async function episodes(seasonId) {
-  const mc = await plex(`/library/metadata/${seasonId}/children`);
+  const mc = await plex(`/library/metadata/${plexId(seasonId, 'season id')}/children`);
   return (mc.Metadata || []).map((m) => mapItem(m));
 }
 
@@ -397,6 +421,7 @@ export const machineId = () => cached('identity', 3600e3, async () => (await ple
 // "Start over" for a client that always resumes: clear the saved position first. Only for items
 // not yet watched, so a rewatch never loses its watched state.
 export async function clearProgress(ratingKey) {
+  ratingKey = plexId(ratingKey, 'ratingKey');
   const m = (await plex(`/library/metadata/${ratingKey}`)).Metadata?.[0];
   if (m?.viewOffset && !m.viewCount) {
     await plex('/:/unscrobble', { key: String(ratingKey), identifier: 'com.plexapp.plugins.library' });
@@ -409,7 +434,7 @@ export async function setStreams(partId, { audioStreamID, subtitleStreamID }) {
   const p = { allParts: '1' };
   if (audioStreamID != null) p.audioStreamID = String(audioStreamID);
   if (subtitleStreamID != null) p.subtitleStreamID = String(subtitleStreamID);
-  await plex(`/library/parts/${partId}`, p, 'PUT');
+  await plex(`/library/parts/${plexId(partId, 'partId')}`, p, { method: 'PUT' });
 }
 
 // One call to /status/sessions, read two ways: `sessions` for Showtime (what the theater is

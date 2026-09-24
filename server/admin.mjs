@@ -7,7 +7,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config, settings, saveSettings, effectiveVars } from './config.mjs';
-import { loadGames, loadGamesFile } from './games.mjs';
+import { loadGames, loadGamesFile, STAT_ROLES } from './games.mjs';
 
 // type: text | secret | entity | list (comma-separated) | libraries | effects | select | bool | apps (Name=package list)
 export const FIELDS = [
@@ -56,6 +56,17 @@ export const FIELDS = [
   { group: 'Display', key: 'FRAME_ANCESTORS', label: 'Pages allowed to embed the panel', type: 'list', help: 'The Home Assistant dashboard Kiosk Satellite shows.' },
 ];
 const BY_KEY = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
+
+// Fields that must hold an http(s) URL. A bare "10.2.3.6:8123" would be saved happily and then
+// make the HA websocket constructor throw on every reconnect, so it is refused here instead.
+const URL_KEYS = new Set(['HA_URL', 'PLEX_URL', 'SEERR_URL']);
+function checkUrl(key, s) {
+  let u;
+  try { u = new URL(s); } catch { u = null; }
+  if (!u || (u.protocol !== 'http:' && u.protocol !== 'https:')) {
+    throw httpError(400, `${BY_KEY[key].group} URL must start with http:// or https:// (got "${s}")`);
+  }
+}
 
 // ---------- sessions ----------
 
@@ -148,6 +159,7 @@ export function save(body) {
       continue;
     }
     const s = v == null ? '' : String(v).trim();
+    if (s !== '' && URL_KEYS.has(k)) checkUrl(k, s);
     if (s === '') delete vars[k]; else vars[k] = s;
   }
   let games = cur.games;
@@ -194,7 +206,41 @@ function cleanGames(g) {
     if (s.haScript) src.haScript = String(s.haScript);
     out.sources.push(src);
   }
-  if (g.pc) out.pc = g.pc; // PC stats and launch script are kept as they were
+  if (g.pc) out.pc = cleanPc(g.pc);
+  return out;
+}
+
+// The gaming PC block is read at boot (its entities join the HA subscription), so a malformed one
+// saved here would crash the server every time it started. Only the shapes the panel draws are
+// kept: strings for names, entity ids for anything HA is asked about.
+const SENSOR_KINDS = ['percent', 'temp', 'value'];
+function cleanPc(pc) {
+  if (typeof pc !== 'object' || Array.isArray(pc)) throw httpError(400, 'pc must be an object');
+  const entity = (v, what) => {
+    if (!ENTITY.test(String(v))) throw httpError(400, `Bad ${what}: ${v}`);
+    return String(v);
+  };
+  const out = { name: String(pc.name || 'Gaming PC').slice(0, 40) };
+  if (pc.power) out.power = entity(pc.power, 'PC power entity');
+  if (pc.launchScript) out.launchScript = entity(pc.launchScript, 'PC launch script');
+  if (pc.sensors !== undefined) {
+    if (!Array.isArray(pc.sensors)) throw httpError(400, 'pc.sensors must be a list');
+    out.sensors = pc.sensors.map((s) => ({
+      entity: entity(s?.entity, 'PC sensor'),
+      label: String(s.label || '').slice(0, 24),
+      kind: SENSOR_KINDS.includes(s.kind) ? s.kind : 'value',
+    }));
+  }
+  if (pc.stats) {
+    if (typeof pc.stats !== 'object' || Array.isArray(pc.stats)) throw httpError(400, 'pc.stats must be an object');
+    const stats = {};
+    for (const role of STAT_ROLES) if (pc.stats[role]) stats[role] = entity(pc.stats[role], `stats ${role}`);
+    if (pc.stats.cores !== undefined) {
+      if (!Array.isArray(pc.stats.cores)) throw httpError(400, 'pc.stats.cores must be a list');
+      stats.cores = pc.stats.cores.map((c) => entity(c, 'core sensor'));
+    }
+    out.stats = stats;
+  }
   return out;
 }
 

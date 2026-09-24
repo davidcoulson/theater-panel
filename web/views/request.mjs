@@ -55,7 +55,7 @@ export function Request() {
         ${err ? html`<div class="empty" style="grid-column:1/-1">${err.message}</div>`
           : !data ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
           : !results.length ? html`<div class="empty" style="grid-column:1/-1">No results</div>`
-          : results.map((r) => html`<${ResultCard} r=${r} selected=${picked?.id === r.id} onPick=${() => setPicked(r)} />`)}
+          : results.map((r) => html`<${ResultCard} key=${r.id} r=${r} selected=${picked?.id === r.id} onPick=${() => setPicked(r)} />`)}
       </div>`}
       <div class="req-side">
         ${picked ? html`<${Sheet} r=${picked} key=${picked.id} onClose=${() => setPicked(null)} onDone=${() => { setPicked(null); reloadReqs(); }} />`

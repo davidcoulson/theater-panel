@@ -17,13 +17,15 @@ const heat = (t) => (t >= 85 ? 'var(--hot)' : t >= 75 ? 'var(--warm)' : 'var(--c
 
 // Current numbers for every mapped role, plus a rolling history for the graphs.
 function useStats(stats, demo) {
-  const states = useStore((s) => s.states);
+  // Only the mapped entities' raw states: the whole map is a new object on every HA update.
+  const ids = Object.values(stats || {}).flat().filter((id) => typeof id === 'string');
+  const states = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.state])));
   const [hist, setHist] = useState({});
   const latest = useRef({});
 
   const num = (role) => {
     const id = stats?.[role];
-    const v = id && Number(states[id]?.state);
+    const v = id && Number(states[id]);
     return Number.isFinite(v) ? v : null;
   };
   const vals = demo ? demoValues() : {
@@ -32,9 +34,9 @@ function useStats(stats, demo) {
     cpuLoad: num('cpuLoad'), cpuTemp: num('cpuTemp'), cpuClock: num('cpuClock'),
     ramUsed: num('ramUsed'), ramTotal: num('ramTotal'), vramUsed: num('vramUsed'), vramTotal: num('vramTotal'),
     netDown: num('netDown'), netUp: num('netUp'),
-    cores: (stats?.cores || []).map((id) => Number(states[id]?.state)).filter(Number.isFinite),
-    game: gameName(states[stats?.game]?.state),
-    uptime: states[stats?.uptime]?.state,
+    cores: (stats?.cores || []).map((id) => Number(states[id])).filter(Number.isFinite),
+    game: gameName(states[stats?.game]),
+    uptime: states[stats?.uptime],
   };
   latest.current = vals;
 

@@ -38,8 +38,18 @@ export class HomeAssistant extends EventEmitter {
   }
 
   #connect() {
-    const wsUrl = this.url.replace(/^http/, 'ws') + '/api/websocket';
-    const ws = new WebSocket(wsUrl);
+    // A URL that cannot become a websocket URL (no scheme, a typo saved on the admin page) makes
+    // the constructor throw synchronously. From the reconnect timer that would be an uncaught
+    // exception and take the whole server down, so it is treated like any other failed attempt.
+    let ws;
+    try {
+      const wsUrl = this.url.replace(/^http/, 'ws') + '/api/websocket';
+      ws = new WebSocket(wsUrl);
+    } catch (e) {
+      console.warn(`[ha] cannot connect to ${this.url}: ${e.message}`);
+      this.#retry();
+      return;
+    }
     this.ws = ws;
     ws.addEventListener('message', (ev) => {
       let msg;
@@ -54,9 +64,17 @@ export class HomeAssistant extends EventEmitter {
     const was = this.connected;
     this.ws = null;
     this.connected = false;
+    // The old socket's heartbeat must not outlive it, or its next ping would fail against the
+    // new socket while that one is still authenticating and close it too.
+    clearInterval(this.pingTimer);
     for (const p of this.pending.values()) { clearTimeout(p.timer); p.reject(new Error('HA disconnected')); }
     this.pending.clear();
     if (was) this.emit('status', false);
+    this.#retry();
+  }
+
+  // Try again after the current backoff, unless something else has already reconnected.
+  #retry() {
     if (this.configured) setTimeout(() => { if (!this.ws) this.#connect(); }, this.retryMs);
     this.retryMs = Math.min(this.retryMs * 2, 30000);
   }

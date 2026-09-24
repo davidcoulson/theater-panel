@@ -21,6 +21,7 @@ const SORTS = [
   { value: 'random', label: 'Random pick' },
 ];
 const PAGE = 48;
+const MAX_ITEMS = 480;   // infinite scroll stops here; the filters are the way to go deeper
 
 export function Watch() {
   const [libs] = useLoad(() => get('/api/plex/libraries'), []);
@@ -62,7 +63,7 @@ export function Watch() {
   }, [libId, activeFilters, sort, q, seed, brand]);
 
   async function more() {
-    if (loadingMore || q || byNetwork || !items || items.length >= total) return;
+    if (loadingMore || q || byNetwork || !items || items.length >= Math.min(total, MAX_ITEMS)) return;
     setLoadingMore(true);
     try {
       const r = await get(`/api/plex/library/${libId}?filters=${activeFilters}&sort=${sort}&size=${PAGE}&start=${items.length}`);
@@ -98,7 +99,8 @@ export function Watch() {
       <div class="poster-grid scroll" ref=${gridRef} onScroll=${onScroll}>
         ${items === null ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
           : !items.length ? html`<div class="empty" style="grid-column:1/-1">Nothing matches. Try removing a filter.</div>`
-          : items.map((m) => html`<${Tile} m=${m} selected=${m.id === selected} onSelect=${() => setSelected(m.id)} />`)}
+          : items.map((m) => html`<${Tile} key=${m.id} m=${m} selected=${m.id === selected} onSelect=${() => setSelected(m.id)} />`)}
+        ${items && items.length >= MAX_ITEMS && items.length < total && html`<div class="empty" style="grid-column:1/-1">Showing the first ${items.length.toLocaleString()} of ${total.toLocaleString()}. Refine the filters to see more.</div>`}
       </div>`}
       ${byNetwork && !brand && !q ? null : selected ? html`<${Detail} id=${selected} key=${selected} onOpen=${setSelected} />` : html`<aside class="detail"><div class="empty" style="flex-grow:1">Pick a title</div></aside>`}
     </div>
