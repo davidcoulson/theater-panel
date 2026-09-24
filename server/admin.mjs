@@ -23,6 +23,7 @@ export const FIELDS = [
   { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
+  { group: 'Seerr', key: 'SEERR_PUBLIC_URL', label: 'Address for phones', type: 'text', placeholder: 'https://seerr.bauercoulson.com', help: "What the Scan to request QR opens on a guest's phone. The URL above is how the panel reaches Seerr on your network; this is how a phone reaches it from anywhere. Blank uses the URL above." },
   { group: 'Seerr', key: 'SEERR_API_KEY', label: 'API key', type: 'secret' },
   { group: 'Seerr', key: 'SEERR_USER_ID', label: 'Request as user id', type: 'text' },
   { group: 'Seerr', key: 'SEERR_REGION', label: 'Streaming region', type: 'text', placeholder: 'US' },
