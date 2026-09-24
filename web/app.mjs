@@ -40,6 +40,7 @@ export function go(name, params = {}) {
   setRender(params.render);
   setTheme(params.theme);
   setAccent(params.accent);
+  setCinema(params.cinema);
   route.name = VIEWS[name] ? name : 'lobby';
   route.params = params;
   if (!params.auto) lastManual = Date.now();
@@ -106,6 +107,35 @@ export function currentAccent() {
   const s = getState().ui?.accent;
   return accentOverride ? ACCENT_DEFS[accentOverride] : s?.id && s.id !== 'none' ? s : null;
 }
+
+// Cinema mode: the room is dark, but nothing is playing. Showtime and the idle board look after
+// themselves; every other screen would sit there at full brightness, lighting the room from the
+// wall, so the whole palette drops instead (see html.cinema in styles.css). It follows the room:
+// the Movie time and Intermission scenes, or the downlights down with the accent lights up.
+// "?cinema=1" pins it on this panel, "cinema=" clears the override, and the settings page can
+// turn the whole idea off.
+let cinemaOverride = null;
+export function setCinema(value) {
+  if (value === undefined) return;
+  cinemaOverride = value === '1' || value === 'on' ? true : value === '0' || value === 'off' ? false : null;
+  applyCinema();
+}
+function roomIsDark(s) {
+  const scene = s.states['input_select.theater_scene']?.state;
+  if (scene === 'Movie time' || scene === 'Intermission') return true;
+  const [downlights, ...accents] = s.entities?.lights || [];
+  const down = s.states[downlights];
+  if (!down) return false;
+  const pct = down.state === 'on' ? ((down.attributes?.brightness ?? 255) / 255) * 100 : 0;
+  const glow = accents.some((id) => s.states[id]?.state === 'on');
+  return pct < 25 && glow;                       // deliberately dark, not simply switched off
+}
+function applyCinema() {
+  const s = getState();
+  const on = cinemaOverride ?? (s.ui?.cinema !== false && roomIsDark(s));
+  document.documentElement.classList.toggle('cinema', Boolean(on));
+}
+subscribe(applyCinema);
 
 // Snow, leaves, petals, confetti... falling over the lobby and settling on the tops of the cards.
 function Weather({ decor = '' }) {

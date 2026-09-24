@@ -108,6 +108,17 @@ else's film. The parade dresses for the season, too.
 **The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
 card with a snapshot appears - even over a film - with a button to let her in.
 
+## Cinema mode
+
+The room is dark but nothing is playing - the break, the credits, someone deciding what's next -
+and a cream panel on the wall lights the whole room. Cinema mode drops the panel to a dark
+palette instead, and puts a wash over everything so posters and artwork come down with it. It
+follows the room by itself: the Movie time and Intermission scenes, or the downlights below 25%
+with the accent lights up, and it lifts when the lights do. `#/lobby?cinema=1` pins it on one
+panel; Display > "Dim the panel when the room is dark" turns the idea off.
+
+![Cinema mode](docs/img/cinema.jpg)
+
 ## Holidays and seasons
 
 Two independent axes: the **theme** (the room as built, or the couch's slate tweed) and an

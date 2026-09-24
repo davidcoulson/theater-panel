@@ -184,6 +184,8 @@ function build(env) {
     // 0..100: how much weather the accent puts over the lobby (25 is the original amount).
     accentIntensity: Math.max(0, Math.min(100, Number(env.ACCENT_INTENSITY ?? 50) || 0)),
     birthdays: env.BIRTHDAYS || '',
+    // Cinema mode: the panel dims itself when the room is dark and nothing is playing.
+    cinema: env.CINEMA_MODE !== 'false',
     qualityBadges: env.SHOW_QUALITY_BADGES !== 'false',
     networkBadges: env.SHOW_NETWORK_BADGES === 'true',
     // Plex sessions are only the theater's own when the player name is set.
