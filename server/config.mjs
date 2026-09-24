@@ -147,6 +147,9 @@ function build(env) {
     // A swell before a film is an event; before the fourth episode of a sitcom it is a delay.
     // Movies only by default; the Play button offers it either way when it is configured.
     moviesOnly: env.PREROLL_MOVIES_ONLY !== 'false',
+    // Creature feature: at Halloween the swell is replaced by the sting next to it on disk.
+    // Only when the pre-roll is the panel's own sound, so a custom URL is left alone.
+    spookyUrl: env.PREROLL_SPOOKY_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'preroll-spooky.mp3') : ''),
   },
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way
   // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
@@ -154,6 +157,12 @@ function build(env) {
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
   // the server's own history. Empty means the whole house.
   historyAccounts: list(env.HISTORY_ACCOUNTS, []),
+  // Intermission: the snack bar screen on the panel, and a corny little march on the theater
+  // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.
+  intermission: {
+    url: env.INTERMISSION_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'intermission.mp3') : ''),
+    minutes: Math.max(1, Math.min(60, Number(env.INTERMISSION_MINUTES || 15))),
+  },
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
   // How far back the "Now in Plex" chip looks for requests that arrived.

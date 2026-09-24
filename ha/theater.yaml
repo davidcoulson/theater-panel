@@ -156,6 +156,27 @@ script:
       - action: light.turn_off
         target: { entity_id: light.home_theater_wled }
 
+  # Any sound the panel wants played in the room: the intermission march, and whatever comes
+  # next. The panel passes the speaker and a URL it serves itself.
+  theater_snipe:
+    alias: "Theater: play a sound in the room"
+    mode: restart
+    fields:
+      speaker:
+        description: Media player to play it on
+        example: media_player.home_theater_2
+      url:
+        description: URL of the sound
+        example: https://ht-kiosk.coulson.io/assets/intermission.mp3
+    sequence:
+      - condition: template
+        value_template: "{{ speaker is defined and speaker and url is defined and url }}"
+      - action: media_player.play_media
+        target: { entity_id: "{{ speaker }}" }
+        data:
+          media_content_id: "{{ url }}"
+          media_content_type: music
+
   # The slow curtain: when the film ends, the house lights come up the way a cinema's do, over a
   # minute and a half, instead of snapping on. The panel calls this when playback stops (see
   # server/sleep.mjs); it only does anything if the room is still set for a movie, so stopping
