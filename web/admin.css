@@ -29,7 +29,6 @@ small { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
 /* menu down the left, the way Kiosk Satellite lays its settings out */
 .side { position: fixed; left: 0; top: 0; bottom: 0; width: 232px; display: flex; flex-direction: column; gap: 8px; padding: 18px 12px 14px; background: var(--card); border-right: 1px solid var(--line); overflow: auto; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
-.brand img { width: 40px; height: 40px; border-radius: 10px; }
 .brand b { display: block; font-family: var(--disp); font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1; }
 .brand span { font-size: 12px; color: var(--muted); font-family: var(--mono); }
 .menu { display: flex; flex-direction: column; gap: 2px; }
