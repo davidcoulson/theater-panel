@@ -148,6 +148,9 @@ function build(env) {
     // Movies only by default; the Play button offers it either way when it is configured.
     moviesOnly: env.PREROLL_MOVIES_ONLY !== 'false',
   },
+  // The slow curtain: when a film ends the house lights come up over this many seconds, the way
+  // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
+  curtainSeconds: Math.max(0, Math.min(600, Number(env.CURTAIN_SECONDS ?? 90) || 0)),
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
   // the server's own history. Empty means the whole house.
   historyAccounts: list(env.HISTORY_ACCOUNTS, []),

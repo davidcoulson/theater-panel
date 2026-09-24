@@ -8,7 +8,7 @@ import { extImage } from './images.mjs';
 import * as games from './games.mjs';
 
 const SCENES = ['pre_show', 'movie_time', 'intermission', 'lights_up', 'all_off'];
-const script = (ha, name, variables = {}) => ha.callService('script', 'turn_on', { variables }, { target: { entity_id: `script.theater_${name}` } });
+export const script = (ha, name, variables = {}) => ha.callService('script', 'turn_on', { variables }, { target: { entity_id: `script.theater_${name}` } });
 
 export async function runAction(ha, body) {
   const e = config.entities;

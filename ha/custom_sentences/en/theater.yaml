@@ -33,6 +33,15 @@ intents:
           - "start the pre show"
         slots:
           scene: pre_show
+  TheaterSurprise:
+    data:
+      - sentences:
+          - "surprise me"
+          - "surprise us"
+          - "pick something [for me|for us]"
+          - "[you] pick [a movie|a film|something]"
+          - "mystery box"
+          - "what should we watch"
   TheaterScreen:
     data:
       - sentences:
@@ -51,3 +60,4 @@ lists:
       - "stats"
       - "showtime"
       - "pick"
+      - "year"

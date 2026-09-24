@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -29,6 +29,9 @@ export function Lobby() {
   // "#/lobby?mystery=1" opens the box straight away - handy from a Home Assistant automation
   // ("surprise me") and for screenshots.
   const [mystery, setMystery] = useState(route.params.mystery === '1');
+  // "Hey Jarvis, surprise me": the server picked and pushed it to every panel.
+  const spoken = useStore((s) => s.mystery);
+  useEffect(() => { if (spoken) setMystery(true); }, [spoken]);
   const services = useStore((s) => s.services) || {};
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
@@ -60,7 +63,7 @@ export function Lobby() {
     </div>
     ${streamsOpen && html`<${StreamsSheet} onClose=${() => setStreamsOpen(false)} />`}
     ${scanOpen && html`<${ScanToRequest} onClose=${() => setScanOpen(false)} />`}
-    ${mystery && html`<${MysterySheet} onClose=${() => setMystery(false)} />`}
+    ${mystery && html`<${MysterySheet} initial=${spoken} key=${spoken?.item?.id || 'box'} onClose=${() => { setMystery(false); clearMystery(); }} />`}
   </main>`;
 }
 

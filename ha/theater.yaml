@@ -156,6 +156,35 @@ script:
       - action: light.turn_off
         target: { entity_id: light.home_theater_wled }
 
+  # The slow curtain: when the film ends, the house lights come up the way a cinema's do, over a
+  # minute and a half, instead of snapping on. The panel calls this when playback stops (see
+  # server/sleep.mjs); it only does anything if the room is still set for a movie, so stopping
+  # something at lunchtime does not suddenly light the room.
+  theater_curtain:
+    alias: "Theater: slow curtain"
+    icon: mdi:curtains
+    mode: restart
+    fields:
+      seconds:
+        description: How long the lights take to come up
+        example: 90
+    sequence:
+      - condition: state
+        entity_id: input_select.theater_scene
+        state: [Movie time, Intermission]
+      - action: light.turn_on
+        target: { entity_id: light.media_room_downlights }
+        data:
+          brightness_pct: 55
+          color_temp_kelvin: 2700
+          transition: "{{ seconds | default(90) | int }}"
+      - action: light.turn_on
+        target: { entity_id: light.home_theater_accent_lights }
+        data: { brightness_pct: 30, rgb_color: [255, 150, 70], transition: "{{ seconds | default(90) | int }}" }
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Lights up }
+
   # The pre-roll: the lights go down over eight seconds while a deep swell builds on the theater
   # speakers, then the panel starts the film (it waits PREROLL_SECONDS and calls play itself).
   # The sound is the panel's own synthesised swell at /assets/preroll.mp3 - not anybody's sound
@@ -479,6 +508,17 @@ intent_script:
         data: { intent: scene, name: "{{ scene }}" }
     speech:
       text: "{{ scene | replace('_', ' ') | capitalize }}"
+
+  TheaterSurprise:
+    description: "Let the panel pick something and start it"
+    action:
+      - action: rest_command.theater_panel_voice
+        data: { intent: mystery }
+        response_variable: panel
+    speech:
+      text: >-
+        {% set spoken = (panel.content.spoken if panel is defined and panel.content is defined else none) %}
+        {{ "Tonight you are watching " ~ spoken if spoken else "I could not find anything to watch" }}
 
   TheaterScreen:
     description: "Move the theater panel to one of its screens"

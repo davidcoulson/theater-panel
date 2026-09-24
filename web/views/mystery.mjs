@@ -10,8 +10,8 @@ import { play } from './lobby.mjs';
 const COUNTDOWN = 10;      // seconds between the reveal and the film starting
 const SUSPENSE = 1200;     // the shuffle runs at least this long, however fast Plex answers
 
-export function MysterySheet({ onClose, filters = [] }) {
-  const [pick, setPick] = useState(null);
+export function MysterySheet({ onClose, filters = [], initial = null }) {
+  const [pick, setPick] = useState(initial);
   const [err, setErr] = useState(null);
   const [left, setLeft] = useState(COUNTDOWN);
   const seen = useRef([]);
@@ -28,7 +28,7 @@ export function MysterySheet({ onClose, filters = [] }) {
       setPick(r);
     } catch (e) { setErr(e.message); }
   }
-  useEffect(() => { roll(); }, []);
+  useEffect(() => { if (!initial) roll(); }, []);
 
   // Count down to the film, then start it. Any button stops the clock first.
   useEffect(() => {

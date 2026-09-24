@@ -89,7 +89,8 @@ export function Watch() {
         <${Seg} options=${[...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'foryou', label: 'For you' }, { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
       </div>
       <div class="hscroll" style="display:flex;gap:10px;min-width:0">
-        ${forYou && !q ? html`<button type="button" class="filter" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${18} />Mystery box</button>` : null}
+        ${forYou && !q ? html`<button type="button" class="filter" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${18} />Mystery box</button>
+          <button type="button" class="filter" onClick=${() => go('year')}><${Icon} name="chart" size=${18} />Year in review</button>` : null}
         ${byNetwork && brand && html`<button type="button" class="filter" onClick=${() => { setBrand(null); setSelected(null); }}><${Icon} name="left" size=${18} />All networks</button>`}
         ${forYou ? null : byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
           ${filters.includes(f.key) && html`<${Icon} name="check" size=${18} />`}${f.label}</button>`)}
