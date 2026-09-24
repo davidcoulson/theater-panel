@@ -353,7 +353,7 @@ get(/^\/api\/seerr\/(movie|tv)\/(\d+)$/, (m) => seerr.details(m[1], m[2]));
 get(/^\/api\/seerr\/requests$/, (m, q) => seerr.requests(Math.min(Number(q.get('take') || 8), 30)));
 get(/^\/api\/seerr\/counts$/, () => seerr.counts());
 // Where a guest's phone should go to ask for something. Just the address; no key.
-get(/^\/api\/seerr\/url$/, () => ({ url: config.seerr.url ? `${config.seerr.url}/discover` : '' }));
+get(/^\/api\/seerr\/url$/, () => ({ url: config.seerr.publicUrl ? `${config.seerr.publicUrl}/discover` : '' }));
 get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(config.arrivalHours) : []));
 post(/^\/api\/seerr\/request$/, (m, q, body) => seerr.request(body));
 

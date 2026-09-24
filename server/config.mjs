@@ -82,6 +82,9 @@ function build(env) {
   },
   seerr: {
     url: (env.SEERR_URL || '').replace(/\/$/, ''),
+    // Where a guest's phone should go (the Scan to request QR). The panel talks to Seerr on the
+    // LAN address above; a phone needs the public one. Blank falls back to SEERR_URL.
+    publicUrl: (env.SEERR_PUBLIC_URL || env.SEERR_URL || '').replace(/\/$/, ''),
     apiKey: env.SEERR_API_KEY || '',
     // Optional Seerr user id so requests show as made by that user instead of the key's owner.
     userId: env.SEERR_USER_ID || '',
