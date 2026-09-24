@@ -25,7 +25,7 @@
   <Category>MediaApp:Video HomeAutomation:</Category>
   <WebUI>http://[IP]:[PORT:8787]/admin</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/unraid/theater-panel.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png</Icon>
+  <Icon>https://ht-kiosk.coulson.io/assets/icon.png</Icon>
   <!-- Unraid's nobody:users, so the appdata folders stay writable. Autostart is the Docker page toggle. -->
   <ExtraParams>--user 99:100</ExtraParams>
   <PostArgs/>
