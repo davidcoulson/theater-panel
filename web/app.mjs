@@ -120,15 +120,19 @@ export function setCinema(value) {
   cinemaOverride = value === '1' || value === 'on' ? true : value === '0' || value === 'off' ? false : null;
   applyCinema();
 }
+// The lights decide, not the scene helper: the helper only changes when a scene runs, so
+// switching the downlights on at the wall (or in HA) left it saying "Intermission" and the panel
+// dark in a lit room. Downlights up is never dark; downlights down is dark when the room is set
+// for it - accent lights glowing, or a movie scene in progress.
 function roomIsDark(s) {
-  const scene = s.states['input_select.theater_scene']?.state;
-  if (scene === 'Movie time' || scene === 'Intermission') return true;
   const [downlights, ...accents] = s.entities?.lights || [];
   const down = s.states[downlights];
-  if (!down) return false;
+  if (!down || down.state === 'unavailable') return false;
   const pct = down.state === 'on' ? ((down.attributes?.brightness ?? 255) / 255) * 100 : 0;
+  if (pct >= 25) return false;
+  const scene = s.states['input_select.theater_scene']?.state;
   const glow = accents.some((id) => s.states[id]?.state === 'on');
-  return pct < 25 && glow;                       // deliberately dark, not simply switched off
+  return glow || scene === 'Movie time' || scene === 'Intermission';
 }
 function applyCinema() {
   const s = getState();
