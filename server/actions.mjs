@@ -21,8 +21,9 @@ export async function runAction(ha, body) {
     case 'play': {
       // With a pre-roll configured, the swell starts on the theater speakers while the lights go
       // down and the film follows a few seconds later. Returns at once so the panel is not held
-      // open for the length of the swell.
-      if (config.preroll.url && !body.noPreroll) {
+      // open for the length of the swell. A film gets it; the next episode of a sitcom does not,
+      // unless the Play button says otherwise (body.preroll true or false decides).
+      if (!body.noPreroll && wantsPreroll(body)) {
         await script(ha, 'preroll', { speaker: e.musicPlayers[0] || e.musicPlayer, url: config.preroll.url });
         setTimeout(() => runAction(ha, { ...body, noPreroll: true }).catch((err) => console.warn('[preroll] film did not start:', err.message)), config.preroll.seconds * 1000);
         return { preroll: config.preroll.seconds };
@@ -166,6 +167,14 @@ export function livePosition(a, state) {
 }
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Number(n)));
+
+// Whether this Play should be led in by the swell: the panel's own choice when it made one,
+// otherwise the rule (configured at all, and a film rather than an episode).
+export function wantsPreroll(body = {}) {
+  if (!config.preroll.url) return false;
+  if (body.preroll === true || body.preroll === false) return body.preroll;
+  return !(config.preroll.moviesOnly && body.type === 'episode');
+}
 
 // ---------- Music Assistant data, read through HA's music_assistant actions ----------
 

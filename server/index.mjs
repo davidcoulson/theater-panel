@@ -13,6 +13,8 @@ import * as accents from './accents.mjs';
 import { HomeAssistant } from './ha.mjs';
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
+import * as taste from './taste.mjs';
+import * as sleep from './sleep.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
@@ -181,6 +183,8 @@ get(/^\/api\/state$/, () => ({
   effectFavourites: config.effectFavourites,
   build: config.build,
   idleMinutes: config.idleMinutes,
+  sleep: sleep.get(),
+  preroll: { enabled: Boolean(config.preroll.url), seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 
@@ -207,6 +211,21 @@ get(/^\/api\/pick$/, async (m, q) => {
   const n = Math.min(6, Math.max(2, Number(q.get('n')) || 3));
   return { items: items.slice(0, n) };
 });
+
+// "You'll love this": what the house finished lately, and what goes with it. Anything already
+// in Plex comes back with the key that plays it; the rest can be requested from the same card.
+get(/^\/api\/taste$/, async () => (config.plex.url ? { rows: await taste.rows({ count: 3 }) } : { rows: [] }));
+
+// The Mystery box: one unwatched film, weighted towards what the house has been watching. The
+// panel counts down and then plays it, so this only picks.
+get(/^\/api\/mystery$/, (m, q) => taste.mystery({
+  filters: (q.get('filters') || '').split(',').filter(Boolean),
+  exclude: (q.get('not') || '').split(',').filter(Boolean).slice(0, 20),
+}));
+
+// The sleep timer lives on the server so it outlives the panel's own screen.
+get(/^\/api\/sleep$/, () => sleep.get() || { mode: null });
+post(/^\/api\/sleep$/, (m, q, body) => sleep.set(body || {}) || { mode: null });
 
 post(/^\/api\/vote\/start$/, (m, q, body) => {
   const items = (body.items || []).slice(0, 6).map((i) => ({
@@ -454,6 +473,7 @@ const server = createServer(async (req, res) => {
 });
 
 await initImageCache();
+sleep.init({ ha, broadcast, run: (body) => runAction(ha, body) });
 ha.start();
 pollSessions();
 if (config.plex.url) plex.warmMovies();

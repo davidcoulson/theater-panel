@@ -144,7 +144,13 @@ function build(env) {
   preroll: {
     url: env.PREROLL_URL || '',
     seconds: Math.max(3, Math.min(60, Number(env.PREROLL_SECONDS || 16))),
+    // A swell before a film is an event; before the fourth episode of a sitcom it is a delay.
+    // Movies only by default; the Play button offers it either way when it is configured.
+    moviesOnly: env.PREROLL_MOVIES_ONLY !== 'false',
   },
+  // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
+  // the server's own history. Empty means the whole house.
+  historyAccounts: list(env.HISTORY_ACCOUNTS, []),
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
   // How far back the "Now in Plex" chip looks for requests that arrived.

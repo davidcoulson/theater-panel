@@ -10,22 +10,97 @@ still does the room logic: every button calls a `theater_*` script from `ha/thea
 the same scenes work from Pico remotes, voice and the HA app.
 
 ```
-Kiosk Satellite ──http──▶ theater-panel ──▶ Plex        (library, posters, sessions)
-  (1920x1080 panel)         (this repo)  ──▶ Seerr       (search, requests, queue)
+Kiosk Satellite ──http──▶ theater-panel ──▶ Plex        (library, posters, history, sessions)
+  (1920x1080 panel)         (this repo)  ──▶ Seerr       (search, requests, queue, TMDB)
                                          ──▶ Home Assistant (one websocket, ~15 entities,
                                               theater_* scripts, Music Assistant actions)
 ```
+
+![The Home screen](docs/img/lobby.jpg)
 
 ## Screens
 
 | Screen | What it does |
 |---|---|
 | **Home** | Continue watching (Plex on deck), scenes, projector power, lights, just added, music bar |
-| **Watch** | Plex libraries as a poster grid with 4K / HDR / Atmos badges and filters (unwatched, under 2 hours, family friendly, 4K, HDR, random pick), browse by network (Netflix, Max, Prime Video…), details, subtitles, "ends at" time, Play on projector |
+| **Watch** | Plex libraries as a poster grid with 4K / HDR / Atmos badges and filters (unwatched, under 2 hours, family friendly, 4K, HDR, random pick), browse by network, "You'll love this", details, subtitles, "ends at" time, Play on projector |
 | **Request** | Seerr trending, upcoming (with release dates), what's streaming on each network, and search; request sheet (seasons, 1080p/4K), your request queue with download progress |
 | **Games** | Console and PC buttons (HDMI switcher and projector input, through Home Assistant), Steam library with launch, gaming PC stats from HA |
 | **Music** | Music Assistant now playing, albums/playlists/artists/radio, search, queue, which player to use |
-| **Showtime** | The dark screen while something plays: pause, skip, volume, intermission, lights up. Opens by itself when the Apple TV starts playing and dims the panel's backlight through Kiosk Satellite. |
+| **Showtime** | The dark screen while something plays: pause, skip, volume, intermission, lights up, sleep timer. Opens by itself when the Apple TV starts playing and dims the panel's backlight through Kiosk Satellite. |
+| **Now Showing** | After a few idle minutes the panel drifts to a poster wall of what's in progress, what just arrived and what is on its way. Any touch brings it back. |
+
+<p>
+  <img src="docs/img/watch.jpg" width="32%" alt="Watch" />
+  <img src="docs/img/request.jpg" width="32%" alt="Request" />
+  <img src="docs/img/music.jpg" width="32%" alt="Music" />
+</p>
+
+Deep links work for everything, e.g. `#/watch?brand=netflix`, `#/request?mode=upcoming`,
+`#/games`, `#/lobby?mystery=1`, which HA can send through `rest_command.theater_panel_navigate`.
+
+## Picking something
+
+Three ways in, for three different moods.
+
+**You'll love this** (Watch > For you) reads Plex's own watch history, takes the last few things
+the house actually finished, and asks TMDB through Seerr what goes with them. Anything already in
+the library says **In Plex** and plays like any other title; anything missing says **Request** and
+opens the request screen with the name filled in. No Trakt account and no second service to keep
+signed in.
+
+![You'll love this](docs/img/foryou.jpg)
+
+**The Mystery box** picks one unwatched film, weighted towards the genres the house has been
+watching, and starts it. It says why it chose that one, counts down from ten, and takes
+*Something else* or *Not tonight* for an answer.
+
+![The Mystery box](docs/img/mystery.jpg)
+
+**Movie night** (`#/pick`) puts a shortlist on the panel and a QR on screen; everyone votes from
+their phones at `/vote` and the tally comes back live.
+
+Set **Whose taste to follow** on the settings page (Plex > account names) to keep the
+recommendations out of the kids' anime; blank follows the whole house.
+
+## Before, during and after the film
+
+**The pre-roll swell.** With a sound set under Projector apps, Play sends a deep swell to the
+theater speakers, drops the downlights over eight seconds and starts the film when it finishes.
+`tools/deep-swell.py` synthesises the panel's own 17-second version (30 detuned sawtooth voices
+sliding into a very wide D major) - our own take on the idea, not anybody's recording. Films get
+it, episodes don't, and the Play button decides for the title in front of you.
+
+<img src="docs/img/detail.jpg" width="420" alt="The detail pane with the pre-roll toggle" />
+
+**The sleep timer.** *After this* turns the room off when playback ends; 30, 60 or 90 minutes
+stops it and turns everything off then. The server holds the timer, not the panel, so it still
+works after the panel reloads, drifts to the idle screen or is switched off.
+
+![Showtime with the sleep timer open](docs/img/showtime.jpg)
+
+**The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
+card with a snapshot appears - even over a film - with a button to let her in.
+
+## Holidays and seasons
+
+Two independent axes: the **theme** (the room as built, or the couch's slate tweed) and an
+**accent** on top of it. Accents follow the house calendar by themselves - Halloween all October,
+Thanksgiving from the Saturday before, Christmas from the Friday after Thanksgiving to the 30th,
+New Year's Eve, birthdays - or can be pinned on the settings page. Each one brings its own
+highlight colour, an idle glow on the light strip, a glyph by the clock and a little weather over
+the lobby: bats and ghosts, falling leaves, petals, confetti, snow that piles up on the tops of
+the cards and melts away again. At Christmas there are snowmen in the drifts, a sleigh with
+coloured reindeer and a glitter wake, a lit tree on the idle screen, and Santa, who comes up from
+behind the snow every so often to wave.
+
+![Santa waving from behind the drift](docs/img/santa.jpg)
+
+**Accent weather** (0-100%) on the settings page decides how much of it there is. Kiosk
+Satellite's plugin publishes theme, accent and weather as Home Assistant entities, so an
+automation can dress the panel up too.
+
+![The idle screen](docs/img/showing.jpg)
 
 ## Run it
 
@@ -46,8 +121,9 @@ For development without Docker: `npm install` and `npm run dev` (Node 22 or newe
 ### Settings page
 
 Set `ADMIN_PASSWORD` on the container and open `/admin` (e.g. `https://ht-kiosk.coulson.io/admin`)
-from a laptop. Everything else (Home Assistant, Plex and Seerr connections, entities, projector
-apps, game sources, Steam, display options) can be changed there; the panel picks changes up
+from a laptop. It has a menu down the left: Overview, Connections (Home Assistant, Plex, Seerr),
+Room (entities, lights), Projector apps (and the pre-roll), Display (theme, accent, weather,
+birthdays) and Access. Everything the panel does can be changed there and it picks changes up
 without a restart. Saved values live in `settings.json` in the container's `/data` volume and win
 over the container's environment; a blank field falls back to it. Secrets are write-only.
 
@@ -102,29 +178,38 @@ PC's HA entities (power, stats sensors, and a script that launches a Steam game 
 under `pc`, and `STEAM_API_KEY` / `STEAM_ID` to `.env` for the library. The panel never talks to
 the hardware itself; everything goes through Home Assistant.
 
-Deep links work for everything, e.g. `#/watch?brand=netflix`, `#/request?mode=upcoming`,
-`#/games`, which HA can send through Kiosk Satellite's navigate service.
+![Games](docs/img/games.jpg)
+
+## The basement panel
+
+`web/basement/` is a second, much smaller panel for the 5" 1280x800 screen on the basement
+stairs: light zones on a split dial (brightness on one side, colour temperature on the other) and
+a moods page, served to Home Assistant as a custom Lovelace card. `node tools/basement-sync.mjs`
+assembles it; `web/basement.html` holds the original mockups.
 
 ## What is not finished
 
 - **Projector input and picture mode.** Power works through the Apple TV (HDMI-CEC). Input and
   picture mode need the Aurora Pro's ADB commands, which have not been tested yet; the scripts
   post a notification instead of guessing. Set `ENTITY_PROJECTOR` once the ADB integration is set up.
-- **Playback end to end.** The `theater_play_plex` script has not been run against the real Plex
-  client entity yet (it is currently unavailable in HA).
 - **Games hardware.** The HDMI switcher's serial commands, the projector input names and the
-  Windows VM's HA entities are placeholders in `games.example.json` until they are known.
+  Windows VM's HA entities are placeholders in `games.example.json` until they are known, so the
+  gaming PC's stats page is still demo data.
 - **Music Assistant "Home Theater" player** is unavailable in HA, so the music bar shows that.
 - Subtitles can be chosen before playing (stored on the Plex item). Changing them mid-movie
   is not possible through the Apple TV's HA integration.
+- The basement card does not follow the theme and accent system yet.
 
 ## Layout
 
 ```
-server/   Node http server, no framework: Plex, Seerr, HA websocket, image cache, SSE
+server/   Node http server, no framework: Plex, Seerr, HA websocket, image cache, SSE,
+          taste (recommendations, mystery box), sleep timer, accents calendar
 web/      Preact + htm as plain ES modules (no build step), styles, room textures
-ha/       Home Assistant package: scenes, play sequence, playback automation
-tools/    shot.mjs (screenshots at 1920x1080 via local Chrome), textures.py (regenerates textures)
+ha/       Home Assistant package: scenes, play sequence, pre-roll, playback automation
+tools/    shot.mjs (screenshots via local Chrome), deep-swell.py (the pre-roll sound),
+          textures.py (regenerates textures), basement-sync.mjs (builds the basement card)
+docs/img/ the screenshots in this file
 ```
 
 Dependencies: preact, htm and three @fontsource font packages. Fonts, textures and scripts are

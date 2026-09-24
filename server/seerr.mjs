@@ -95,6 +95,13 @@ export async function networks() {
   return BRANDS.map((b) => ({ id: b.id, name: b.name, short: b.short, logo: logos[b.id] }));
 }
 
+// "Because you watched": TMDB's own "people who watched this also watched", through Seerr, so
+// anything already in Plex comes back with the key that plays it.
+export async function recommendations(mediaType, tmdbId, page = 1) {
+  const d = await seerr(`/${mediaType}/${Number(tmdbId)}/recommendations`, { params: { page } });
+  return (d.results || []).map((r) => mapResult({ ...r, mediaType: r.mediaType || mediaType }));
+}
+
 const detailCache = new Map();
 export async function details(mediaType, id) {
   const key = `${mediaType}:${id}`;

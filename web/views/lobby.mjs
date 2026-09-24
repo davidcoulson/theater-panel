@@ -6,6 +6,8 @@ import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebra
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
+import { MysterySheet } from './mystery.mjs';
+import { SleepChip } from './sleep.mjs';
 
 const SCENES = [
   { name: 'pre_show', label: 'Pre-show', desc: 'Warm lights · music', icon: 'music' },
@@ -24,6 +26,9 @@ export function Lobby() {
   const arrivals = useArrivals();
   const [streamsOpen, setStreamsOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  // "#/lobby?mystery=1" opens the box straight away - handy from a Home Assistant automation
+  // ("surprise me") and for screenshots.
+  const [mystery, setMystery] = useState(route.params.mystery === '1');
   const services = useStore((s) => s.services) || {};
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
@@ -38,6 +43,8 @@ export function Lobby() {
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
+      ${services.plex && html`<button type="button" class="chip" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${20} />Mystery box</button>`}
+      <${SleepChip} />
       ${services.seerr && html`<button type="button" class="chip" onClick=${() => setScanOpen(true)}><${Icon} name="plus" size=${20} />Scan to request</button>`}
       ${downloading > 0 && html`<button type="button" class="chip warn" onClick=${() => go('request')}><${Icon} name="dl" size=${20} />${downloading} downloading</button>`}
     <//>
@@ -53,6 +60,7 @@ export function Lobby() {
     </div>
     ${streamsOpen && html`<${StreamsSheet} onClose=${() => setStreamsOpen(false)} />`}
     ${scanOpen && html`<${ScanToRequest} onClose=${() => setScanOpen(false)} />`}
+    ${mystery && html`<${MysterySheet} onClose=${() => setMystery(false)} />`}
   </main>`;
 }
 
