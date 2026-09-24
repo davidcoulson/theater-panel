@@ -95,6 +95,16 @@ over ninety seconds the way a cinema's do, rather than snapping on. `script.thea
 acts if the room is still set for a movie, so stopping something at lunchtime does nothing.
 `CURTAIN_SECONDS=0` turns it off.
 
+**Intermission.** Call for a break - from the panel, a remote, or "hey Jarvis, intermission" -
+and the wall turns into a 1950s drive-in snack bar: a marquee, a countdown, and the concessions
+marching past on stick legs while a corny little march plays in the room. Both the march and the
+cast are the panel's own (`tools/snipes.py` and `web/lib/snacks.mjs`); the 1957 reel is somebody
+else's film. The parade dresses for the season, too.
+
+![Intermission](docs/img/intermission.jpg)
+
+![The snack bar in witch hats](docs/img/snacks.jpg)
+
 **The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
 card with a snapshot appears - even over a film - with a button to let her in.
 
@@ -117,6 +127,12 @@ Satellite's plugin publishes theme, accent and weather as Home Assistant entitie
 automation can dress the panel up too.
 
 ![The idle screen](docs/img/showing.jpg)
+
+At Halloween the idle board becomes a **creature feature**: a green B-movie title card, a print
+that flickers, and the pre-roll swaps its swell for a sting - a low pedal, a theremin wail and
+two organ stabs (`web/assets/preroll-spooky.mp3`, also ours).
+
+![Creature feature](docs/img/creature.jpg)
 
 ## Run it
 

@@ -3,6 +3,7 @@
 // so the same behavior is available to Pico remotes, voice and automations too.
 
 import { config } from './config.mjs';
+import * as accents from './accents.mjs';
 import * as plex from './plex.mjs';
 import { extImage } from './images.mjs';
 import * as games from './games.mjs';
@@ -15,7 +16,13 @@ export async function runAction(ha, body) {
   switch (body.action) {
     case 'scene': {
       if (!SCENES.includes(body.name)) throw new Error('Unknown scene');
-      return script(ha, body.name);
+      const run = await script(ha, body.name);
+      // The break gets its jingle: the panel shows the snack bar, the room hears the march.
+      if (body.name === 'intermission' && config.intermission.url && body.quiet !== true) {
+        script(ha, 'snipe', { speaker: e.musicPlayers[0] || e.musicPlayer, url: config.intermission.url })
+          .catch((err) => console.warn('[intermission] no march:', err.message));
+      }
+      return run;
     }
 
     case 'play': {
@@ -24,7 +31,7 @@ export async function runAction(ha, body) {
       // open for the length of the swell. A film gets it; the next episode of a sitcom does not,
       // unless the Play button says otherwise (body.preroll true or false decides).
       if (!body.noPreroll && wantsPreroll(body)) {
-        await script(ha, 'preroll', { speaker: e.musicPlayers[0] || e.musicPlayer, url: config.preroll.url });
+        await script(ha, 'preroll', { speaker: e.musicPlayers[0] || e.musicPlayer, url: prerollUrl() });
         setTimeout(() => runAction(ha, { ...body, noPreroll: true }).catch((err) => console.warn('[preroll] film did not start:', err.message)), config.preroll.seconds * 1000);
         return { preroll: config.preroll.seconds };
       }
@@ -167,6 +174,13 @@ export function livePosition(a, state) {
 }
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Number(n)));
+
+// Which swell: the creature feature sting while the Halloween accent is up, the usual one
+// otherwise. (The accent follows the calendar unless it is pinned on the settings page.)
+export function prerollUrl() {
+  const accent = accents.resolve(config.ui.accent, accents.parseBirthdays(config.ui.birthdays));
+  return accent.id === 'halloween' && config.preroll.spookyUrl ? config.preroll.spookyUrl : config.preroll.url;
+}
 
 // Whether this Play should be led in by the swell: the panel's own choice when it made one,
 // otherwise the rule (configured at all, and a film rather than an episode).

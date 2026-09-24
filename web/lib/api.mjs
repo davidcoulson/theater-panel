@@ -64,7 +64,7 @@ export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   // Open the live stream before anything else so it gets a connection ahead of the posters.
   const es = new EventSource('/api/events');
-  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {} })).catch(() => {});
+  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {}, intermission: s.intermission || {} })).catch(() => {});
   loadSettings();
   es.addEventListener('hello', (e) => {
     const d = JSON.parse(e.data);

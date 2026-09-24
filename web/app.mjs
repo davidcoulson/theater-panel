@@ -3,7 +3,7 @@
 // and back to the Lobby when playback ends.
 
 import { render } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
 import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
@@ -20,8 +20,9 @@ import { Stats } from './views/stats.mjs';
 import { Showing } from './views/showing.mjs';
 import { Pick } from './views/pick.mjs';
 import { Year } from './views/year.mjs';
+import { Intermission } from './views/intermission.mjs';
 
-const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year };
+const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
 
 // Hash routes, with optional query params: #/watch?lib=networks&brand=netflix
@@ -101,7 +102,7 @@ const ACCENT_DEFS = {
   fall: { id: 'fall', name: 'Fall', glow: 'Ember Ring', weather: 'leaves' },
 };
 // The accent in effect for the rail and the weather layer: a route override or the server's pick.
-function currentAccent() {
+export function currentAccent() {
   const s = getState().ui?.accent;
   return accentOverride ? ACCENT_DEFS[accentOverride] : s?.id && s.id !== 'none' ? s : null;
 }
@@ -273,12 +274,24 @@ function App() {
     if (tvState === 'playing' && route.name !== 'showtime' && Date.now() - lastManual > 90000) go('showtime', { auto: true });
     if (['idle', 'off', 'standby'].includes(tvState) && route.name === 'showtime') go('lobby', { auto: true });
   }, [tvState]);
+  // Intermission is a screen as well as a scene: whoever calls for the break - the panel, a Pico
+  // remote, "hey Jarvis, intermission" - gets the snack bar on the wall, and leaving the scene
+  // takes it away again.
+  const scene = useStore((s) => s.states['input_select.theater_scene']?.state);
+  const wasScene = useRef(undefined);
+  useEffect(() => {
+    const before = wasScene.current;
+    wasScene.current = scene;
+    if (before === undefined || before === scene) return;        // first look, not a change
+    if (scene === 'Intermission' && route.name !== 'intermission') go('intermission', { auto: true });
+    if (before === 'Intermission' && route.name === 'intermission') go(scene === 'Movie time' ? 'showtime' : 'lobby', { auto: true });
+  }, [scene]);
   // Untouched for a while: drift to the Now Showing screen (a cinema lobby board). Any touch
   // brings the panel straight back to Home. Nothing happens during Showtime.
   useEffect(() => {
     const t = setInterval(() => {
       const idleMin = getState().idleMinutes ?? 8;
-      if (idleMin > 0 && route.name !== 'showtime' && route.name !== 'showing' && Date.now() - lastManual > idleMin * 60000) go('showing', { auto: true });
+      if (idleMin > 0 && !['showtime', 'showing', 'intermission'].includes(route.name) && Date.now() - lastManual > idleMin * 60000) go('showing', { auto: true });
     }, 15000);
     const back = () => { if (route.name === 'showing') go('lobby'); };
     addEventListener('pointerdown', back, true);
@@ -299,9 +312,9 @@ function App() {
 
   const haunt = useHaunting(currentAccent()?.id === 'halloween');
   const View = VIEWS[r.name] || Lobby;
-  // Showtime and the idle screen fill the panel on their own.
+  // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
-  if (r.name === 'showtime' || r.name === 'showing') return html`<${View} key=${r.name} />
+  if (r.name === 'showtime' || r.name === 'showing' || r.name === 'intermission') return html`<${View} key=${r.name} />
     ${r.name === 'showing' && html`<${Weather} decor="tree" />`}
     <${DogAtDoor} />
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;

@@ -105,7 +105,7 @@ async function readBody(req) {
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
-const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/assets/preroll.mp3', '/vote', '/vote/', '/api/vote', '/healthz']);
+const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/assets/preroll.mp3', '/assets/preroll-spooky.mp3', '/assets/intermission.mp3', '/vote', '/vote/', '/api/vote', '/healthz']);
 
 // Trusted networks skip the key entirely (see TRUST_NETWORKS on the settings page).
 let isProxy = netList(config.trustedProxies);
@@ -185,6 +185,7 @@ get(/^\/api\/state$/, () => ({
   idleMinutes: config.idleMinutes,
   sleep: sleep.get(),
   preroll: { enabled: Boolean(config.preroll.url), seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
+  intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 

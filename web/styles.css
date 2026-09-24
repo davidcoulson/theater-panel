@@ -602,3 +602,39 @@ canvas.fx { display: block; width: 100%; }
 .binge .eyebrow { display: flex; align-items: center; gap: 8px; }
 .binge .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1.05; text-transform: uppercase; }
 .binge .muted { font-size: 16px; color: var(--muted); }
+
+/* ---------- intermission: the drive-in snack bar ---------- */
+.lobby-screen { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0B1020; color: #F4ECE0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; }
+/* a night sky over a dark horizon, and the glow of the snack bar below it */
+.lobby-screen .sky { position: absolute; inset: 0; background:
+  radial-gradient(1200px 500px at 50% 108%, rgba(227,168,101,.35), transparent 70%),
+  linear-gradient(#070A16 0%, #101a36 48%, #1B2440 72%, #0C1022 100%); }
+.lobby-screen .snacks { position: absolute; left: 0; bottom: 0; width: 1920px; height: 430px; }
+.lobby-screen .marquee { position: relative; z-index: 2; padding: 46px 90px; border-radius: 26px; background: rgba(10,8,14,.72); border: 3px solid var(--gold); box-shadow: 0 0 0 10px rgba(227,168,101,.12), 0 24px 70px rgba(0,0,0,.6); text-align: center; }
+.lobby-screen .marquee .inner { position: relative; z-index: 1; }
+/* the bulbs around the frame, chasing */
+.lobby-screen .bulb { position: absolute; width: 14px; height: 14px; border-radius: 7px; background: #F2D69B; box-shadow: 0 0 12px rgba(242,214,155,.9); animation: chase 1.2s linear infinite; animation-delay: calc(var(--i) * -0.086s); }
+.lobby-screen .bulb:nth-child(-n+7) { top: -8px; left: calc(10% + var(--i) * 12%); }
+.lobby-screen .bulb:nth-child(n+8) { bottom: -8px; left: calc(10% + (var(--i) - 7) * 12%); }
+@keyframes chase { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+.lobby-screen h1 { margin: 6px 0 14px; font-family: var(--disp); font-weight: 800; font-size: 118px; line-height: .88; text-transform: uppercase; color: #F7EEDD; text-shadow: 0 6px 0 rgba(200,50,43,.55); }
+.lobby-screen .eyebrow { font-size: 22px; letter-spacing: 6px; color: var(--gold); }
+.lobby-screen .count { font-family: var(--mono); font-weight: 600; font-size: 76px; line-height: 1; color: var(--gold); }
+.lobby-screen .count.done { font-family: var(--disp); font-size: 60px; text-transform: uppercase; color: #F7EEDD; animation: chase 1.4s ease-in-out infinite; }
+.lobby-screen .acts { position: relative; z-index: 2; display: flex; gap: 20px; }
+.lobby-screen .acts .btn.ghost { border-color: rgba(244,236,224,.35); }
+.lobby-screen .clock { position: absolute; top: 34px; right: 46px; z-index: 2; font-size: 40px; color: rgba(244,236,224,.75); }
+.lobby-screen .clock span { font-size: 22px; }
+
+/* ---------- creature feature: the idle board at Halloween ---------- */
+.showing.creature .sh-art { filter: none; }
+/* a green wash and a slow flicker, like a print that has been through the projector too often */
+.showing.creature .sh-veil { background: linear-gradient(105deg, rgba(4,10,6,.94) 28%, rgba(8,18,10,.72) 58%, rgba(20,8,26,.55)); animation: reel 5.5s steps(1, end) infinite; }
+@keyframes reel { 0%, 92%, 100% { opacity: 1; } 94% { opacity: .82; } 96% { opacity: 1; } 98% { opacity: .88; } }
+.showing.creature h1 { color: #CFE8B8; text-shadow: 0 0 22px rgba(120,200,110,.35), 0 4px 0 rgba(60,20,70,.7); }
+.showing.creature .sh-poster { box-shadow: 0 0 0 2px rgba(150,220,130,.5), 0 20px 50px rgba(0,0,0,.6); }
+.creature-card { position: absolute; z-index: 3; left: 96px; top: 84px; display: flex; flex-direction: column; gap: 2px; transform: rotate(-3deg); }
+.creature-card .c1 { font-family: var(--disp); font-weight: 700; font-size: 34px; letter-spacing: 6px; text-transform: uppercase; color: #E8731C; }
+.creature-card .c2 { font-family: var(--disp); font-weight: 800; font-size: 86px; line-height: .9; text-transform: uppercase; color: #9BE07A;
+  text-shadow: 3px 3px 0 #2A0B33, 6px 6px 0 rgba(42,11,51,.5), 0 0 34px rgba(120,220,110,.45); }
+.creature-card .c3 { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; color: #C7B39E; }
