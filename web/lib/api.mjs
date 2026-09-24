@@ -24,7 +24,7 @@ export async function act(data) {
 
 // ---------- live store ----------
 
-let state = { vote: null, sleep: null, mystery: null, preroll: {}, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
+let state = { vote: null, sleep: null, mystery: null, rate: null, preroll: {}, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
 export const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
@@ -64,6 +64,7 @@ export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   // Open the live stream before anything else so it gets a connection ahead of the posters.
   const es = new EventSource('/api/events');
+  get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
   const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {}, intermission: s.intermission || {} })).catch(() => {});
   loadSettings();
   es.addEventListener('hello', (e) => {
@@ -90,6 +91,8 @@ export async function startLive({ navigate } = {}) {
   });
   // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
   es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
+  // A film just finished: the panel asks how it was.
+  es.addEventListener('rate', (e) => set({ rate: JSON.parse(e.data) }));
   // Movie night: the shortlist and the running tally.
   es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
   // Home Assistant (or anything with access to the panel's API) can move the panel to a route.

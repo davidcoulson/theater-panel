@@ -545,3 +545,12 @@ export const seedDetails = (ratingKey) => cached(`seed:${ratingKey}`, 12 * 3600e
     tmdbId: tmdb ? Number(tmdb.slice(7)) : null,
   };
 });
+
+// A star rating back to Plex (1-10, or -1 to clear it). Plex stores it as userRating on the
+// item, which is what the panel's popcorn boxes write after a film.
+export async function rate(ratingKey, rating) {
+  const r = Math.max(-1, Math.min(10, Number(rating)));
+  await plex('/:/rate', { key: Number(ratingKey), identifier: 'com.plexapp.plugins.library', rating: r }, 'PUT');
+  staleMovies();
+  return { ratingKey: String(ratingKey), rating: r };
+}
