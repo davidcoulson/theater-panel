@@ -652,7 +652,10 @@ html.cinema {
 }
 /* and a wash over everything, so posters, artwork and the odd white button come down with the
    rest rather than each being dimmed by hand */
-html.cinema #stage::after { content: ''; position: absolute; inset: 0; z-index: 40; pointer-events: none; background: rgba(6,4,2,.3); }
+/* Showtime, the idle board and the snack bar are dark already, so the wash is for the ordinary
+   screens only */
+html.cinema .app { position: relative; }
+html.cinema .app::after { content: ''; position: absolute; inset: 0; z-index: 40; pointer-events: none; background: rgba(6,4,2,.3); }
 html.cinema, html.cinema body { background: #06050A; }
 /* the room's textures are all lit surfaces; in the dark they are just noise */
 html.cinema .tx-plaster { background: #0B0907; }
@@ -661,7 +664,8 @@ html.cinema .tx-walnut, html.cinema .tx-suede { background: #14100B; }
 html.cinema .tx-planks-rail { background: #141009; }
 html.cinema .card, html.cinema .hero, html.cinema .scenes, html.cinema .dark { box-shadow: none; }
 /* posters and artwork carry their own light, so they come down too */
-html.cinema .poster img, html.cinema .sh-art, html.cinema .art img, html.cinema .album img, html.cinema .nowplaying .cover { opacity: .62; }
+/* (not the idle board's backdrops: they fade by opacity, and dimming them all stacked every one) */
+html.cinema .poster img, html.cinema .art img, html.cinema .album img, html.cinema .nowplaying .cover { opacity: .62; }
 /* the sofa theme's oatmeal Play button is a lamp in a dark room */
 html.cinema .btn.primary { background: #6E3F17; color: #EBD9C2; }
 html.cinema input.range::-webkit-slider-thumb { background: #8A7B6B; box-shadow: none; }
