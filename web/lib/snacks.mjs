@@ -47,8 +47,12 @@ function hat(ctx, s, t, acc, y) {
   }
 }
 
-// The trick-or-treat bucket, swinging from whichever hand is forward.
+// The trick-or-treat bucket, swinging from whichever hand is forward. Drawn at twice the size
+// of the first go, so it reads from the sofa; scaled about the hand so the handle stays in it.
+const BUCKET = 2;
 function bucket(ctx, s, x, y) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(BUCKET, BUCKET); ctx.translate(-x, -y);
   ctx.strokeStyle = '#2A1911'; ctx.lineWidth = s * 0.02;
   ctx.beginPath(); ctx.arc(x, y + s * 0.06, s * 0.07, Math.PI, 0); ctx.stroke();
   ctx.fillStyle = '#E8731C';
@@ -56,6 +60,7 @@ function bucket(ctx, s, x, y) {
   ctx.fillStyle = '#2A1911';
   ctx.beginPath(); ctx.moveTo(x - s * 0.04, y + s * 0.11); ctx.lineTo(x - s * 0.01, y + s * 0.15); ctx.lineTo(x - s * 0.07, y + s * 0.15); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(x + s * 0.04, y + s * 0.11); ctx.lineTo(x + s * 0.07, y + s * 0.15); ctx.lineTo(x + s * 0.01, y + s * 0.15); ctx.closePath(); ctx.fill();
+  ctx.restore();
 }
 
 // ---------- the cast ----------
