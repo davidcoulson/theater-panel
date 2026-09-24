@@ -49,7 +49,7 @@ function Shell({ children, signOut, page, dirtyPages = new Set() }) {
   const [build, setBuild] = useState({});
   useEffect(() => { fetch('/api/state').then((r) => r.json()).then((s) => setBuild(s.build || {})).catch(() => {}); }, []);
   return html`<aside class="side">
-      <div class="brand"><img src="/assets/icon.png" alt="" /><div><b>Theater panel</b><span>${build.version ? `v${build.version}` : 'Settings'}</span></div></div>
+      <div class="brand"><div><b>Theater panel</b><span>${build.version ? `v${build.version}` : 'Settings'}</span></div></div>
       ${signOut && html`<nav class="menu">${PAGES.map((p) => html`<a href=${`#/${p.id}`} aria-current=${page === p.id ? 'page' : undefined}>
           <${Icon} name=${p.icon} size=${20} />${p.label}${dirtyPages.has(p.id) && html`<i class="dot" title="Unsaved changes"></i>`}</a>`)}</nav>`}
       <div class="grow"></div>
