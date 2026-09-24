@@ -42,12 +42,14 @@ async function accountIds() {
   return want.map((w) => (/^\d+$/.test(w) ? Number(w) : all.find((a) => a.name.toLowerCase() === w.toLowerCase())?.id)).filter(Boolean);
 }
 
-let rowCache = { at: 0, rows: null };
+// Rows are worth an hour when they came back full; a failure or an empty answer is worth a
+// minute, so a Seerr hiccup at startup does not leave the tab empty for the rest of the hour.
+let rowCache = { at: 0, rows: null, ttl: ROW_TTL };
 
 // "You'll love this": three rows, each seeded by something recently finished. Titles already in
 // Plex carry the key that plays them; the rest can be requested from the same card.
 export async function rows({ count = 3, size = 12 } = {}) {
-  if (rowCache.rows && Date.now() - rowCache.at < ROW_TTL) return rowCache.rows;
+  if (rowCache.rows && Date.now() - rowCache.at < rowCache.ttl) return rowCache.rows;
   if (!config.seerr.url) return [];
   const list = (await seeds(8)).filter((s) => s.tmdbId).slice(0, count);
   const seen = new Set(list.map((s) => s.tmdbId));
@@ -59,11 +61,15 @@ export async function rows({ count = 3, size = 12 } = {}) {
     items.forEach((x) => seen.add(x.id));
     if (items.length) out.push({ seed: { id: seed.id, title: seed.title, type: seed.type, poster: seed.poster, year: seed.year }, items });
   }
-  rowCache = { at: Date.now(), rows: out };
+  rowCache = { at: Date.now(), rows: out, ttl: out.length ? ROW_TTL : 60e3 };
   return out;
 }
 
-export const forget = () => { seedCache = { at: 0, key: '', list: null }; rowCache = { at: 0, rows: null }; };
+export const forget = () => { seedCache = { at: 0, key: '', list: null }; rowCache = { at: 0, rows: null, ttl: ROW_TTL }; };
+
+// Warm the caches at startup, like the movie index, so the first visit to For you is not eight
+// round trips to Plex.
+export const warm = () => seeds(8).then(() => rows()).catch((e) => console.warn('[taste] warm:', e.message));
 
 // The Mystery box: an unwatched film from the library, weighted towards the genres the house has
 // been watching, so it is a surprise but not a random one. Returns the pick and the reason, and
@@ -105,4 +111,81 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     : pick.hits.length ? `More ${pick.hits[0].toLowerCase()} for the house`
     : 'Never started, and highly rated';
   return { item: pick.it, why, pool: items.length };
+}
+
+// ---------- Year in review ----------
+
+// The house's year, from Plex's history: how much was watched, by whom, what came back most
+// often, and when the room is actually busy. Plays are exact; hours are an estimate - history
+// records that something was watched, not for how long, so each play counts as the length of the
+// film, or of a typical episode of that show.
+let reviewCache = new Map();
+
+export async function review({ year = new Date().getFullYear() } = {}) {
+  const key = String(year);
+  const hit = reviewCache.get(key);
+  if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.v;
+
+  const from = new Date(year, 0, 1).getTime();
+  const to = new Date(year + 1, 0, 1).getTime();
+  const rows = (await plex.history({ size: 6000, since: from, dedupe: false })).filter((r) => r.viewedAt && r.viewedAt < to);
+  const names = new Map((await plex.accounts().catch(() => [])).map((a) => [a.id, a.name]));
+  const meta = await plex.metaBatch(rows.map((r) => r.key)).catch(() => new Map());
+
+  // Median known length, for anything the library no longer has.
+  const lengths = [...meta.values()].map((m) => m.duration).filter(Boolean).sort((a, b) => a - b);
+  const median = lengths.length ? lengths[Math.floor(lengths.length / 2)] : 45 * 60e3;
+  const lengthOf = (k) => meta.get(k)?.duration || median;
+
+  const titles = new Map();          // one row per film or series
+  const people = new Map();
+  const days = new Array(7).fill(0);
+  const hours = new Array(24).fill(0);
+  const months = new Array(12).fill(0);
+  const binges = new Map();          // "key|date" -> plays, for the longest sitting
+  let ms = 0;
+
+  for (const r of rows) {
+    const len = lengthOf(r.key);
+    ms += len;
+    const d = new Date(r.viewedAt);
+    days[d.getDay()] += 1;
+    hours[d.getHours()] += 1;
+    months[d.getMonth()] += 1;
+
+    const t = titles.get(r.key) || { key: r.key, title: r.title, type: r.type, plays: 0, ms: 0, poster: meta.get(r.key)?.poster || null, year: meta.get(r.key)?.year };
+    t.plays += 1; t.ms += len;
+    titles.set(r.key, t);
+
+    const who = names.get(r.account) || 'Someone';
+    const p = people.get(who) || { name: who, plays: 0, ms: 0, titles: new Set() };
+    p.plays += 1; p.ms += len; p.titles.add(r.key);
+    people.set(who, p);
+
+    const bk = `${r.key}|${d.toDateString()}`;
+    binges.set(bk, (binges.get(bk) || 0) + 1);
+  }
+
+  const [bingeKey, bingePlays] = [...binges.entries()].sort((a, b) => b[1] - a[1])[0] || ['', 0];
+  const [bk, bdate] = bingeKey.split('|');
+  const top = [...titles.values()].sort((a, b) => b.ms - a.ms).slice(0, 10);
+
+  const v = {
+    year,
+    plays: rows.length,
+    hours: Math.round(ms / 3600e3),
+    movies: rows.filter((r) => r.type === 'movie').length,
+    episodes: rows.filter((r) => r.type === 'show').length,
+    distinct: titles.size,
+    first: rows.length ? Math.min(...rows.map((r) => r.viewedAt)) : null,
+    last: rows.length ? Math.max(...rows.map((r) => r.viewedAt)) : null,
+    top,
+    people: [...people.values()].map((p) => ({ name: p.name, plays: p.plays, hours: Math.round(p.ms / 3600e3), titles: p.titles.size }))
+      .sort((a, b) => b.plays - a.plays).slice(0, 8),
+    days, hours24: hours, months,
+    binge: bingePlays > 2 ? { title: titles.get(bk)?.title || 'Something', plays: bingePlays, date: bdate, poster: titles.get(bk)?.poster || null } : null,
+  };
+  if (reviewCache.size > 8) reviewCache.clear();
+  reviewCache.set(key, { at: Date.now(), v });
+  return v;
 }

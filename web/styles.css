@@ -566,3 +566,39 @@ canvas.fx { display: block; width: 100%; }
 .mystery-sheet .count { height: 8px; border-radius: 4px; background: rgba(244,236,224,.12); overflow: hidden; }
 .mystery-sheet .count i { display: block; height: 100%; background: var(--gold); transition: width 1s linear; }
 .mystery-sheet .acts { display: flex; gap: 16px; }
+
+/* ---------- year in review ---------- */
+.year-top { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 18px; }
+.big-stat { background: var(--card); border-radius: 22px; padding: 20px 24px; box-shadow: 0 8px 20px rgba(58,36,25,.12); display: flex; flex-direction: column; justify-content: center; }
+.big-stat .k { font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.big-stat .v { font-family: var(--disp); font-weight: 800; font-size: 92px; line-height: .9; color: var(--acc); }
+.big-stat .v.small { font-size: 62px; }
+.big-stat .u { font-family: var(--disp); font-weight: 700; font-size: 30px; line-height: 1; text-transform: uppercase; color: var(--ink); margin-top: -4px; }
+.big-stat .note { font-size: 16px; color: var(--muted); margin-top: 6px; }
+.big-stat.wide { background: var(--choc); color: var(--on-choc); }
+.big-stat.wide .v { color: var(--gold); }
+.big-stat.wide .u, .big-stat.wide .note { color: var(--on-choc); }
+.year-body { flex-grow: 1; min-height: 0; display: flex; gap: 20px; }
+.year-top10 { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.year-top10 .strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px 16px; justify-items: center; }
+/* two rows of five have to fit the screen, so the posters are sized rather than stretched */
+.topten .poster { width: 150px; height: 225px; }
+.topten { position: relative; width: 150px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.topten .rank { position: absolute; z-index: 2; left: -6px; top: -10px; width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: #fff; font-family: var(--disp); font-weight: 800; font-size: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(40,20,8,.35); }
+.topten .t { font-size: 17px; font-weight: 600; }
+.topten .y { font-size: 15px; color: var(--muted); font-family: var(--mono); }
+.year-side { width: 560px; flex-shrink: 0; display: flex; flex-direction: column; gap: 18px; }
+.person { display: flex; align-items: center; gap: 14px; padding: 5px 0; }
+.person .who { width: 150px; flex-shrink: 0; font-size: 18px; font-weight: 600; }
+.person .bar { flex-grow: 1; height: 16px; border-radius: 8px; background: var(--track); overflow: hidden; }
+.person .bar i { display: block; height: 100%; border-radius: 8px; background: var(--acc); }
+.person .num { width: 64px; text-align: right; font-size: 16px; color: var(--muted); }
+.months { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+.months .m { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.months .m i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: var(--gold); }
+.months .m span { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+.binge { display: flex; gap: 18px; align-items: center; }
+.binge img { width: 84px; height: 126px; border-radius: 10px; object-fit: cover; background: #ccc; }
+.binge .eyebrow { display: flex; align-items: center; gap: 8px; }
+.binge .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1.05; text-transform: uppercase; }
+.binge .muted { font-size: 16px; color: var(--muted); }

@@ -1,6 +1,7 @@
-// The sleep timer. "Stop after this" shuts the room down when playback ends; a timed sleep does
-// it after so many minutes. The server holds it, not the panel, so it survives the panel
-// reloading, drifting to the idle screen or being switched off in the middle of the film.
+// What happens when the film ends. "Stop after this" shuts the room down; a timed sleep does it
+// after so many minutes; and with nothing armed at all the lights still come up slowly, the way
+// a cinema's do. The server holds all of it, not the panel, so it survives the panel reloading,
+// drifting to the idle screen or being switched off in the middle of the film.
 
 import { config } from './config.mjs';
 
@@ -48,11 +49,24 @@ const watched = () => {
 const playing = () => watched().some((id) => ['playing', 'paused', 'buffering'].includes(ctx?.ha.states[id]?.state));
 
 function check() {
-  if (!state || state.mode !== 'end' || !ctx) return;
+  if (!ctx) return;
   if (playing()) { sawPlayback = true; idleSince = 0; return; }
-  if (!sawPlayback) return;                       // armed before anything started: wait for it
+  if (!sawPlayback) return;                       // nothing has played yet: nothing to end
   if (!idleSince) { idleSince = Date.now(); return; }
-  if (Date.now() - idleSince >= GRACE) fire('when the film ended');
+  if (Date.now() - idleSince < GRACE) return;
+  sawPlayback = false;                            // this ending is dealt with either way
+  idleSince = 0;
+  if (state?.mode === 'end') { fire('when the film ended'); return; }
+  curtain();
+}
+
+// Nothing armed: bring the house lights up over a minute and a half. The HA script decides
+// whether the room is still set for a movie, so this is safe to call whenever playback stops.
+function curtain() {
+  if (!config.curtainSeconds) return;
+  ctx.script('curtain', { seconds: config.curtainSeconds })
+    .then(() => console.log('[curtain] house lights up over', config.curtainSeconds, 's'))
+    .catch((e) => console.warn('[curtain]', e.message));
 }
 
 // Wind the room down: stop whatever is still playing, then All off (projector, lights, music).

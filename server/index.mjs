@@ -16,7 +16,7 @@ import * as seerr from './seerr.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
-import { runAction, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
+import { runAction, script, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
@@ -223,6 +223,9 @@ get(/^\/api\/mystery$/, (m, q) => taste.mystery({
   exclude: (q.get('not') || '').split(',').filter(Boolean).slice(0, 20),
 }));
 
+// Year in review: the house's year from Plex's history (the Home screen's chip, and #/year).
+get(/^\/api\/year$/, (m, q) => taste.review({ year: Math.min(Math.max(Number(q.get('year')) || new Date().getFullYear(), 2000), 2100) }));
+
 // The sleep timer lives on the server so it outlives the panel's own screen.
 get(/^\/api\/sleep$/, () => sleep.get() || { mode: null });
 post(/^\/api\/sleep$/, (m, q, body) => sleep.set(body || {}) || { mode: null });
@@ -262,6 +265,14 @@ post(/^\/api\/voice$/, async (m, q, body) => {
     const route = String(body.route || '').replace(/[^\w#/?=&,.-]/g, '');
     broadcast('navigate', { route });
     return { ok: true, spoken: route.replace(/^#?\//, '') };
+  }
+  // "Surprise me": the server picks, every open panel opens the Mystery box on that pick, and
+  // the voice answer names it. The countdown on the panel still starts it.
+  if (intent === 'mystery' || intent === 'surprise') {
+    const pick = await taste.mystery({ filters: (body.filters || '').split(',').filter(Boolean) });
+    broadcast('mystery', pick);
+    broadcast('navigate', { route: '#/lobby' });
+    return { ok: true, spoken: `${pick.item.title}. ${pick.why}`, id: pick.item.id };
   }
   if (intent !== 'play') throw new Error('Unknown voice intent');
   const query = String(body.query || '').trim();
@@ -473,10 +484,10 @@ const server = createServer(async (req, res) => {
 });
 
 await initImageCache();
-sleep.init({ ha, broadcast, run: (body) => runAction(ha, body) });
+sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 ha.start();
 pollSessions();
-if (config.plex.url) plex.warmMovies();
+if (config.plex.url) { plex.warmMovies(); taste.warm(); }
 server.listen(config.port, () => {
   console.log(`[panel] theater-panel ${config.build.version}${config.build.time ? ` (${config.build.time})` : ''}`);
   console.log(`[panel] listening on :${config.port}`);

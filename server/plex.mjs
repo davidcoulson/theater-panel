@@ -480,27 +480,50 @@ function mapSession(m) {
 // One row per title, newest first: a week of one series is a single seed, not twenty episodes.
 // accounts (Plex account ids) narrows it to whoever's taste should drive the panel; empty is
 // the whole house.
-export async function history({ size = 200, accounts = [] } = {}) {
+export async function history({ size = 200, accounts = [], since = null, dedupe = true } = {}) {
   const mc = await plex('/status/sessions/history/all', {
-    sort: 'viewedAt:desc', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(Math.min(Number(size) || 200, 500)),
+    sort: 'viewedAt:desc', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(Math.min(Number(size) || 200, 6000)),
+    ...(since ? { 'viewedAt>': String(Math.floor(since / 1000)) } : {}),
   });
   const only = accounts.map(Number).filter(Number.isFinite);
   const out = new Map();
+  const all = [];
   for (const m of mc.Metadata || []) {
     if (only.length && !only.includes(m.accountID)) continue;
     const isEp = m.type === 'episode';
     // History rows name the show by its key, not a ratingKey of its own.
     const key = String(isEp ? (m.grandparentKey || '').split('/').pop() : m.ratingKey || '');
-    if (!key || out.has(key)) continue;
-    out.set(key, {
+    if (!key) continue;
+    const row = {
       key,
       type: isEp ? 'show' : 'movie',
       title: (isEp ? m.grandparentTitle : m.title) || '',
+      episode: isEp ? m.title : undefined,
       viewedAt: m.viewedAt ? m.viewedAt * 1000 : null,
       account: m.accountID,
-    });
+    };
+    if (!dedupe) { all.push(row); continue; }
+    if (!out.has(key)) out.set(key, row);
   }
-  return [...out.values()];
+  return dedupe ? [...out.values()] : all;
+}
+
+// Metadata for a pile of ratingKeys at once (Plex takes a comma-separated list), for the numbers
+// on the Year in review screen. A show's duration is its typical episode length, which is what
+// turns "412 episodes" into "about 300 hours".
+export async function metaBatch(keys) {
+  const out = new Map();
+  const list = [...new Set(keys.map(String))];
+  for (let i = 0; i < list.length; i += 40) {
+    const mc = await plex(`/library/metadata/${list.slice(i, i + 40).join(',')}`).catch(() => null);
+    for (const m of mc?.Metadata || []) {
+      out.set(String(m.ratingKey), {
+        title: m.title, type: m.type, year: m.year, duration: m.duration || 0,
+        poster: plexImage(m.thumb, 200, 300),
+      });
+    }
+  }
+  return out;
 }
 
 // The Plex accounts that have watched anything, for the settings page's "whose taste" field.

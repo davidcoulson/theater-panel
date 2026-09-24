@@ -24,7 +24,7 @@ export async function act(data) {
 
 // ---------- live store ----------
 
-let state = { vote: null, sleep: null, preroll: {}, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
+let state = { vote: null, sleep: null, mystery: null, preroll: {}, streams: [], connected: null, haConnected: false, haConfigured: true, states: {}, sessions: [], entities: {}, ui: {}, theater: null, toast: null };
 const listeners = new Set();
 function set(patch) { state = { ...state, ...patch }; listeners.forEach((l) => l()); }
 export const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
@@ -49,6 +49,8 @@ export const getState = () => state;
 export const setTheater = (theater) => set({ theater });
 // Something worth a cheer just happened (a request landed): the app throws confetti.
 export const celebrate = () => set({ celebrateAt: Date.now() });
+// The spoken pick has been seen; the next "surprise me" is a fresh one.
+export const clearMystery = () => set({ mystery: null });
 
 let toastTimer;
 export function toast(text, err = false) {
@@ -86,6 +88,8 @@ export async function startLive({ navigate } = {}) {
     set({ sleep: d.mode ? d : null });
     if (d.fired) toast(`Room off ${d.fired}`);
   });
+  // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
+  es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
   // Movie night: the shortlist and the running tally.
   es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
   // Home Assistant (or anything with access to the panel's API) can move the panel to a route.

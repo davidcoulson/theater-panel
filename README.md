@@ -60,6 +60,17 @@ watching, and starts it. It says why it chose that one, counts down from ten, an
 **Movie night** (`#/pick`) puts a shortlist on the panel and a QR on screen; everyone votes from
 their phones at `/vote` and the tally comes back live.
 
+**Surprise me.** "Hey Jarvis, surprise me" (or *pick something*, *what should we watch*) makes the
+server choose, opens the box on every panel in the room and reads the title back. The sentences
+are in `ha/custom_sentences/en/theater.yaml`.
+
+**Year in review** (`#/year`, or the chip on the For you tab) counts the house's year out of
+Plex's history: hours, plays, the ten it kept coming back to, who watched what, the busiest month
+and the longest sitting. Plays are exact; hours are an estimate, because history records that
+something was watched, not for how long.
+
+![Year in review](docs/img/year.jpg)
+
 Set **Whose taste to follow** on the settings page (Plex > account names) to keep the
 recommendations out of the kids' anime; blank follows the whole house.
 
@@ -78,6 +89,11 @@ stops it and turns everything off then. The server holds the timer, not the pane
 works after the panel reloads, drifts to the idle screen or is switched off.
 
 ![Showtime with the sleep timer open](docs/img/showtime.jpg)
+
+**The slow curtain.** When the film ends and no sleep timer is armed, the house lights come up
+over ninety seconds the way a cinema's do, rather than snapping on. `script.theater_curtain` only
+acts if the room is still set for a movie, so stopping something at lunchtime does nothing.
+`CURTAIN_SECONDS=0` turns it off.
 
 **The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
 card with a snapshot appears - even over a film - with a button to let her in.
