@@ -378,6 +378,27 @@ function App() {
     return () => { clearInterval(t); offTheater(); removeEventListener('pointerdown', touch, true); };
   }, []);
 
+  // A new build is out: reload once nobody is using the panel - never in the middle of a film,
+  // a break, or someone's tap.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (!getState().stale) return;
+      if (['showtime', 'intermission'].includes(route.name)) return;
+      if (Date.now() - lastManual < 60000) return;
+      location.reload();
+    }, 15000);
+    return () => clearInterval(t);
+  }, []);
+  // The swell or the march, when the room's speaker is asleep: only the panel on the wall plays
+  // it, not every laptop that happens to have the page open.
+  const sound = useStore((s) => s.sound);
+  useEffect(() => {
+    if (!sound?.url || !onPanel || Date.now() - sound.at > 5000) return;
+    const a = new Audio(sound.url);
+    a.play().catch((e) => console.warn('[sound]', e.message));
+    return () => { a.pause(); };
+  }, [sound?.at]);
+
   const haunt = useHaunting(currentAccent()?.id === 'halloween');
   const View = VIEWS[r.name] || Lobby;
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.

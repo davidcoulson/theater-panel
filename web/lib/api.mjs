@@ -60,6 +60,7 @@ export function toast(text, err = false) {
 }
 
 let onNavigate = null;
+let bootBuild = null;
 export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   // Open the live stream before anything else so it gets a connection ahead of the posters.
@@ -69,6 +70,13 @@ export async function startLive({ navigate } = {}) {
   loadSettings();
   es.addEventListener('hello', (e) => {
     const d = JSON.parse(e.data);
+    // The server is a different build from the one this page came from (a deploy restarted it
+    // and the live connection found its way back): the app reloads itself at the next quiet
+    // moment rather than running yesterday's page against today's server.
+    if (d.build) {
+      bootBuild ??= d.build;
+      if (d.build !== bootBuild) set({ stale: d.build });
+    }
     set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [] });
   });
   es.addEventListener('states', (e) => {
@@ -91,6 +99,8 @@ export async function startLive({ navigate } = {}) {
   });
   // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
   es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
+  // A sound the room's speaker could not take (it is asleep): the wall panel plays it.
+  es.addEventListener('sound', (e) => set({ sound: { ...JSON.parse(e.data), at: Date.now() } }));
   // A film just finished: the panel asks how it was.
   es.addEventListener('rate', (e) => set({ rate: JSON.parse(e.data) }));
   // Movie night: the shortlist and the running tally.

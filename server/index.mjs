@@ -16,7 +16,7 @@ import * as seerr from './seerr.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
-import { runAction, script, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
+import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
@@ -41,6 +41,7 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.jpg': 'image/jpeg', '.png': 'image/png', '.svg': 'image/svg+xml',
   '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+  '.mp3': 'audio/mpeg',
 };
 
 // ---------- Home Assistant bridge ----------
@@ -66,6 +67,7 @@ function broadcast(event, data) {
   }
 }
 ha.on('states', (changed) => broadcast('states', changed));
+onPanelSound((sound) => broadcast('sound', sound));
 ha.on('status', (connected) => broadcast('ha', { connected }));
 
 // Plex sessions: polled only while someone is looking, faster while something is playing.
@@ -437,7 +439,7 @@ const server = createServer(async (req, res) => {
 
     if (path === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams })}\n\n`);
+      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, build: config.build.version })}\n\n`);
       clients.add(res);
       if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll
       const ping = setInterval(() => res.write(': ping\n\n'), 25000);
