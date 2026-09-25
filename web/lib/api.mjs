@@ -150,15 +150,37 @@ export function playbackState(s = state) {
 }
 
 // Load data once per key; returns [data, error, reload].
+// Loads once and again when the deps change. A load that fails is retried with backoff until
+// it succeeds, and one that failed is run again the moment the live stream comes back or the
+// page is shown again: a wall panel waking from its screensaver reloads while its network and
+// Plex are still coming up, and without this a row sat at "Loading Plex..." until someone
+// cleared the cache. A refresh that fails keeps what was already showing.
 export function useLoad(fn, deps) {
   const [res, setRes] = useState({ data: undefined, error: null });
   const [n, setN] = useState(0);
+  const failed = useRef(false);
   useEffect(() => {
-    let live = true;
+    let live = true; let timer; let wait = 3000;
+    const run = () => fn().then(
+      (data) => { if (!live) return; failed.current = false; setRes({ data, error: null }); },
+      (error) => {
+        if (!live) return;
+        failed.current = true;
+        setRes((r) => ({ data: r.data ?? null, error }));
+        timer = setTimeout(run, wait); wait = Math.min(wait * 2, 60000);
+      });
     setRes((r) => ({ data: r.data, error: null }));
-    fn().then((data) => live && setRes({ data, error: null }), (error) => live && setRes({ data: null, error }));
-    return () => { live = false; };
+    run();
+    return () => { live = false; clearTimeout(timer); };
   }, [...deps, n]);
+  useEffect(() => {
+    const again = () => { if (failed.current) setN((x) => x + 1); };
+    const onVisible = () => { if (document.visibilityState === 'visible') again(); };
+    document.addEventListener('visibilitychange', onVisible);
+    let wasConnected = state.connected;
+    const unsub = subscribe(() => { if (state.connected && !wasConnected) again(); wasConnected = state.connected; });
+    return () => { document.removeEventListener('visibilitychange', onVisible); unsub(); };
+  }, []);
   return [res.data, res.error, () => setN((x) => x + 1)];
 }
 
