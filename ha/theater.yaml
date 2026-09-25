@@ -95,6 +95,20 @@ script:
     alias: "Theater: Intermission"
     icon: mdi:coffee
     sequence:
+      # The pause runs as its own script, started and not waited for: the Apple TV integration
+      # can raise mid-reconnect, and continue_on_error does not cover an unexpected exception, so
+      # a pause that fails must not take the lights and the snack-bar screen down with it.
+      - action: script.turn_on
+        target: { entity_id: script.theater_pause_playback }
+      - action: script.theater_lights_intermission
+      - action: input_select.select_option
+        target: { entity_id: input_select.theater_scene }
+        data: { option: Intermission }
+
+  theater_pause_playback:
+    alias: "Theater: pause whatever is playing"
+    mode: single
+    sequence:
       - action: media_player.media_pause
         target: { entity_id: media_player.home_theater }
         continue_on_error: true
@@ -108,10 +122,6 @@ script:
             target: { entity_id: media_player.theater_projector }
             data: { command: "input keyevent 127" }
             continue_on_error: true
-      - action: script.theater_lights_intermission
-      - action: input_select.select_option
-        target: { entity_id: input_select.theater_scene }
-        data: { option: Intermission }
 
   theater_lights_up:
     alias: "Theater: Lights up"
