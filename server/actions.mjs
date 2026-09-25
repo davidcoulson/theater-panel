@@ -15,8 +15,12 @@ const SCENES = ['pre_show', 'movie_time', 'intermission', 'lights_up', 'all_off'
 let toPanels = () => {};
 export const onPanelSound = (fn) => { toPanels = fn; };
 const up = (ha, id) => Boolean(id) && !['unavailable', 'unknown', undefined].includes(ha.states[id]?.state);
-// The panel can only play what it serves itself, so a sound is handed over by its path.
-const panelPath = (url) => { try { const u = new URL(url); return u.pathname.startsWith('/assets/') ? u.pathname : null; } catch { return null; } };
+// What the panel plays when no speaker can: its own sounds by path (so the same file plays from
+// whichever address the panel was opened on), anything else by its full http(s) address, which
+// the panel fetches itself (a sound under Home Assistant's www folder, say).
+const panelPath = (url) => {
+  try { const u = new URL(url); return u.pathname.startsWith('/assets/') ? u.pathname : /^https?:$/.test(u.protocol) ? u.href : null; } catch { return null; }
+};
 
 export const script = (ha, name, variables = {}) => ha.callService('script', 'turn_on', { variables }, { target: { entity_id: `script.theater_${name}` } });
 
