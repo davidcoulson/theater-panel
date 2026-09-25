@@ -8,6 +8,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config, settings, saveSettings, effectiveVars } from './config.mjs';
 import { loadGames, loadGamesFile, STAT_ROLES } from './games.mjs';
+import * as plex from './plex.mjs';
 
 // type: text | secret | entity | list (comma-separated) | libraries | effects | select | bool | apps (Name=package list)
 export const FIELDS = [
@@ -24,6 +25,7 @@ export const FIELDS = [
 
   { group: 'Plex', key: 'PLEX_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.6.3:32400' },
   { group: 'Plex', key: 'PLEX_TOKEN', label: 'Token', type: 'secret' },
+  { group: 'Plex', key: 'PLEX_ACCOUNT_TOKEN', label: 'Plex account', type: 'plexlogin', help: 'For the watchlist, which lives on plex.tv rather than on the server. Sign in with the button; the panel gets a token from plex.tv and never sees the password.' },
   { group: 'Plex', key: 'PLEX_LIBRARIES', label: 'Libraries, in tab order', type: 'libraries', help: 'Movie libraries are merged into one Movies tab. Blank shows every movie and TV library.' },
   { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV — Plex app'], ['plezy', 'Projector — Plezy'], ['plex', 'Projector — Plex app']], help: 'Which app Play and Resume open. Plezy is opened with a link over ADB; the Plex apps are driven as Plex clients.' },
   { group: 'Plex', key: 'ENTITY_PROJECTOR_PLEX_PLAYER', label: "Projector's Plex client", type: 'entity', domain: 'media_player', help: 'Only for "Projector — Plex app": HA\'s Plex client for the projector (Plex for Android (TV) - AURORA PRO).' },
@@ -68,13 +70,15 @@ export const FIELDS = [
   { group: 'Display', key: 'THEME', label: 'Theme', type: 'select', options: [['classic', 'Classic — chocolate & copper'], ['sofa', 'Sofa — slate tweed & copper']], help: 'Sofa keeps the plaster wall and copper accent, and re-skins the dark cards, chips and Showtime in the couch\'s slate tweed. Open panels switch as soon as you save.' },
   { group: 'Display', key: 'ACCENT', label: 'Holiday accent', type: 'select', options: [['auto', 'Auto — by the calendar'], ['none', 'None'], ['halloween', 'Halloween'], ['thanksgiving', 'Thanksgiving'], ['christmas', 'Christmas'], ['newyear', 'New Year'], ['valentines', "Valentine's"], ['birthday', 'Birthday'], ['winter', 'Winter'], ['spring', 'Spring'], ['summer', 'Summer'], ['fall', 'Fall']], help: 'Sits on top of the theme: the highlight colour, the rail\'s idle glow, an emblem by the clock and a little weather over the lobby. Auto: Halloween all October, Thanksgiving from the Saturday before, Christmas from the Friday after Thanksgiving to Dec 30, New Year on the Eve, Valentine\'s Feb 10–14, and the season in between.' },
   { group: 'Display', key: 'ACCENT_INTENSITY', label: 'Accent weather', type: 'range', min: 0, max: 100, step: 5, default: 50, unit: '%', help: 'How much falls, drifts and flaps over the lobby: 0 is none, 25 is the original amount, 100 is four times that.' },
-  { group: 'Display', key: 'BIRTHDAYS', label: 'Birthdays', type: 'text', placeholder: 'Michelle=01-01, David=03-16', help: 'Name=MM-DD, comma separated. On the day the birthday accent wins.' },
+  { group: 'Display', key: 'BIRTHDAYS', label: 'Birthdays', type: 'text', placeholder: 'Alice=01-01, Bob=07-04', help: 'Name=MM-DD, comma separated. On the day the birthday accent wins.' },
   { group: 'Projector apps', key: 'PREROLL_URL', label: 'Pre-roll sound URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/preroll.mp3', help: 'A deep swell on the theater speakers while the lights go down, before the film starts. Must be a URL the speaker itself can fetch; the panel serves its own at /assets/preroll.mp3 with no key needed. Blank turns pre-roll off.' },
   { group: 'Projector apps', key: 'PREROLL_SECONDS', label: 'Pre-roll length (seconds)', type: 'text', placeholder: '16', help: 'How long to wait before the film starts. The panel\'s own swell runs 17 seconds.' },
   { group: 'Projector apps', key: 'PREROLL_ENABLED', label: 'Pre-roll on', type: 'bool', default: true, help: 'Off keeps the URL but skips the swell; the same switch is on the Home Assistant device.' },
   { group: 'Projector apps', key: 'PREROLL_MOVIES_ONLY', label: 'Pre-roll for films only', type: 'bool', default: true, help: 'A swell before a film is an event; before the fourth episode of a sitcom it is a delay. Off plays it for episodes too. Either way the Play button offers it for the title in front of you.' },
   { group: 'Projector apps', key: 'INTERMISSION_URL', label: 'Intermission march URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/intermission.mp3', help: "Plays in the room when Intermission starts, while the panel shows the snack bar. Blank uses the panel's own march when the pre-roll URL points at /assets/preroll.mp3; clear both to have no sound." },
   { group: 'Projector apps', key: 'INTERMISSION_MINUTES', label: 'Intermission length (minutes)', type: 'text', placeholder: '15', help: 'The countdown on the snack bar screen. Five more minutes on the screen adds to it.' },
+  { group: 'Year in review', key: 'WRAPPED_DATE', label: 'Send the year\'s numbers on (MM-DD)', type: 'text', placeholder: '12-26', help: 'The Wrapped message: hours, plays, the top titles, who watched most, the longest sitting. Goes out once, after 9 in the morning on that day.' },
+  { group: 'Year in review', key: 'WRAPPED_NOTIFY', label: 'Send it to', type: 'list', domain: 'notify', help: 'Home Assistant notify entities: phones, the kitchen display. Empty sends nothing.' },
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
   { group: 'Display', key: 'CINEMA_MODE', label: 'Dim the panel when the room is dark', type: 'bool', default: true, help: 'Cinema mode: during Movie time and Intermission, or whenever the downlights are down and the accent lights are up, the panel drops to a dark palette instead of lighting the room from the wall. Showtime and the idle screen are dark already.' },
@@ -307,7 +311,7 @@ export async function test(service, values = {}) {
   const v = { ...effectiveVars() };
   for (const [k, val] of Object.entries(values)) if (typeof val === 'string' && val.trim()) v[k] = val.trim();
   const t = AbortSignal.timeout(8000);
-  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'], tmdb: ['TMDB_API_KEY'] }[service];
+  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'], tmdb: ['TMDB_API_KEY'], wrapped: ['WRAPPED_NOTIFY'] }[service];
   if (!need) throw httpError(400, 'Unknown service');
   const gone = need.filter((k) => !v[k]);
   if (gone.length) return { ok: false, detail: `${gone.join(' and ')} not set` };
@@ -340,3 +344,15 @@ export async function test(service, values = {}) {
   } catch (e) { return { ok: false, detail: e.message }; }
   throw httpError(400, 'Unknown service');
 }
+
+// The plex.tv sign-in for the watchlist: start hands back a code and the page to approve it on;
+// check polls until plex.tv has the token, then saves it like any other setting.
+export const plexPinStart = () => plex.pinStart();
+export async function plexPinCheck(id) {
+  const token = await plex.pinCheck(id);
+  if (!token) return { done: false };
+  const who = await plex.account(token).catch(() => null);
+  save({ values: { PLEX_ACCOUNT_TOKEN: token } });
+  return { done: true, username: who?.username || who?.title || 'signed in' };
+}
+export const plexAccount = () => plex.account().catch((e) => ({ error: e.message }));

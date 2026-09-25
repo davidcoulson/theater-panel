@@ -16,6 +16,7 @@ import * as seerr from './seerr.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
 import * as seasonal from './seasonal.mjs';
+import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
@@ -248,12 +249,6 @@ const qrSvg = (text) => QRCode.toString(String(text).slice(0, 300), { type: 'svg
 
 // Movie night. The panel asks for a shortlist, then everyone votes from their phones at
 // /vote (a tiny page served below); the panel follows along over its event stream.
-get(/^\/api\/pick$/, async (m, q) => {
-  const filters = ['unwatched', ...(q.get('filters') || '').split(',')].filter(Boolean);
-  const { items } = await plex.listLibrary(plex.MERGED, { filters: [...new Set(filters)], sort: 'random', size: 60 });
-  const n = Math.min(6, Math.max(2, Number(q.get('n')) || 3));
-  return { items: items.slice(0, n) };
-});
 
 // "You'll love this": what the house finished lately, and what goes with it. Anything already
 // in Plex comes back with the key that plays it; the rest can be requested from the same card.
@@ -371,6 +366,30 @@ get(/^\/api\/showing$/, async (m, q) => {
   return [...out, ...boards];
 });
 
+// The account's Plex watchlist: owned titles play, the rest can be requested.
+get(/^\/api\/watchlist$/, async () => ({ items: (await plex.watchlist()) || [], signedIn: Boolean(config.plex.accountToken) }));
+
+// Movie night draws from the season's shelf while one is up (Halloween Scares in October, the
+// Christmas shelves in December), the whole unwatched pile otherwise or with season=0.
+get(/^\/api\/pick$/, async (m, q) => {
+  const filters = ['unwatched', ...(q.get('filters') || '').split(',')].filter(Boolean);
+  const n = Math.min(6, Math.max(2, Number(q.get('n')) || 3));
+  const want = q.get('season');
+  if (want !== '0') {
+    const shelves = await seasonal.shelves(['halloween', 'christmas'].includes(want) ? want : undefined).catch(() => []);
+    let pool = shelves.flatMap((s) => s.items.map((it) => ({ ...it, shelf: s.title }))).filter((it) => !it.watched);
+    if (filters.includes('short')) pool = pool.filter((it) => !it.duration || it.duration < 7200000);
+    if (filters.includes('family')) pool = pool.filter((it) => !it.contentRating || ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG'].includes(it.contentRating));
+    if (filters.includes('4k')) pool = pool.filter((it) => it.is4k);
+    if (pool.length >= n) {
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      return { items: pool.slice(0, n), source: shelves.map((s) => s.title).join(' and ') };
+    }
+  }
+  const { items } = await plex.listLibrary(plex.MERGED, { filters: [...new Set(filters)], sort: 'random', size: 60 });
+  return { items: items.slice(0, n) };
+});
+
 // The holiday shelves on their own (the For you tab), and Coming soon.
 get(/^\/api\/seasonal$/, async (m, q) => ({ shelves: config.plex.url ? await seasonal.shelves(seasonParam(q)) : [] }));
 get(/^\/api\/coming$/, async () => ({ items: config.seerr.url ? await seasonal.coming(8) : [] }));
@@ -454,7 +473,18 @@ async function adminApi(req, res, path) {
   if (path === '/api/admin/plex-libraries') return admin.plexLibraries();
   if (path === '/api/admin/light-effects') return admin.lightEffects(ha);
   if (path === '/api/admin/icons') return icons.search(ha, new URL(req.url, 'http://panel').searchParams.get('q'));
-  if (path === '/api/admin/test' && method === 'POST') return admin.test(body.service, body.values);
+  if (path === '/api/admin/test' && method === 'POST') {
+    // The Wrapped message goes out through HA, so its test lives here rather than in admin.mjs.
+    if (body.service === 'wrapped') {
+      const targets = String(body.values?.WRAPPED_NOTIFY ?? config.wrapped.notify.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
+      try { const r = await wrapped.send(ha, targets, { test: true }); return { ok: true, detail: `Sent to ${r.sent.join(', ')}` }; }
+      catch (e) { return { ok: false, detail: e.message }; }
+    }
+    return admin.test(body.service, body.values);
+  }
+  if (path === '/api/admin/plex-pin' && method === 'POST') return admin.plexPinStart();
+  if (path.startsWith('/api/admin/plex-pin/')) return admin.plexPinCheck(path.split('/').pop());
+  if (path === '/api/admin/plex-account') return admin.plexAccount();
   throw admin.httpError(404, 'Not found');
 }
 
@@ -572,6 +602,7 @@ hass.apply();
 ha.start();
 pollSessions();
 if (config.plex.url) { plex.warmMovies(); taste.warm(); seasonal.warm(); }
+wrapped.schedule(ha);
 server.listen(config.port, () => {
   console.log(`[panel] theater-panel ${config.build.version}${config.build.time ? ` (${config.build.time})` : ''}`);
   console.log(`[panel] listening on :${config.port}`);

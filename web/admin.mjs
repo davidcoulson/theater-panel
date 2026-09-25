@@ -24,7 +24,7 @@ const PAGES = [
   { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Home Assistant device', 'Plex', 'Seerr', 'TMDB'], blurb: 'Where the panel gets its pictures, its room, and its holiday lists from, and how it shows up in Home Assistant as a device.' },
   { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Lights'], blurb: 'The Home Assistant entities behind each control, and the favourite moods.' },
   { id: 'projector', label: 'Projector & games', icon: 'pad', groups: ['Projector apps', 'Games'], blurb: 'Apps launched over ADB, the HDMI switcher, consoles and the gaming PC.' },
-  { id: 'display', label: 'Display', icon: 'eye', groups: ['Display'], blurb: 'Theme, holiday accents, the idle screen and what shows on posters.' },
+  { id: 'display', label: 'Display', icon: 'eye', groups: ['Display', 'Year in review'], blurb: 'Theme, holiday accents, the idle screen, what shows on posters, and the December message.' },
   { id: 'access', label: 'Access', icon: 'user', groups: ['Access'], blurb: 'Who gets in without the panel key.' },
 ];
 const pageFromHash = () => PAGES.find((p) => p.id === location.hash.replace(/^#\/?/, ''))?.id || 'overview';
@@ -90,7 +90,7 @@ function Settings({ page, signOut }) {
   async function load() {
     const d = await api('/api/admin/settings');
     setData(d);
-    setDraft(Object.fromEntries(d.fields.map((f) => [f.key, f.type === 'secret' ? '' : d.values[f.key].saved])));
+    setDraft(Object.fromEntries(d.fields.map((f) => [f.key, f.type === 'secret' || f.type === 'plexlogin' ? '' : d.values[f.key].saved])));
     setClear({});
     setGames(structuredClone(d.games)); setGamesDirty(false);
   }
@@ -98,7 +98,7 @@ function Settings({ page, signOut }) {
   useEffect(() => { api('/api/admin/entities').then(setEntities).catch(() => setEntities([])); }, []);
   useEffect(() => { setStatus(null); scrollTo(0, 0); }, [page]);
 
-  const fieldDirty = (f) => (f.type === 'secret' ? draft[f.key] !== '' || Boolean(clear[f.key]) : draft[f.key] !== data.values[f.key].saved);
+  const fieldDirty = (f) => (f.type === 'secret' || f.type === 'plexlogin' ? draft[f.key] !== '' || Boolean(clear[f.key]) : draft[f.key] !== data.values[f.key].saved);
   const dirtyPages = useMemo(() => {
     const out = new Set();
     if (!data) return out;
@@ -123,7 +123,7 @@ function Settings({ page, signOut }) {
     // Only what changed, so nothing else is touched.
     const values = {};
     for (const f of data.fields) {
-      if (f.type === 'secret') { if (clear[f.key]) values[f.key] = null; else if (draft[f.key]) values[f.key] = draft[f.key]; }
+      if (f.type === 'secret' || f.type === 'plexlogin') { if (clear[f.key]) values[f.key] = null; else if (draft[f.key]) values[f.key] = draft[f.key]; }
       else if (draft[f.key] !== data.values[f.key].saved) values[f.key] = draft[f.key];
     }
     // Switcher rows that still name an option are saved as its input number.
@@ -185,7 +185,7 @@ function Settings({ page, signOut }) {
       <h1>${current.label}</h1>
       <p class="intro">${current.blurb}</p>
       ${current.groups.map((g) => html`<section class="card" id=${g.toLowerCase().replace(/\W+/g, '-')}>
-        <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} />`}</div>
+        <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} label=${TEST_LABELS[TESTS[g]]} />`}</div>
         ${data.fields.filter((f) => f.group === g).map((f) => html`<${Field} f=${f} value=${draft[f.key]} base=${data.values[f.key]} entities=${entities}
           cleared=${clear[f.key]} onClear=${(v) => setClear({ ...clear, [f.key]: v })} onChange=${(v) => set(f.key, v)} />`)}
         ${g === 'Games' && html`<${GamesEditor} games=${games} source=${data.gamesSource} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />`}
@@ -199,17 +199,18 @@ function Settings({ page, signOut }) {
   <//>`;
 }
 
-const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', TMDB: 'tmdb' };
+const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', TMDB: 'tmdb', 'Year in review': 'wrapped' };
+const TEST_LABELS = { wrapped: 'Send it now (test)' };
 
 // Tries the connection with the values on screen, saved or not.
-function Test({ service, draft }) {
+function Test({ service, draft, label = 'Test connection' }) {
   const [r, setR] = useState(null);
   async function run() {
     setR({ busy: true });
     try { setR(await api('/api/admin/test', { service, values: draft })); } catch (e) { setR({ ok: false, detail: e.message }); }
   }
   return html`<div class="test">${r && !r.busy && html`<span class=${r.ok ? 'ok' : 'err'}>${r.ok ? '✓' : '✕'} ${r.detail}</span>`}
-    <button type="button" class="small" disabled=${r?.busy} onClick=${run}>${r?.busy ? 'Testing…' : 'Test connection'}</button></div>`;
+    <button type="button" class="small" disabled=${r?.busy} onClick=${run}>${r?.busy ? 'Working…' : label}</button></div>`;
 }
 
 function Field({ f, value, base, entities, cleared, onClear, onChange }) {
@@ -217,6 +218,7 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
   const note = f.help && html`<small>${f.help}</small>`;
   const label = html`<span class="lbl">${f.label}<code>${f.key}</code></span>`;
 
+  if (f.type === 'plexlogin') return html`<div class="field">${label}<${PlexLogin} saved=${Boolean(value)} onChange=${onChange} onClear=${onClear} cleared=${cleared} />${note}</div>`;
   if (f.type === 'secret') {
     const has = base.saved ? 'saved here' : base.container ? 'set on the container' : null;
     return html`<div class="field"><label for=${id}>${label}</label>
@@ -450,3 +452,35 @@ function GamesEditor({ games, source, entities, onChange }) {
 }
 
 render(html`<${App} />`, document.getElementById('admin'));
+
+// Signing in to plex.tv for the watchlist: the server asks plex.tv for a code, the person
+// approves it on plex.tv in a new tab, and the token lands in the settings on its own.
+function PlexLogin({ saved, onClear, cleared }) {
+  const [who, setWho] = useState(null);
+  const [pin, setPin] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => { if (saved) api('/api/admin/plex-account').then(setWho).catch(() => setWho(null)); }, [saved]);
+  useEffect(() => {
+    if (!pin) return;
+    const t = setInterval(async () => {
+      try {
+        const r = await api(`/api/admin/plex-pin/${pin.id}`);
+        if (r.done) { clearInterval(t); setPin(null); setWho({ username: r.username }); location.reload(); }
+      } catch (e) { clearInterval(t); setPin(null); setErr(e.message); }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [pin]);
+  async function start() {
+    setErr(null);
+    try { const p = await api('/api/admin/plex-pin', {}); setPin(p); window.open(p.url, '_blank', 'noopener'); }
+    catch (e) { setErr(e.message); }
+  }
+  if (saved && !cleared) return html`<div class="plexlogin">
+    <span class="ok">✓ Signed in${who?.username ? ` as ${who.username}` : ''}${who?.error ? ` (${who.error})` : ''}</span>
+    <button type="button" class="small" onClick=${onClear}>Sign out</button></div>`;
+  return html`<div class="plexlogin">
+    ${pin ? html`<span>Finish signing in on the plex.tv page that opened (or <a href=${pin.url} target="_blank" rel="noopener">open it</a>). Waiting…</span>`
+      : html`<button type="button" class="small" onClick=${start}>Sign in to Plex</button>`}
+    ${cleared && html`<span class="muted">Signing out when you save.</span>`}
+    ${err && html`<span class="err">${err}</span>`}</div>`;
+}

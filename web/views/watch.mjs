@@ -124,6 +124,9 @@ function ForYou({ onPlex }) {
   // The holiday shelf leads the tab while its season lasts ("?season=" tries one out of season).
   const [seasonal] = useLoad(() => get(`/api/seasonal${route.params.season ? `?season=${encodeURIComponent(route.params.season)}` : ''}`).catch(() => null), []);
   const shelves = seasonal?.shelves || [];
+  // The account's Plex watchlist: what is owned plays, the rest can be asked for.
+  const [wl] = useLoad(() => get('/api/watchlist').catch(() => null), []);
+  const watchlist = (wl?.items || []).slice(0, 24);
   const rows = data?.rows || [];
   if (err) return html`<div class="scroll foryou"><div class="empty">${err.message}</div></div>`;
   if (!data) return html`<div class="scroll foryou"><div class="empty">Reading what you have been watching…</div></div>`;
@@ -142,11 +145,24 @@ function ForYou({ onPlex }) {
         </button>`)}
       </div>
     </section>`)}
+    ${watchlist.length ? html`<section class="tasterow seasonal watchlist">
+      <div class="foryou-head"><h2>On your watchlist</h2><span>${wl.items.filter((r) => r.owned).length} of ${wl.items.length} already in Plex</span></div>
+      <div class="strip hscroll">
+        ${watchlist.map((r) => html`<button type="button" class="poster-btn" key=${r.tmdbId || r.title}
+          onClick=${() => (r.owned ? onPlex(String(r.id)) : go('request', { q: r.title }))}>
+          <${Poster} src=${r.poster} title=${r.title}>
+            ${r.owned ? html`<span class="tag in">In Plex</span>` : html`<span class="tag ask">Request</span>`}
+          <//>
+          <span class="t ellipsis">${r.title}</span>
+          <span class="y">${r.year || ''}${r.mediaType === 'tv' ? ' · series' : ''}</span>
+        </button>`)}
+      </div>
+    </section>` : null}
     <div class="foryou-head"><h2>You'll love this</h2><span>Picked from the last few things the house finished</span></div>
     ${rows.map((row) => html`<section class="tasterow" key=${row.seed.id}>
       <div class="seed">
         ${row.seed.poster && html`<img src=${row.seed.poster} alt="" />`}
-        <span>You watched<br /><b>${row.seed.title}</b></span>
+        <span>${row.seed.loved ? 'You loved' : 'You watched'}<br /><b>${row.seed.title}</b></span>
       </div>
       <div class="strip hscroll">
         ${row.items.map((r) => html`<button type="button" class="poster-btn" key=${r.id}

@@ -23,8 +23,16 @@ export async function seeds(n = 6) {
   const accounts = await accountIds();
   const rows = await plex.history({ size: 200, accounts });
   const list = [];
+  // What the house rated highly leads: a five-star film from the "How was it?" card is a
+  // better seed than whatever happened to finish last night.
+  for (const it of await loved()) {
+    if (list.length >= 2) break;
+    const d = await plex.seedDetails(it.id).catch(() => null);
+    if (d?.title) list.push({ ...d, loved: true, userRating: it.userRating });
+  }
   for (const row of rows) {
     if (list.length >= n) break;
+    if (list.some((s) => s.id === row.key)) continue;
     const d = await plex.seedDetails(row.key).catch(() => null);
     if (!d || !d.title) continue;
     list.push({ ...d, watchedAt: row.viewedAt });
@@ -33,7 +41,13 @@ export async function seeds(n = 6) {
   return list;
 }
 
-// The settings page names accounts ("David, Michelle"); Plex wants ids. Unknown names are
+// The house's own star ratings, from the movie index: loved is four stars and up (Plex counts
+// in halves, so 8+), disliked two and under (4-).
+const rated = () => plex.ratedMovies().catch(() => []);
+const loved = async () => (await rated()).filter((it) => it.userRating >= 8).sort((a, b) => b.userRating - a.userRating);
+const disliked = async () => (await rated()).filter((it) => it.userRating <= 4);
+
+// The settings page names accounts ("Alice, Bob"); Plex wants ids. Unknown names are
 // ignored rather than silently narrowing the history to nothing.
 async function accountIds() {
   const want = config.historyAccounts;
@@ -59,7 +73,7 @@ export async function rows({ count = 3, size = 12 } = {}) {
     const r = await seerr.recommendations(type, seed.tmdbId).catch((e) => { console.warn('[taste]', seed.title, e.message); return []; });
     const items = r.filter((x) => !seen.has(x.id)).slice(0, size);
     items.forEach((x) => seen.add(x.id));
-    if (items.length) out.push({ seed: { id: seed.id, title: seed.title, type: seed.type, poster: seed.poster, year: seed.year }, items });
+    if (items.length) out.push({ seed: { id: seed.id, title: seed.title, type: seed.type, poster: seed.poster, year: seed.year, loved: Boolean(seed.loved) }, items });
   }
   rowCache = { at: Date.now(), rows: out, ttl: out.length ? ROW_TTL : 60e3 };
   return out;
@@ -87,15 +101,17 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
   if (decent.length >= 20) items = decent;
   if (!items.length) throw new Error('Nothing unwatched matches that');
 
-  // Genre weights: what has been watched most recently counts most.
+  // Genre weights: what has been watched most recently counts most, a loved film counts double,
+  // and the genres of anything rated two stars or under count against.
   const weights = new Map();
   list.forEach((s, i) => {
-    for (const g of s.genres || []) weights.set(g, (weights.get(g) || 0) + (list.length - i));
+    for (const g of s.genres || []) weights.set(g, (weights.get(g) || 0) + (list.length - i) * (s.loved ? 2 : 1));
   });
+  for (const it of await disliked()) for (const g of it.genres || []) weights.set(g, (weights.get(g) || 0) - 4);
   const scored = items.map((it) => {
-    const hits = (it.genres || []).filter((g) => weights.has(g));
-    const taste = hits.reduce((sum, g) => sum + weights.get(g), 0);
-    return { it, hits, score: 1 + taste + (it.rating >= 7.5 ? 4 : it.rating >= 6.5 ? 2 : 0) };
+    const hits = (it.genres || []).filter((g) => (weights.get(g) || 0) > 0);
+    const taste = (it.genres || []).reduce((sum, g) => sum + (weights.get(g) || 0), 0);
+    return { it, hits, score: Math.max(1, 1 + taste + (it.rating >= 7.5 ? 4 : it.rating >= 6.5 ? 2 : 0)) };
   }).sort((a, b) => b.score - a.score).slice(0, 30);
 
   const total = scored.reduce((s, x) => s + x.score, 0);
@@ -107,7 +123,7 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
   const overlap = (s) => (s.genres || []).filter((g) => pick.hits.includes(g));
   const from = list.map((s) => ({ s, shared: overlap(s) })).filter((x) => x.shared.length)
     .sort((a, b) => b.shared.length - a.shared.length)[0];
-  const why = from ? `More ${from.shared[0].toLowerCase()}, after ${from.s.title}`
+  const why = from ? (from.s.loved ? `More ${from.shared[0].toLowerCase()}, since you loved ${from.s.title}` : `More ${from.shared[0].toLowerCase()}, after ${from.s.title}`)
     : pick.hits.length ? `More ${pick.hits[0].toLowerCase()} for the house`
     : 'Never started, and highly rated';
   return { item: pick.it, why, pool: items.length };

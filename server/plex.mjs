@@ -3,7 +3,7 @@
 // Items are reduced to the fields the panel draws, with image URLs pointing at our proxy.
 
 import { config } from './config.mjs';
-import { plexImage } from './images.mjs';
+import { plexImage, extImage } from './images.mjs';
 import { BRANDS, brandById, brandForName } from './networks.mjs';
 import { httpError } from './admin.mjs';
 
@@ -149,6 +149,8 @@ function buildIndex() {
         if (it.quality) it.quality.hdr = hdr.has(m.ratingKey);
         const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
         if (tmdb) it.tmdb = Number(tmdb.slice(7));
+        // The house's own star rating (the "How was it?" card writes it), 1-10.
+        if (m.userRating != null) it.userRating = Number(m.userRating);
         rows.set(k, { it, rank: resRank(m), watched, titleSort: (m.titleSort || m.title || '').toLowerCase(), released: m.originallyAvailableAt || '' });
       }
     }
@@ -184,6 +186,11 @@ export async function byTmdb(ids) {
   const have = new Map();
   for (const r of rows) if (r.it.tmdb && !have.has(r.it.tmdb)) have.set(r.it.tmdb, r.it);
   return ids.map((id) => have.get(Number(id))).filter(Boolean);
+}
+// Every film the house has given a star rating, off the index.
+export async function ratedMovies() {
+  const rows = await movieIndex();
+  return rows.filter((r) => r.it.userRating != null).map((r) => r.it);
 }
 // After playback: refresh in the background so watched state catches up.
 export const staleMovies = () => { indexAt = 0; };
@@ -606,3 +613,52 @@ export const collectionItems = (re) => cached(`coll:${re}`, 6 * 3600e3, async ()
   // often listed after Comedy or Fantasy.
   return bestCopies(lists.flat().filter((m) => m.type === 'movie')).map((m) => ({ ...mapItem(m), allGenres: tags(m.Genre) }));
 });
+
+// ---------- the watchlist ----------
+
+// plex.tv's own endpoints: an account token, and the client identity the token was made under.
+const PLEX_TV = { 'X-Plex-Client-Identifier': 'theater-panel', 'X-Plex-Product': 'Theater Panel', 'X-Plex-Version': '1.0', Accept: 'application/json' };
+async function plexTv(url, { method = 'GET', token = config.plex.accountToken, body } = {}) {
+  const res = await fetch(url, { method, headers: { ...PLEX_TV, ...(token ? { 'X-Plex-Token': token } : {}), ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) }, body, signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(res.status === 401 ? 'plex.tv refused the account token' : `plex.tv ${res.status}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+// The account's watchlist, matched to the library: what is owned carries the key that plays it,
+// the rest carries its TMDB id for a request. Ten minutes between looks.
+export const watchlist = () => cached('watchlist', 10 * 60e3, async () => {
+  if (!config.plex.accountToken) return null;
+  const d = await plexTv('https://discover.provider.plex.tv/library/sections/watchlist/all?includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=200');
+  const rows = await movieIndex().catch(() => []);
+  const owned = new Map();
+  for (const r of rows) if (r.it.tmdb && !owned.has(r.it.tmdb)) owned.set(r.it.tmdb, r.it);
+  return (d.MediaContainer?.Metadata || []).map((m) => {
+    const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
+    const tmdbId = tmdb ? Number(tmdb.slice(7)) : null;
+    const have = m.type === 'movie' && tmdbId ? owned.get(tmdbId) : null;
+    return {
+      tmdbId, mediaType: m.type === 'show' ? 'tv' : 'movie', title: m.title, year: m.year,
+      owned: Boolean(have), id: have?.id, watched: have?.watched, duration: have?.duration,
+      poster: have?.poster || extImage(m.thumb), addedAt: m.addedAt,
+    };
+  }).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+});
+
+// Signing in to plex.tv for the watchlist, without the panel ever seeing a password: plex.tv
+// hands out a PIN, the person approves it on plex.tv, and the token arrives on the next poll.
+export async function pinStart() {
+  const d = await plexTv('https://plex.tv/api/v2/pins', { method: 'POST', token: '', body: 'strong=true' });
+  const url = `https://app.plex.tv/auth#?clientID=${encodeURIComponent(PLEX_TV['X-Plex-Client-Identifier'])}&code=${encodeURIComponent(d.code)}&context%5Bdevice%5D%5Bproduct%5D=${encodeURIComponent(PLEX_TV['X-Plex-Product'])}`;
+  return { id: d.id, code: d.code, url, expiresAt: d.expiresAt };
+}
+export async function pinCheck(id) {
+  const d = await plexTv(`https://plex.tv/api/v2/pins/${Number(id)}`, { token: '' });
+  return d.authToken || null;
+}
+// Who the account token belongs to (the settings page shows it).
+export async function account(token = config.plex.accountToken) {
+  if (!token) return null;
+  const u = await plexTv('https://plex.tv/api/v2/user', { token });
+  return { username: u.username, title: u.title || u.friendlyName };
+}
