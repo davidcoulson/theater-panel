@@ -70,7 +70,7 @@ const LACEY = 22082;
 async function hallmarkShelf() {
   const [films, credits] = await Promise.all([
     seerr.ownedBy({ studio: HALLMARK_STUDIO, keywords: String(CHRISTMAS_KEYWORD) }),
-    seerr.personMovies(LACEY).catch(() => []),
+    seerr.personMovies(LACEY).catch((e) => { console.warn('[seasonal] credits:', e.message); return []; }),
   ]);
   // TMDB files some of her Hallmark Christmas films under other production companies, or without
   // the keyword, so her owned Christmas titles join the shelf whether or not the studio search
@@ -167,4 +167,10 @@ export async function shelves(season) {
   const ids = season ? (season === 'christmas' ? ['christmas', 'hallmark'] : [season]) : seasonsNow();
   const out = await Promise.all(ids.map((id) => shelf(id).catch((e) => { console.warn('[seasonal]', id, e.message); return null; })));
   return out.filter((v) => v?.items?.length);
+}
+
+// Warm today's shelves a little after startup, once Plex and Seerr are answering, so the idle
+// screen's first board is not the one that finds them still empty.
+export function warm() {
+  setTimeout(() => shelves().catch((e) => console.warn('[seasonal] warm:', e.message)), 45e3).unref?.();
 }

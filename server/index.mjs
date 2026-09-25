@@ -563,7 +563,7 @@ await initImageCache();
 sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 ha.start();
 pollSessions();
-if (config.plex.url) { plex.warmMovies(); taste.warm(); }
+if (config.plex.url) { plex.warmMovies(); taste.warm(); seasonal.warm(); }
 server.listen(config.port, () => {
   console.log(`[panel] theater-panel ${config.build.version}${config.build.time ? ` (${config.build.time})` : ''}`);
   console.log(`[panel] listening on :${config.port}`);
