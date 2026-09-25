@@ -136,7 +136,7 @@ export async function runAction(ha, body) {
     case 'aisle_glow': return script(ha, 'aisle_glow');
 
     case 'projector': {
-      const allowed = { power_on: [], power_off: [], source: ['source'], picture: ['mode'] };
+      const allowed = { power_on: [], power_off: [], light_on: [], light_off: [], source: ['source'], picture: ['mode'] };
       if (!(body.cmd in allowed)) throw new Error('Unknown projector command');
       const vars = { projector: e.projector, apple_tv: e.appleTv };
       for (const k of allowed[body.cmd]) vars[k] = String(body[k] || '');

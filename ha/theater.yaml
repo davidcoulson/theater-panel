@@ -54,6 +54,10 @@ script:
     alias: "Theater: Pre-show"
     icon: mdi:music
     sequence:
+      # If the picture was blanked (projector picture off), bring it back.
+      - action: script.theater_projector_light_on
+        data: { projector: media_player.theater_projector }
+        continue_on_error: true
       - action: light.turn_on
         target: { entity_id: light.media_room_downlights }
         data: { brightness_pct: 40, color_temp_kelvin: 2700, transition: 3 }
@@ -74,6 +78,10 @@ script:
     # queue rather than drop the second call.
     mode: queued
     sequence:
+      # If the picture was blanked (projector picture off), bring it back.
+      - action: script.theater_projector_light_on
+        data: { projector: media_player.theater_projector }
+        continue_on_error: true
       # Stop pre-show music; the movie has the room now.
       - action: media_player.media_pause
         target: { entity_id: media_player.home_theater_2 }
@@ -433,6 +441,11 @@ script:
   # Power: on goes through the Apple TV (HDMI-CEC wakes the projector; it has no network
   # standby, so ADB cannot turn it on). Off, input, apps and picture mode go over ADB
   # (media_player.theater_projector, Android Debug Bridge integration).
+  #
+  # The picture can also go dark without the projector going off: the Aurora Pro's Appotronics
+  # light engine takes a serial "AT+LightSource=Off", and the vendor's test tool on the
+  # projector's Android calls it. Android stays awake, so ADB, CEC and the apps keep working and
+  # the light comes back in a second - no 25 s warm-up. Pre-show and Movie time turn it back on.
 
   theater_projector_power_on:
     alias: "Theater: projector on"
@@ -453,6 +466,30 @@ script:
     sequence:
       - action: media_player.turn_off
         target: { entity_id: "{{ projector if projector else apple_tv }}" }
+
+  theater_projector_light_off:
+    alias: "Theater: projector picture off"
+    icon: mdi:projector-off
+    fields:
+      projector: { description: "Projector ADB media_player" }
+    sequence:
+      - condition: template
+        value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data: { command: "/vendor/bin/hw/projector-test setLightSourceOnOff false" }
+
+  theater_projector_light_on:
+    alias: "Theater: projector picture on"
+    icon: mdi:projector
+    fields:
+      projector: { description: "Projector ADB media_player" }
+    sequence:
+      - condition: template
+        value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
+      - action: androidtv.adb_command
+        target: { entity_id: "{{ projector }}" }
+        data: { command: "/vendor/bin/hw/projector-test setLightSourceOnOff true" }
 
   # Inputs are Android TV inputs on the Aurora Pro's MediaTek build (verified over ADB):
   # HDMI 1 = HW5 (Apple TV, CEC), HDMI 2 = HW6, HDMI 3 = HW7, HDMI 4 = HW8. The projector's
