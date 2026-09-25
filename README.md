@@ -190,8 +190,8 @@ Calibrate button with a keep-quiet countdown. A rear left off its dock turns the
 The room is dark but nothing is playing - the break, the credits, someone deciding what's next -
 and a cream panel on the wall lights the whole room. Cinema mode drops the panel to a dark
 palette instead, and puts a wash over everything so posters and artwork come down with it. It
-follows the room by itself: the Movie time and Intermission scenes, or the downlights below 25%
-with the accent lights up, and it lifts when the lights do. `#/lobby?cinema=1` pins it on one
+follows the room by itself: the downlights off or below 25%, whatever the accent lights and the
+scene are doing, and it lifts when the lights do. `#/lobby?cinema=1` pins it on one
 panel; Display > "Dim the panel when the room is dark" turns the idea off.
 
 ![Cinema mode](docs/img/cinema.jpg)

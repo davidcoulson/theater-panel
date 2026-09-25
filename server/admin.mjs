@@ -109,7 +109,7 @@ export const FIELDS = [
   { group: 'Year in review', key: 'WRAPPED_NOTIFY', label: 'Send it to', type: 'list', domain: 'notify', help: 'Home Assistant notify entities: phones, the kitchen display. Empty sends nothing.' },
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
-  { group: 'Display', key: 'CINEMA_MODE', label: 'Dim the panel when the room is dark', type: 'bool', default: true, help: 'Cinema mode: during Movie time and Intermission, or whenever the downlights are down and the accent lights are up, the panel drops to a dark palette instead of lighting the room from the wall. Showtime and the idle screen are dark already.' },
+  { group: 'Display', key: 'CINEMA_MODE', label: 'Dim the panel when the room is dark', type: 'bool', default: true, help: 'Cinema mode: whenever the downlights are off or under a quarter, the panel drops to a dark palette instead of lighting the room from the wall. Showtime and the idle screen are dark already.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },
   { group: 'Display', key: 'SHOW_NETWORK_BADGES', label: 'Streaming network labels on posters', type: 'bool', default: false },
   { group: 'Display', key: 'FRAME_ANCESTORS', label: 'Pages allowed to embed the panel', type: 'list', help: 'The Home Assistant dashboard Kiosk Satellite shows.' },
