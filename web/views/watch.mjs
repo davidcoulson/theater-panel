@@ -88,7 +88,7 @@ export function Watch() {
     <//>
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:620px;flex-shrink:0">
-        <${Seg} options=${[...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'foryou', label: 'For you' }, { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
+        <${Seg} options=${[{ value: 'foryou', label: 'For you' }, ...(libs || []).map((l) => ({ value: l.id, label: l.title })), { value: 'networks', label: 'Networks' }]} value=${q ? null : libId} onChange=${(v) => { setQuery(''); setLib(v); setBrand(null); setSelected(null); }} />
       </div>
       <div class="hscroll" style="display:flex;gap:10px;min-width:0">
         ${forYou && !q ? html`<button type="button" class="filter" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${18} />Mystery box</button>
@@ -126,7 +126,10 @@ function ForYou({ onPlex }) {
   const shelves = seasonal?.shelves || [];
   // The account's Plex watchlist: what is owned plays, the rest can be asked for.
   const [wl] = useLoad(() => get('/api/watchlist').catch(() => null), []);
-  const watchlist = (wl?.items || []).slice(0, 24);
+  // Only what the house can actually play: a watchlist row that opens the
+  // request form is a different errand from browsing what is here, and this
+  // shelf sits among shelves of things to watch now.
+  const watchlist = (wl?.items || []).filter((r) => r.owned).slice(0, 24);
   const rows = data?.rows || [];
   if (err) return html`<div class="scroll foryou"><div class="empty">${err.message}</div></div>`;
   if (!data) return html`<div class="scroll foryou"><div class="empty">Reading what you have been watching…</div></div>`;
@@ -146,12 +149,11 @@ function ForYou({ onPlex }) {
       </div>
     </section>`)}
     ${watchlist.length ? html`<section class="tasterow seasonal watchlist">
-      <div class="foryou-head"><h2>On your watchlist</h2><span>${wl.items.filter((r) => r.owned).length} of ${wl.items.length} already in Plex</span></div>
       <div class="strip hscroll">
         ${watchlist.map((r) => html`<button type="button" class="poster-btn" key=${r.tmdbId || r.title}
-          onClick=${() => (r.owned ? onPlex(String(r.id)) : go('request', { q: r.title }))}>
+          onClick=${() => onPlex(String(r.id))}>
           <${Poster} src=${r.poster} title=${r.title}>
-            ${r.owned ? html`<span class="tag in">In Plex</span>` : html`<span class="tag ask">Request</span>`}
+            <span class="tag in">In Plex</span>
           <//>
           <span class="t ellipsis">${r.title}</span>
           <span class="y">${r.year || ''}${r.mediaType === 'tv' ? ' · series' : ''}</span>
