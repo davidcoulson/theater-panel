@@ -24,7 +24,7 @@ const PAGES = [
   { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Home Assistant device', 'Plex', 'Seerr', 'TMDB'], blurb: 'Where the panel gets its pictures, its room, and its holiday lists from, and how it shows up in Home Assistant as a device.' },
   { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Lights'], blurb: 'The Home Assistant entities behind each control, and the favourite moods.' },
   { id: 'projector', label: 'Projector & games', icon: 'pad', groups: ['Projector apps', 'Games'], blurb: 'Apps launched over ADB, the HDMI switcher, consoles and the gaming PC.' },
-  { id: 'display', label: 'Display', icon: 'eye', groups: ['Display', 'Year in review'], blurb: 'Theme, holiday accents, the idle screen, what shows on posters, and the December message.' },
+  { id: 'display', label: 'Display', icon: 'eye', groups: ['Display', 'Mystery box', 'Year in review'], blurb: 'Theme, holiday accents, the idle screen, what shows on posters, what the Mystery box may pick, and the December message.' },
   { id: 'access', label: 'Access', icon: 'user', groups: ['Access'], blurb: 'Who gets in without the panel key.' },
 ];
 const pageFromHash = () => PAGES.find((p) => p.id === location.hash.replace(/^#\/?/, ''))?.id || 'overview';

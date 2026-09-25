@@ -181,6 +181,14 @@ function build(env) {
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
   // the server's own history. Empty means the whole house.
   historyAccounts: list(env.HISTORY_ACCOUNTS, []),
+  // The Mystery box's pool: how far back it looks, how well rated a film has to be, how long it
+  // may run, and which genres never come up. 0 (or blank) for any year, any rating, any length.
+  mystery: {
+    years: Math.max(0, Math.min(200, Number(env.MYSTERY_YEARS ?? 10) || 0)),
+    minRating: Math.max(0, Math.min(10, Number(env.MYSTERY_MIN_RATING ?? 7) || 0)),
+    maxMinutes: Math.max(0, Math.min(1000, Number(env.MYSTERY_MAX_MINUTES) || 0)),
+    excludeGenres: list(env.MYSTERY_EXCLUDE_GENRES, []).map((g) => g.toLowerCase()),
+  },
   // Intermission: the snack bar screen on the panel, and a corny little march on the theater
   // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.
   intermission: {

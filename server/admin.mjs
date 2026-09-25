@@ -31,6 +31,10 @@ export const FIELDS = [
   { group: 'Plex', key: 'ENTITY_PROJECTOR_PLEX_PLAYER', label: "Projector's Plex client", type: 'entity', domain: 'media_player', help: 'Only for "Projector — Plex app": HA\'s Plex client for the projector (Plex for Android (TV) - AURORA PRO).' },
   { group: 'Plex', key: 'HISTORY_ACCOUNTS', label: 'Whose taste to follow', type: 'list', help: "Plex account names whose watch history feeds \u201cYou'll love this\u201d and the Mystery box. Blank follows the whole house." },
   { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
+  { group: 'Mystery box', key: 'MYSTERY_YEARS', label: 'Only films from the last (years)', type: 'text', placeholder: '10', help: '0 looks at every year.' },
+  { group: 'Mystery box', key: 'MYSTERY_MIN_RATING', label: 'Lowest rating', type: 'text', placeholder: '7', help: "Plex's audience rating, 0-10. A film with no rating is left out. 0 takes anything." },
+  { group: 'Mystery box', key: 'MYSTERY_MAX_MINUTES', label: 'Longest film (minutes)', type: 'text', help: 'Blank for any length.' },
+  { group: 'Mystery box', key: 'MYSTERY_EXCLUDE_GENRES', label: 'Never these genres', type: 'list', help: 'Genres as Plex names them: Horror, Documentary, Animation... Blank excludes nothing.' },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
   { group: 'Seerr', key: 'SEERR_PUBLIC_URL', label: 'Address for phones', type: 'text', placeholder: 'https://seerr.bauercoulson.com', help: "What the Scan to request QR opens on a guest's phone. The URL above is how the panel reaches Seerr on your network; this is how a phone reaches it from anywhere. Blank uses the URL above." },
