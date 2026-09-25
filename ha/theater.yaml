@@ -26,7 +26,8 @@
 #   esphome.theater_panel_navigate  data: { route: "#/watch?brand=netflix" }   move every panel
 #   esphome.theater_panel_play      data: { rating_key: "12345" }              start a title
 #   esphome.theater_panel_scene     data: { name: pre_show }                   run a scene
-#   esphome.theater_panel_voice     data: { intent: play, query: "Jaws" }      what the sentences do
+#   esphome.theater_panel_voice     data: { intent: play, query: "Jaws", name: "", route: "" }
+#                                   (an ESPHome action needs every argument, blank or not)
 # An action returns nothing, so the voice intents wait for the panel's "Voice answer" sensor
 # to change and speak that. Kiosk Satellite's own navigate service moves the HA dashboard
 # around the panel, not the panel.
@@ -554,22 +555,23 @@ intent_script:
     description: "Play something from Plex in the theater"
     action:
       - action: esphome.theater_panel_voice
-        data: { intent: play, query: "{{ title }}" }
+        data: { intent: play, query: "{{ title }}", name: "", route: "" }
       - wait_for_trigger:
           - trigger: state
             entity_id: sensor.home_theater_theater_panel_voice_answer
             not_to: ["…", "unknown", "unavailable"]
         timeout: "00:00:15"
-      - variables:
-          answer: "{{ wait.trigger.to_state.state if wait.trigger else '' }}"
+    # The speech template cannot see the script's variables, so it reads the sensor itself.
     speech:
-      text: "{{ answer or 'The theater panel did not answer' }}"
+      text: >-
+        {% set a = states('sensor.home_theater_theater_panel_voice_answer') %}
+        {{ a if a not in ['…', '', 'unknown', 'unavailable'] else 'The theater panel did not answer' }}
 
   TheaterScene:
     description: "Run one of the theater's scenes"
     action:
       - action: esphome.theater_panel_voice
-        data: { intent: scene, name: "{{ scene }}" }
+        data: { intent: scene, name: "{{ scene }}", query: "", route: "" }
     speech:
       text: "{{ scene | replace('_', ' ') | capitalize }}"
 
@@ -577,16 +579,16 @@ intent_script:
     description: "Let the panel pick something and start it"
     action:
       - action: esphome.theater_panel_voice
-        data: { intent: mystery }
+        data: { intent: mystery, query: "", name: "", route: "" }
       - wait_for_trigger:
           - trigger: state
             entity_id: sensor.home_theater_theater_panel_voice_answer
             not_to: ["…", "unknown", "unavailable"]
         timeout: "00:00:15"
-      - variables:
-          answer: "{{ wait.trigger.to_state.state if wait.trigger else '' }}"
     speech:
-      text: "{{ answer or 'I could not find anything to watch' }}"
+      text: >-
+        {% set a = states('sensor.home_theater_theater_panel_voice_answer') %}
+        {{ a if a not in ['…', '', 'unknown', 'unavailable'] else 'I could not find anything to watch' }}
 
   TheaterScreen:
     description: "Move the theater panel to one of its screens"
