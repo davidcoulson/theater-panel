@@ -470,29 +470,31 @@ script:
       - action: media_player.turn_off
         target: { entity_id: "{{ projector if projector else apple_tv }}" }
 
+  # The picture, input and picture mode go through the NexiGo Aurora plugin on the projector's
+  # own Kiosk Satellite (github.com/davidcoulson/kiosk-satellite-nexigo-aurora): the plugin runs
+  # the same commands from inside the projector and reads the result back, so there is no ADB in
+  # the path and the entities carry real state. The `projector` field is kept for the callers.
   theater_projector_light_off:
     alias: "Theater: projector picture off"
     icon: mdi:projector-off
     fields:
-      projector: { description: "Projector ADB media_player" }
+      projector: { description: "unused; the plugin's switch is fixed below" }
     sequence:
       - condition: template
-        value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
-      - action: androidtv.adb_command
-        target: { entity_id: "{{ projector }}" }
-        data: { command: "setprop cur.appo.light.enabled false; /vendor/bin/hw/projector-test setLightSourceOnOff false; setprop cur.prj.screenOff true" }
+        value_template: "{{ states('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture') not in ['unavailable', 'unknown'] }}"
+      - action: switch.turn_off
+        target: { entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture }
 
   theater_projector_light_on:
     alias: "Theater: projector picture on"
     icon: mdi:projector
     fields:
-      projector: { description: "Projector ADB media_player" }
+      projector: { description: "unused; the plugin's switch is fixed below" }
     sequence:
       - condition: template
-        value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
-      - action: androidtv.adb_command
-        target: { entity_id: "{{ projector }}" }
-        data: { command: "setprop cur.appo.light.enabled true; /vendor/bin/hw/projector-test setLightSourceOnOff true; setprop cur.prj.screenOff false" }
+        value_template: "{{ states('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture') not in ['unavailable', 'unknown'] }}"
+      - action: switch.turn_on
+        target: { entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture }
 
   # Inputs are Android TV inputs on the Aurora Pro's MediaTek build (verified over ADB):
   # HDMI 1 = HW5 (Apple TV, CEC), HDMI 2 = HW6, HDMI 3 = HW7, HDMI 4 = HW8. The projector's
@@ -516,12 +518,10 @@ script:
               title: Theater panel
               message: "Can't switch the projector to {{ source }}: set ENTITY_PROJECTOR to the projector's ADB entity (and use Apple TV or HDMI 1-4)."
           - stop: Projector not configured
-      - action: androidtv.adb_command
-        target: { entity_id: "{{ projector }}" }
+      - action: select.select_option
+        target: { entity_id: select.home_theater_aurora_pro_projector_nexigo_aurora_pro_input }
         data:
-          command: >-
-            am start -a android.intent.action.VIEW -d
-            content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW{{ hw }}
+          option: "HDMI {{ hw | int - 4 }}"
 
   # Picture mode is the `picture_mode` global setting; writing it makes the projector's TV
   # settings service apply the mode (verified: each mode loads its own backlight, colour
@@ -539,17 +539,17 @@ script:
     sequence:
       - if:
           - condition: template
-            value_template: "{{ not projector or value | int < 0 }}"
+            value_template: "{{ value | int < 0 }}"
         then:
           - action: persistent_notification.create
             data:
               title: Theater panel
               message: "Can't set the projector to {{ mode }}: set ENTITY_PROJECTOR to the projector's ADB entity (modes: Cinema, Cinema Pro, Standard, Brightest, Game)."
           - stop: Projector not configured
-      - action: androidtv.adb_command
-        target: { entity_id: "{{ projector }}" }
+      - action: select.select_option
+        target: { entity_id: select.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture_mode }
         data:
-          command: "settings put global picture_mode {{ value | int }}"
+          option: "{{ {2: 'Cinema Home', 8: 'Cinema Pro', 9: 'Standard', 3: 'Brightest', 10: 'Game', 0: 'Custom'}[value | int] }}"
 
   # Open an app on the projector's own Android (Plex, YouTube...). If the projector is off it is
   # woken first, then the app starts once ADB answers (the projector takes ~30 s to boot).
@@ -656,6 +656,31 @@ automation:
           message: >-
             A newer panel image is on GHCR ({{ trigger.event.data.image | default('ghcr.io/davidcoulson/theater-panel:latest') }}).
             On Unraid: /usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container theater-panel
+
+  # The projector stays on the network around the clock (the plugin sets it to ignore CEC standby
+  # and never to shut down on no signal), so the picture follows the Apple TV instead: dark while
+  # it sleeps, back the moment it wakes. No 25 s boot, no CEC dance.
+  - id: theater_projector_follows_apple_tv
+    alias: "Theater: projector picture follows the Apple TV"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: "off"
+        for: "00:00:30"
+        id: asleep
+      - trigger: state
+        entity_id: media_player.home_theater
+        from: "off"
+        id: awake
+    actions:
+      - if:
+          - condition: trigger
+            id: asleep
+        then:
+          - action: script.theater_projector_light_off
+        else:
+          - action: script.theater_projector_light_on
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
