@@ -154,14 +154,14 @@ function build(env) {
     // Only when the pre-roll is the panel's own sound, so a custom URL is left alone.
     spookyUrl: env.PREROLL_SPOOKY_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'preroll-spooky.mp3') : ''),
   },
-  // Trakt, for the holiday shelves: a public list per season, read with just a client ID (no
-  // sign-in - the panel never touches anyone's Trakt account). Blank = no Trakt; the shelves fall
-  // back to Kometa's collections and TMDB's tags.
-  trakt: {
-    clientId: env.TRAKT_CLIENT_ID || '',
+  // TMDB, for the holiday shelves: a public list per season (the number from the list's address
+  // on themoviedb.org), read with a free API key. Blank = no TMDB lists; the shelves fall back to
+  // Kometa's collections and TMDB's tags through Seerr.
+  tmdb: {
+    apiKey: env.TMDB_API_KEY || '',
     lists: {
-      halloween: env.TRAKT_LIST_HALLOWEEN || 'hdlists/the-top-100-halloween-movies-of-all-time',
-      christmas: env.TRAKT_LIST_CHRISTMAS || 'hdlists/christmas-movies',
+      halloween: env.TMDB_LIST_HALLOWEEN || '7061968',
+      christmas: env.TMDB_LIST_CHRISTMAS || '5915',
     },
   },
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way

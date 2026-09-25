@@ -21,7 +21,7 @@ async function api(path, body) {
 // moving between pages: one draft holds everything, the page only decides what is on screen.
 const PAGES = [
   { id: 'overview', label: 'Overview', icon: 'home' },
-  { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Plex', 'Seerr', 'Trakt'], blurb: 'Where the panel gets its pictures, its room, and its holiday lists from.' },
+  { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Plex', 'Seerr', 'TMDB'], blurb: 'Where the panel gets its pictures, its room, and its holiday lists from.' },
   { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Lights'], blurb: 'The Home Assistant entities behind each control, and the favourite moods.' },
   { id: 'projector', label: 'Projector & games', icon: 'pad', groups: ['Projector apps', 'Games'], blurb: 'Apps launched over ADB, the HDMI switcher, consoles and the gaming PC.' },
   { id: 'display', label: 'Display', icon: 'eye', groups: ['Display'], blurb: 'Theme, holiday accents, the idle screen and what shows on posters.' },
@@ -199,7 +199,7 @@ function Settings({ page, signOut }) {
   <//>`;
 }
 
-const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', Trakt: 'trakt' };
+const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', TMDB: 'tmdb' };
 
 // Tries the connection with the values on screen, saved or not.
 function Test({ service, draft }) {

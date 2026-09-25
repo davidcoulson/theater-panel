@@ -4,9 +4,9 @@
 //   Halloween Scares   all of October
 //   Christmas Movies   Thanksgiving through New Year's Eve
 //
-// With a Trakt client ID on the settings page, each shelf is a curated public Trakt list (one
-// per season, default hdlists') cut down to the films you own, in the list's order - the
-// honorary Christmas films added if the list forgot them. Without one, or if Trakt is down:
+// With a TMDB API key on the settings page, each shelf is a public TMDB list (one per season)
+// cut down to the films you own, in the list's order - the honorary Christmas films added if
+// the list forgot them. Without a key, or if TMDB is down:
 //
 // both start from Kometa's seasonal collections in Plex ("Halloween.", "Christmas.") - owned and
 // playable - and keep only what belongs on the shelf. Kometa's lists are broad: its Halloween
@@ -20,7 +20,7 @@
 import { config } from './config.mjs';
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
-import * as trakt from './trakt.mjs';
+import * as tmdb from './tmdb.mjs';
 import { thanksgiving } from './accents.mjs';
 
 const HALLOWEEN = /hallowe'?en|trick.or.treat|haunt|ghost|witch|pumpkin|spook|jack-o|all hallows/i;
@@ -65,11 +65,11 @@ export async function shelf(season = seasonNow()) {
 
   let items = [];
   let source = 'kometa';
-  if (config.trakt.clientId) {
+  if (config.tmdb.apiKey) {
     try {
-      items = await plex.byTmdb(await trakt.listTmdbIds(config.trakt.lists[season]));
-      source = 'trakt';
-    } catch (e) { console.warn('[seasonal] trakt:', e.message); }
+      items = await plex.byTmdb(await tmdb.listIds(config.tmdb.lists[season]));
+      source = 'tmdb-list';
+    } catch (e) { console.warn('[seasonal] tmdb list:', e.message); }
   }
   if (items.length < 8) {
     items = (await plex.collectionItems(s.collection).catch(() => [])).filter(s.keep);
@@ -87,8 +87,8 @@ export async function shelf(season = seasonNow()) {
     if (hit) items.push(hit);
   }
   const seed = [...day].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  // A Trakt list is ranked, so it keeps its order; the fallbacks reshuffle daily, unwatched first.
-  const shuffled = source === 'trakt' ? items : items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))
+  // A list is in its maker's order, so it keeps it; the fallbacks reshuffle daily, unwatched first.
+  const shuffled = source === 'tmdb-list' ? items : items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))
     .sort((a, b) => (a.it.watched - b.it.watched) || (a.k - b.k)).map((x) => x.it);
   const v = { id: season, title: s.title, kicker: s.kicker, source, total: items.length, items: shuffled.slice(0, 40) };
   cache.set(season, { at: Date.now(), day, v });
