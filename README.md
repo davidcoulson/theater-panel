@@ -39,7 +39,7 @@ Kiosk Satellite ──http──▶ theater-panel ──▶ Plex        (library
 </p>
 
 Deep links work for everything, e.g. `#/watch?brand=netflix`, `#/request?mode=upcoming`,
-`#/games`, `#/lobby?mystery=1`, which HA can send through `rest_command.theater_panel_navigate`.
+`#/games`, `#/lobby?mystery=1`, which HA can send through `esphome.theater_panel_navigate`.
 
 ## Picking something
 
@@ -221,8 +221,9 @@ What it exposes:
   to act on, since Unraid pulls the image, not the panel).
 - **Actions:** `esphome.theater_panel_play` (`rating_key`, `part_id`, `preroll`),
   `esphome.theater_panel_navigate` (`route`), `esphome.theater_panel_voice` (`intent`, `query`)
-  and `esphome.theater_panel_scene` (`name`). These do what the `rest_command`s in
-  `ha/theater.yaml` do, without the panel key.
+  and `esphome.theater_panel_scene` (`name`). `ha/theater.yaml` uses these; there are no
+  `rest_command`s or REST sensors any more, so nothing on the HA side needs the panel key. An
+  action returns nothing, so the voice intents wait for the **Voice answer** sensor and speak it.
 - **Event:** `mystery_box_pick` fires when a pick goes up on the panels.
 
 ## Home Assistant setup
@@ -249,7 +250,7 @@ Announcements and camera popups still show. The app restores brightness itself, 
 crash. If theater mode is switched on from elsewhere (HA's `switch.…_theater_mode`, a
 `ks://theater` link, or a reload mid-film), the panel jumps to Showtime.
 
-HA moves the panel between its screens with `rest_command.theater_panel_navigate` and
+HA moves the panel between its screens with `esphome.theater_panel_navigate` and
 `route: "#/showtime"` (or `#/watch?brand=netflix`, `#/games`...), which pushes the route to every
 open panel over its live connection; nothing reloads. (Kiosk Satellite's `navigate` service moves
 the HA dashboard around the panel instead.)

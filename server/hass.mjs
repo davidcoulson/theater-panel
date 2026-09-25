@@ -96,6 +96,10 @@ function build(opts) {
     streams: d.sensor({ name: 'Plex streams', accuracyDecimals: 0, icon: 'mdi:play-network', stateClass: 'measurement' }),
     activeAccent: d.textSensor({ name: 'Active accent', icon: 'mdi:calendar-star', category: 'diagnostic' }),
     build: d.textSensor({ name: 'Build', icon: 'mdi:tag', category: 'diagnostic', state: config.build.version }),
+    // An ESPHome action returns nothing, so the sentence a voice intent should speak is published
+    // here: HA's intent_script calls esphome.theater_panel_voice, waits for this to change, and
+    // reads it. It is cleared to "…" first so the same answer twice still counts as a change.
+    voiceAnswer: d.textSensor({ name: 'Voice answer', icon: 'mdi:message-reply-text', category: 'diagnostic', state: '' }),
     update: d.update({ name: 'Panel image', title: 'Theater panel', category: 'diagnostic' }, async (what) => {
       // The image is pulled by Unraid, not by the panel: hand the request to HA as an event so an
       // automation can run the container update, and re-check GHCR either way.
@@ -114,10 +118,26 @@ function build(opts) {
     if (!/^#?\/?[a-z]+(\?[\w=&%.,-]*)?$/i.test(route)) throw new Error('Bad route');
     ctx.broadcast('navigate', { route });
   });
-  d.service({ name: 'voice', args: { intent: 'string', query: 'string', name: 'string' } }, (args) => ctx.voice(args));
+  d.service({ name: 'voice', args: { intent: 'string', query: 'string', name: 'string', route: 'string' } }, async (args) => {
+    ent.voiceAnswer.set('…');
+    ent.voiceAnswer.set(await voiceSentence(args));
+  });
   d.service({ name: 'scene', args: { name: 'string' } }, ({ name }) => ctx.run({ action: 'scene', name }));
 
   return d;
+}
+
+// What the intent should say, from what /api/voice answers: the same sentences HA's intent
+// scripts used to build from the rest_command's response.
+async function voiceSentence(args) {
+  const intent = String(args.intent || '').toLowerCase();
+  let r;
+  try { r = await ctx.voice(args); } catch (e) { return e.message || 'Something went wrong'; }
+  if (intent === 'play') return r.ok ? `Starting ${r.spoken}` : r.spoken;
+  if (intent === 'mystery' || intent === 'surprise') return r.spoken ? `Tonight you are watching ${r.spoken}` : 'I could not find anything to watch';
+  if (intent === 'navigate') return `Showing ${r.spoken}`;
+  if (intent === 'scene') return r.spoken.charAt(0).toUpperCase() + r.spoken.slice(1);
+  return r.spoken || 'Done';
 }
 
 const sleepOption = () => {
