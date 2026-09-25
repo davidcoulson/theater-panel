@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast, playbackState } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -337,7 +337,8 @@ function Rail({ current }) {
 function App() {
   const [r, setR] = useState(route);
   setRoute = setR;
-  const tvState = useStore((s) => s.states[s.entities.appleTv]?.state);
+  // The Plex session first (Plezy on the projector), the Apple TV otherwise; see playbackState.
+  const tvState = useStore((s) => playbackState(s));
   const toast = useStore((s) => s.toast);
 
   // Playback drives the screen: start playing -> Showtime; stop -> Lobby. If someone leaves
@@ -372,7 +373,7 @@ function App() {
 
   useEffect(() => {
     const t = setInterval(() => {
-      const st = getState().states[getState().entities.appleTv]?.state;
+      const st = playbackState(getState());
       if (st === 'playing' && route.name !== 'showtime' && Date.now() - lastManual > 90000) go('showtime', { auto: true });
     }, 5000);
     // Theater mode switched on from HA, a ks:// link or a reload mid-film: show Showtime.

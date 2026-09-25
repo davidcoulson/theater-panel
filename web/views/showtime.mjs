@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { html, Icon, Pause, Play } from '../lib/ui.mjs';
-import { act, useStore, useEntity, livePosition, mmss, clock, getState } from '../lib/api.mjs';
+import { act, useStore, useEntity, livePosition, mmss, clock, getState, playbackState } from '../lib/api.mjs';
 import { enterTheater, exitTheater, wake } from '../lib/ks.mjs';
 import { go, route } from '../app.mjs';
 import { SleepPicker, sleepLabel } from './sleep.mjs';
@@ -28,12 +28,17 @@ export function Showtime() {
   useEffect(() => { if (native || !awake) return; const t = setTimeout(() => setAwake(false), 8000); return () => clearTimeout(t); }, [awake]);
 
   const a = tv?.attributes || {};
-  const playing = tv?.state === 'playing';
+  const state = useStore((s) => playbackState(s));
+  const sessionsAt = useStore((s) => s.sessionsAt) || Date.now();
+  const playing = state === 'playing';
   const title = session?.showTitle || session?.title || a.media_series_title || a.media_title || 'Now showing';
   const sub = session?.showTitle ? `S${session.season} · E${session.episode} ${session.title}` : (a.media_series_title ? a.media_title : '');
-  const dur = a.media_duration || (session?.duration ? session.duration / 1000 : null);
-  let pos = livePosition(tv);
-  if (pos == null && session?.viewOffset != null) pos = session.viewOffset / 1000;
+  // Position: the Plex session when there is one (it is the film, wherever it plays), carried
+  // forward between polls while playing; the Apple TV's own report otherwise.
+  const dur = session?.duration ? session.duration / 1000 : a.media_duration || null;
+  let pos = null;
+  if (session?.viewOffset != null) pos = session.viewOffset / 1000 + (playing ? (Date.now() - sessionsAt) / 1000 : 0);
+  else pos = livePosition(tv);
   const left = dur && pos != null ? dur - pos : null;
   const ends = left != null ? clock(new Date(Date.now() + left * 1000)).hm : '--:--';
   const bg = session?.art ? `background-image:url('${session.art}')` : '';
@@ -47,7 +52,7 @@ export function Showtime() {
       <header style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
         <div style="display:flex;align-items:flex-end;gap:28px;min-width:0">
           ${session?.poster && html`<img src=${session.poster} alt="" style="width:84px;height:126px;object-fit:cover;border-radius:6px;opacity:.45" />`}
-          <div style="min-width:0"><div class="lbl">${playing ? 'Now showing' : tv?.state === 'paused' ? 'Paused' : 'Standing by'}</div>
+          <div style="min-width:0"><div class="lbl">${playing ? 'Now showing' : state === 'paused' ? 'Paused' : 'Standing by'}</div>
             <h1 class="ellipsis">${title}</h1>
             ${sub && html`<div class="lbl ellipsis" style="letter-spacing:1px;margin-top:4px">${sub}</div>`}</div>
         </div>

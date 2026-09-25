@@ -103,6 +103,16 @@ script:
       - action: media_player.media_pause
         target: { entity_id: media_player.home_theater }
         continue_on_error: true
+      # Films in Plezy play on the projector's own Android, where the Apple TV can't pause them:
+      # send the projector the pause key as well (127 = MEDIA_PAUSE, which never un-pauses).
+      - if:
+          - condition: template
+            value_template: "{{ states('media_player.theater_projector') not in ['unavailable', 'unknown', 'off'] }}"
+        then:
+          - action: androidtv.adb_command
+            target: { entity_id: media_player.theater_projector }
+            data: { command: "input keyevent 127" }
+            continue_on_error: true
       - action: script.theater_lights_intermission
       - action: input_select.select_option
         target: { entity_id: input_select.theater_scene }
