@@ -36,10 +36,16 @@ export function Pick() {
     catch (e) { toast(e.message, true); }
   };
   const endVote = async () => {
-    const { winner } = await post('/api/vote/end', {});
-    if (!winner) return toast('No clear winner');
-    const it = items.find((x) => String(x.id) === String(winner.id));
-    if (it) play(it, true);
+    try {
+      const { winner } = await post('/api/vote/end', {});
+      if (!winner) return toast('No clear winner');
+      const it = items.find((x) => String(x.id) === String(winner.id));
+      if (it) play(it, true);
+    } catch (e) { toast(e.message, true); }
+  };
+  const cancelVote = async () => {
+    try { await post('/api/vote/end', {}); }
+    catch (e) { toast(e.message, true); }
   };
   const toggle = (k) => setFilters(filters.includes(k) ? filters.filter((f) => f !== k) : [...filters, k]);
   const leader = votes?.voters ? Object.entries(votes.tally).sort((a, b) => b[1] - a[1])[0] : null;
@@ -55,7 +61,7 @@ export function Pick() {
         ${(items || []).map((m) => {
           const count = votes?.tally?.[m.id] ?? 0;
           const winning = leader && String(leader[0]) === String(m.id) && leader[1] > 0;
-          return html`<button type="button" class=${`pick-card ${winning ? 'lead' : ''}`} onClick=${() => play(m, true)}>
+          return html`<button type="button" class=${`pick-card ${winning ? 'lead' : ''}`} key=${m.id} onClick=${() => play(m, true)}>
             <${Poster} src=${m.poster} title=${m.title} />
             <div class="t ellipsis">${m.title}</div>
             <div class="m">${[m.year, runtime(m.duration), m.contentRating].filter(Boolean).join(' · ')}</div>
@@ -74,7 +80,7 @@ export function Pick() {
           <div class="tally">${votes.voters} vote${votes.voters === 1 ? '' : 's'} in</div>
           <div style="flex-grow:1"></div>
           <button type="button" class="btn primary big" onClick=${endVote}><${Icon} name="check" />Play the winner</button>
-          <button type="button" class="btn sm" onClick=${() => post('/api/vote/end', {})}>Cancel vote</button>
+          <button type="button" class="btn sm" onClick=${cancelVote}>Cancel vote</button>
         ` : html`
           <p style="font-size:19px;line-height:1.5">Everyone scans the code and picks from their phone. The count shows up here, and the winner plays on the projector.</p>
           <div style="flex-grow:1"></div>

@@ -48,7 +48,9 @@ const TYPES = {
 // ---------- Home Assistant bridge ----------
 
 // Entities streamed to the panel: the theater's own, plus the gaming PC's power and sensors.
-let entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
+// A broken games.json must not keep the server from starting; the Games screen just goes quiet.
+const gameEntitiesSafe = () => gameEntities().catch((e) => { console.warn('[games] config unreadable:', e.message); return []; });
+let entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
 const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entities });
 
 // After the admin page saves: reconnect HA if its URL, token or the entity list changed, and tell
@@ -56,7 +58,7 @@ const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entit
 async function applySettings() {
   isProxy = netList(config.trustedProxies);
   isTrusted = netList(config.trustedNetworks);
-  entities = [...new Set([...watchedEntities(), ...(await gameEntities())])];
+  entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
   ha.reconfigure({ url: config.ha.url, token: config.ha.token, entities });
   broadcast('settings', {});
 }
@@ -124,8 +126,20 @@ function json(res, status, body) {
 
 async function readBody(req) {
   let size = 0; const chunks = [];
-  for await (const c of req) { size += c.length; if (size > 64 * 1024) throw new Error('Body too large'); chunks.push(c); }
-  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
+  for await (const c of req) { size += c.length; if (size > 64 * 1024) throw admin.httpError(413, 'Body too large'); chunks.push(c); }
+  if (!chunks.length) return {};
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw admin.httpError(400, 'Body is not valid JSON'); }
+}
+
+// Every POST must be JSON sent by our own pages (or HA's rest_commands, which set the type
+// too). A cross-site HTML form can post text/plain but never application/json, and browsers
+// label anything from another site with Sec-Fetch-Site, so between the two a page elsewhere on
+// the LAN cannot drive the theater through someone's trusted-network address.
+function checkPost(req) {
+  if (req.method !== 'POST') return;
+  if (req.headers['sec-fetch-site'] === 'cross-site') throw admin.httpError(403, 'Cross-site requests are not allowed');
+  if (!/^application\/json/.test(req.headers['content-type'] || '')) throw admin.httpError(415, 'JSON only');
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
@@ -224,8 +238,8 @@ get(/^\/api\/plex\/brand\/([a-z]+)$/, (m, q) => plex.brandBrowse(m[1], { filters
 get(/^\/api\/networks$/, () => (config.seerr.url ? seerr.networks() : [])); 
 get(/^\/api\/plex\/item\/(\d+)$/, (m) => plex.item(m[1]));
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
-get(/^\/api\/plex\/ondeck$/, (m, q) => plex.onDeck(Number(q.get('size') || 12)));
-get(/^\/api\/plex\/recent$/, (m, q) => plex.recentlyAdded(Number(q.get('size') || 16)));
+get(/^\/api\/plex\/ondeck$/, (m, q) => plex.onDeck(Math.min(Number(q.get('size') || 12), 60)));
+get(/^\/api\/plex\/recent$/, (m, q) => plex.recentlyAdded(Math.min(Number(q.get('size') || 16), 60)));
 const qrSvg = (text) => QRCode.toString(String(text).slice(0, 300), { type: 'svg', margin: 1, color: { dark: '#25170F', light: '#0000' } });
 
 // Movie night. The panel asks for a shortlist, then everyone votes from their phones at
@@ -278,7 +292,7 @@ post(/^\/api\/vote\/start$/, (m, q, body) => {
     id: String(i.id), title: String(i.title || '').slice(0, 120), year: i.year || null,
     poster: typeof i.poster === 'string' && /^\/img\//.test(i.poster) ? i.poster : null, plexId: String(i.id),
   }));
-  if (items.length < 2) throw new Error('Pick at least two');
+  if (items.length < 2) throw admin.httpError(400, 'Pick at least two');
   const st = vote.start(items);
   broadcast('vote', st);
   return st;
@@ -317,9 +331,9 @@ post(/^\/api\/voice$/, async (m, q, body) => {
     broadcast('navigate', { route: '#/lobby' });
     return { ok: true, spoken: `${pick.item.title}. ${pick.why}`, id: pick.item.id };
   }
-  if (intent !== 'play') throw new Error('Unknown voice intent');
+  if (intent !== 'play') throw admin.httpError(400, 'Unknown voice intent');
   const query = String(body.query || '').trim();
-  if (!query) throw new Error('Nothing to play');
+  if (!query) throw admin.httpError(400, 'Nothing to play');
   const hits = await plex.search(query, 10);
   // Best match: an exact title first, then one that starts with what was said, then a movie.
   const said = query.toLowerCase();
@@ -381,7 +395,7 @@ get(/^\/api\/steam\/library$/, () => steamLibrary());
 // the panel's own routes through here (rest_command.theater_panel_navigate in ha/theater.yaml).
 post(/^\/api\/navigate$/, (m, q, body) => {
   const route = String(body.route || '');
-  if (!/^#?\/?[a-z]+(\?[\w=&%.,-]*)?$/i.test(route)) throw new Error('Bad route');
+  if (!/^#?\/?[a-z]+(\?[\w=&%.,-]*)?$/i.test(route)) throw admin.httpError(400, 'Bad route');
   broadcast('navigate', { route });
   return { ok: true, panels: clients.size };
 });
@@ -423,7 +437,6 @@ const frameAncestors = (path) => (path.startsWith('/admin') || path.startsWith('
 // SameSite=Strict cookie, that keeps other sites from posting here).
 async function adminApi(req, res, path) {
   const method = req.method;
-  if (method === 'POST' && !/^application\/json/.test(req.headers['content-type'] || '')) throw admin.httpError(415, 'JSON only');
   const body = method === 'POST' ? await readBody(req) : undefined;
   if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body, isHttps(req));
   if (path === '/api/admin/logout' && method === 'POST') return admin.logout(res);
@@ -454,6 +467,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(401, { 'content-type': 'text/plain' }).end('Open this page once with ?key=<PANEL_KEY>.');
       return;
     }
+    checkPost(req);
 
     if (path === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
@@ -538,8 +552,10 @@ const server = createServer(async (req, res) => {
     if (rel !== '/' && extname(rel)) return serveFile(res, join(WEB, rel));
     return serveFile(res, join(WEB, 'index.html'));
   } catch (e) {
+    // Errors that know their status (bad input, not found) keep it; anything else is an upstream
+    // (Plex, Seerr, HA) or unexpected failure.
     console.warn(`[http] ${req.method} ${path}: ${e.message}`);
-    if (!res.headersSent) json(res, 502, { error: e.message });
+    if (!res.headersSent) json(res, e.status || 502, { error: e.message });
   }
 });
 

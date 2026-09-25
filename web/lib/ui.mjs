@@ -78,6 +78,8 @@ export const Next = ({ size = 24, color = 'currentColor' }) => html`<svg width=$
 // Poster with a title fallback while loading or when there is no art.
 export function Poster({ src, title, children, style }) {
   const [ok, setOk] = useState(true);
+  // A new src gets a fresh try; otherwise one broken thumbnail would stick to a reused slot.
+  useEffect(() => setOk(true), [src]);
   return html`<div class="poster" style=${style}>
     ${src && ok ? html`<img src=${src} alt="" loading="lazy" decoding="async" onError=${() => setOk(false)} />` : html`<div class="fallback">${title}</div>`}
     ${children}
@@ -98,10 +100,13 @@ export function Seg({ options, value, onChange, cls = '' }) {
 export function Range({ value, onCommit, label, fill, rest, cls = '' }) {
   const [v, setV] = useState(value);
   const dragging = useRef(false);
+  // A cancelled drag (palm, scroll, focus loss) never fires change, so release on those too.
+  const release = () => { dragging.current = false; };
   useEffect(() => { if (!dragging.current) setV(value); }, [value]);
   const style = `--pct:${v}%;${fill ? `--fill:${fill};` : ''}${rest ? `--rest:${rest};` : ''}`;
   return html`<input class=${`range ${cls}`} type="range" min="0" max="100" value=${v} aria-label=${label} style=${style}
     onPointerDown=${() => { dragging.current = true; }}
+    onPointerUp=${release} onPointerCancel=${release} onLostPointerCapture=${release}
     onInput=${(e) => setV(Number(e.target.value))}
     onChange=${(e) => { dragging.current = false; onCommit?.(Number(e.target.value)); }} />`;
 }

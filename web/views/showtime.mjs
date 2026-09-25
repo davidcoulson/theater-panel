@@ -13,7 +13,9 @@ import { SleepPicker, sleepLabel } from './sleep.mjs';
 export function Showtime() {
   const ents = useStore((s) => s.entities);
   const tv = useEntity(ents.appleTv);
-  const session = useStore((s) => s.sessions?.[0]);
+  // Sessions are only this theater's player when PLEX_PLAYER_NAME is set; otherwise the first
+  // one could be anybody's stream, so fall back to the Apple TV's own attributes.
+  const session = useStore((s) => (s.ui?.theaterSessions ? s.sessions?.[0] : undefined));
   const [, tick] = useState(0);
   const [awake, setAwake] = useState(true);
   const [muted, setMuted] = useState(false);

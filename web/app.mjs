@@ -36,6 +36,7 @@ let setRoute = () => {};
 // loads, not 0: at 0 every "has it been idle for N minutes" test is true straight away, so a
 // panel that reloaded and was not touched fell to the Now Showing screen within 15 seconds.
 let lastManual = Date.now();
+let tvGoneSince = null;   // when the Apple TV entity last went unavailable, or null
 export function go(name, params = {}) {
   setRender(params.render);
   setTheme(params.theme);
@@ -373,8 +374,16 @@ function App() {
 
   useEffect(() => {
     const t = setInterval(() => {
+      const { states, entities } = getState();
       const st = playbackState(getState());
+      const tv = states[entities.appleTv]?.state;
       if (st === 'playing' && route.name !== 'showtime' && Date.now() - lastManual > 90000) go('showtime', { auto: true });
+      // The Apple TV entity gone (unavailable, unknown, missing) for over a minute mid-film: leave
+      // Showtime too, or the panel stays dark with the backlight down until someone reloads it.
+      // (a Plezy film on the projector keeps Showtime up whatever the Apple TV entity does)
+      const gone = Boolean(entities.appleTv) && !getState().sessions?.[0] && (tv == null || tv === 'unavailable' || tv === 'unknown');
+      tvGoneSince = gone ? (tvGoneSince || Date.now()) : null;
+      if (gone && route.name === 'showtime' && Date.now() - tvGoneSince > 60000) go('lobby', { auto: true });
     }, 5000);
     // Theater mode switched on from HA, a ks:// link or a reload mid-film: show Showtime.
     const offTheater = onTheater((d) => { if (d.active && route.name !== 'showtime') go('showtime', { auto: true }); });
