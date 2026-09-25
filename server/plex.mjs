@@ -124,7 +124,7 @@ function buildIndex() {
     const rows = new Map();
     for (const lib of movies) {
       const [mc, hdr] = await Promise.all([
-        // includeGuids: the TMDB id rides along, so a Trakt list can be matched to what is owned.
+        // includeGuids: the TMDB id rides along, so a TMDB list can be matched to what is owned.
         plex(`/library/sections/${lib.id}/all`, { includeGuids: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }),
         hdrKeys(lib.id).catch(() => new Set()),
       ]);
@@ -156,7 +156,7 @@ async function movieIndex() {
 }
 // Warm the index at startup so the first visit to Watch is quick.
 export const warmMovies = () => movieIndex().catch((e) => console.warn('[plex] movie index:', e.message));
-// The owned films among a list of TMDB ids, in the list's order (a Trakt list, matched to the
+// The owned films among a list of TMDB ids, in the list's order (a TMDB list, matched to the
 // library). Each film once, as its best copy.
 export async function byTmdb(ids) {
   const rows = await movieIndex();
