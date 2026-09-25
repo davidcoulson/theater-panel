@@ -24,6 +24,7 @@ import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
 import { netList, clientIp } from './net.mjs';
 import { versions } from './version.mjs';
+import * as hass from './hass.mjs';
 import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,6 +62,7 @@ async function applySettings() {
   entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
   ha.reconfigure({ url: config.ha.url, token: config.ha.token, entities });
   broadcast('settings', {});
+  await hass.apply();
 }
 const clients = new Set();
 function broadcast(event, data) {
@@ -68,6 +70,7 @@ function broadcast(event, data) {
   for (const res of clients) {
     try { res.write(line); } catch { clients.delete(res); }   // a panel that went away mid-write
   }
+  hass.observe(event, data);
 }
 ha.on('states', (changed) => broadcast('states', changed));
 onPanelSound((sound) => broadcast('sound', sound));
@@ -108,6 +111,7 @@ async function pollSessions() {
       // Nobody said anything: take the card away again rather than leaving it up all week.
       if (verdict && Date.now() - verdict.at > ASK_FOR) { verdict = null; broadcast('rate', { id: null }); }
       if (JSON.stringify(everything) !== JSON.stringify(streams)) { streams = everything; broadcast('streams', streams); }
+      hass.sessions(sessions, streams);
       if (mine.length) next = 5000;
     } catch (e) { /* Plex unreachable: keep the last known state */ }
     const tv = ha.states[config.entities.appleTv]?.state;
@@ -222,7 +226,7 @@ get(/^\/api\/state$/, () => ({
   build: config.build,
   idleMinutes: config.idleMinutes,
   sleep: sleep.get(),
-  preroll: { enabled: Boolean(config.preroll.url), seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
+  preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
@@ -311,7 +315,8 @@ post(/^\/api\/vote\/end$/, () => { const w = vote.winner(); vote.clear(); broadc
 
 // Voice, through Home Assistant's own assistant (custom sentences in ha/theater.yaml call this):
 // { intent: "play", query: "avatar" } or { intent: "scene", name: "movie_time" }.
-post(/^\/api\/voice$/, async (m, q, body) => {
+post(/^\/api\/voice$/, (m, q, body) => voiceIntent(body));
+async function voiceIntent(body = {}) {
   const intent = String(body.intent || '').toLowerCase();
   if (intent === 'scene') {
     const name = String(body.name || '').toLowerCase().replace(/[^a-z_]/g, '');
@@ -345,7 +350,7 @@ post(/^\/api\/voice$/, async (m, q, body) => {
   const target = best.type === 'show' ? (await plex.item(best.id)).next || best : best;
   if (!body.dryRun) await runAction(ha, { action: 'play', ratingKey: target.id, type: target.type, offset: target.viewOffset || 0 });
   return { ok: true, spoken: best.type === 'show' ? `${best.title}, ${target.title || 'next episode'}` : best.title, id: target.id };
-});
+}
 
 // Idle screen: Plex's own titles (in progress, just added), with two boards woven in - the
 // holiday shelf while its season lasts, and Coming soon from the request queue.
@@ -473,9 +478,10 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, build: config.build.version })}\n\n`);
       clients.add(res);
+      hass.panelsChanged();
       if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll
       const ping = setInterval(() => res.write(': ping\n\n'), 25000);
-      req.on('close', () => { clearInterval(ping); clients.delete(res); });
+      req.on('close', () => { clearInterval(ping); clients.delete(res); hass.panelsChanged(); });
       return;
     }
 
@@ -561,6 +567,8 @@ const server = createServer(async (req, res) => {
 
 await initImageCache();
 sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
+hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
+hass.apply();
 ha.start();
 pollSessions();
 if (config.plex.url) { plex.warmMovies(); taste.warm(); seasonal.warm(); }
