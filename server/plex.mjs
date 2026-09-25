@@ -629,11 +629,20 @@ async function plexTv(url, { method = 'GET', token = config.plex.accountToken, b
 // the rest carries its TMDB id for a request. Ten minutes between looks.
 export const watchlist = () => cached('watchlist', 10 * 60e3, async () => {
   if (!config.plex.accountToken) return null;
-  const d = await plexTv('https://discover.provider.plex.tv/library/sections/watchlist/all?includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=200');
+  // plex.tv hands the watchlist out twenty at a time and refuses a page size, so walk it by
+  // start offset until the container says there is no more (capped at ten pages).
+  const all = [];
+  for (let start = 0, pages = 0; pages < 10; pages += 1) {
+    const d = await plexTv(`https://discover.provider.plex.tv/library/sections/watchlist/all?includeGuids=1&X-Plex-Container-Start=${start}`);
+    const page = d.MediaContainer?.Metadata || [];
+    all.push(...page);
+    start += page.length;
+    if (!page.length || start >= (d.MediaContainer?.totalSize || 0)) break;
+  }
   const rows = await movieIndex().catch(() => []);
   const owned = new Map();
   for (const r of rows) if (r.it.tmdb && !owned.has(r.it.tmdb)) owned.set(r.it.tmdb, r.it);
-  return (d.MediaContainer?.Metadata || []).map((m) => {
+  return all.map((m) => {
     const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
     const tmdbId = tmdb ? Number(tmdb.slice(7)) : null;
     const have = m.type === 'movie' && tmdbId ? owned.get(tmdbId) : null;

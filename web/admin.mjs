@@ -218,7 +218,7 @@ function Field({ f, value, base, entities, cleared, onClear, onChange }) {
   const note = f.help && html`<small>${f.help}</small>`;
   const label = html`<span class="lbl">${f.label}<code>${f.key}</code></span>`;
 
-  if (f.type === 'plexlogin') return html`<div class="field">${label}<${PlexLogin} saved=${Boolean(value)} onChange=${onChange} onClear=${onClear} cleared=${cleared} />${note}</div>`;
+  if (f.type === 'plexlogin') return html`<div class="field">${label}<${PlexLogin} saved=${Boolean(base.saved || base.container)} onClear=${onClear} cleared=${cleared} />${note}</div>`;
   if (f.type === 'secret') {
     const has = base.saved ? 'saved here' : base.container ? 'set on the container' : null;
     return html`<div class="field"><label for=${id}>${label}</label>
