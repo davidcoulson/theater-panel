@@ -41,7 +41,7 @@ export function Showing() {
     ${items.map((m, k) => { const art = m.art || m.items?.find((x) => x.art)?.art; return html`<div class=${`sh-art ${k === i % items.length ? 'on' : ''}`} key=${m.id}
       style=${art ? `background-image:url('${art}')` : ''}></div>`; })}
     <div class="sh-veil"></div>
-    <div class="sh-clock">${now.hm}<small>${now.ampm}</small>${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span>`}</div>
+    <div class="sh-clock">${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span><span class="dot-sep" aria-hidden="true"></span>`}${now.hm}<small>${now.ampm}</small></div>
     ${creature && !board && html`<div class="creature-card"><span class="c1">Tonight's</span><span class="c2">Creature Feature</span><span class="c3">presented in Terror-Vision</span></div>`}
     ${board ? html`<${Board} it=${it} key=${it.id} />` : html`<div class="sh-body" key=${it.id}>
       ${it.poster && html`<img class="sh-poster" src=${it.poster} alt="" />`}

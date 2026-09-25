@@ -476,7 +476,7 @@ canvas.fx { display: block; width: 100%; }
 .sh-veil { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6,4,8,.92) 0 44%, rgba(6,4,8,.5) 70%, rgba(6,4,8,.75) 100%); }
 .sh-clock { position: absolute; top: 54px; right: 64px; font-family: var(--mono); font-size: 44px; font-weight: 600; color: #C7B39E; display: flex; align-items: baseline; gap: 10px; }
 .sh-clock small { font-size: 20px; }
-.sh-clock .t { font-size: 24px; color: #8C7866; }
+.sh-clock .t { font-size: inherit; font-weight: inherit; color: inherit; }
 .sh-body { position: absolute; left: 90px; right: 90px; bottom: 130px; display: flex; gap: 48px; align-items: flex-end; animation: sh-in 1.2s ease-out; }
 @keyframes sh-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 .sh-poster { width: 300px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(244,236,224,.12); flex-shrink: 0; }
@@ -715,3 +715,5 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .tasterow.seasonal { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .tasterow.seasonal.halloween .foryou-head h2 { color: #3F6B2E; }
 .tasterow.seasonal.christmas .foryou-head h2 { color: #9B2A22; }
+/* "2 streams · 8:22 PM": the count before the time, a small dot between them */
+.sh-clock .dot-sep { align-self: center; width: 8px; height: 8px; border-radius: 4px; background: #C7B39E; margin: 0 10px; opacity: .7; }

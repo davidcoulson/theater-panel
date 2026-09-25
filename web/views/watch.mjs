@@ -40,7 +40,8 @@ export function Watch() {
   const networks = useNetworks();
   const gridRef = useRef();
 
-  const libId = lib || libs?.find((l) => l.title === 'Movies')?.id || libs?.[0]?.id;
+  // For you is where Watch opens. "?lib=library" (Browse library on Home) opens Movies instead.
+  const libId = lib === 'library' ? libs?.find((l) => l.title === 'Movies')?.id || libs?.[0]?.id : lib || 'foryou';
   const byNetwork = libId === 'networks';
   const forYou = libId === 'foryou';
   const libType = byNetwork ? null : libs?.find((l) => l.id === libId)?.type;
