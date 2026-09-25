@@ -15,6 +15,7 @@ import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
+import * as seasonal from './seasonal.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
@@ -332,17 +333,28 @@ post(/^\/api\/voice$/, async (m, q, body) => {
   return { ok: true, spoken: best.type === 'show' ? `${best.title}, ${target.title || 'next episode'}` : best.title, id: target.id };
 });
 
-// Idle screen: Plex's own titles, then a few coming from Seerr.
-get(/^\/api\/showing$/, async () => {
-  const [plexItems, soon] = await Promise.all([
+// Idle screen: Plex's own titles (in progress, just added), with two boards woven in - the
+// holiday shelf while its season lasts, and Coming soon from the request queue.
+// "?season=halloween" or "christmas" shows a shelf out of season (for a look, or a screenshot).
+const seasonParam = (q) => (['halloween', 'christmas'].includes(q.get('season')) ? q.get('season') : undefined);
+get(/^\/api\/showing$/, async (m, q) => {
+  const [plexItems, soon, shelf] = await Promise.all([
     config.plex.url ? plex.showing(10).catch(() => []) : [],
-    config.seerr.url ? seerr.requests(8).then((r) => r.results.filter((x) => x.label !== 'Available').slice(0, 4)).catch(() => []) : [],
+    config.seerr.url ? seasonal.coming(6).catch(() => []) : [],
+    config.plex.url ? seasonal.shelf(seasonParam(q)).catch(() => null) : null,
   ]);
-  return [
-    ...plexItems,
-    ...soon.map((r) => ({ id: `soon-${r.id}`, kind: 'soon', label: r.label === 'Downloading' ? 'Downloading now' : 'Requested', title: r.title, year: r.year, poster: r.poster, art: null })),
-  ];
+  const boards = [];
+  if (shelf?.items?.length >= 4) boards.push({ id: `board-${shelf.id}`, kind: 'board', board: 'seasonal', season: shelf.id, title: shelf.title, kicker: shelf.kicker, items: shelf.items.slice(0, 8) });
+  if (soon.length >= 2) boards.push({ id: 'board-coming', kind: 'board', board: 'coming', title: 'Coming soon', kicker: 'Asked for, and on its way', items: soon });
+  // a board every few titles, so the idle screen alternates between them and the posters
+  const out = [];
+  plexItems.forEach((it, i) => { out.push(it); if (i % 3 === 2 && boards.length) out.push(boards.shift()); });
+  return [...out, ...boards];
 });
+
+// The holiday shelf on its own (the For you tab), and Coming soon.
+get(/^\/api\/seasonal$/, (m, q) => (config.plex.url ? seasonal.shelf(seasonParam(q)) : null));
+get(/^\/api\/coming$/, async () => ({ items: config.seerr.url ? await seasonal.coming(8) : [] }));
 
 get(/^\/api\/plex\/search$/, (m, q) => plex.search(q.get('q') || ''));
 

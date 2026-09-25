@@ -693,3 +693,25 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .rate .star:active { transform: scale(.92); }
 .rate .tally { font-size: 15px; color: var(--gold); letter-spacing: .5px; }
 .rate .skip { align-self: flex-start; height: 40px; padding: 0 16px; border: 1px solid rgba(244,236,224,.25); border-radius: 20px; background: transparent; color: var(--on-choc2); font-size: 16px; }
+
+/* ---------- idle screen boards: the holiday shelf and Coming soon ---------- */
+.sh-board { position: absolute; left: 90px; right: 90px; bottom: 116px; z-index: 2; display: flex; flex-direction: column; gap: 26px; animation: sh-in 1.2s ease-out; }
+.sh-board-head .k { font-size: 17px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+.sh-board-head h1 { margin: 0; }
+.sh-board-row { display: flex; gap: 22px; }
+.sh-board-row figure { margin: 0; width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+.sh-board-row img, .sh-board-row .ph { width: 190px; height: 285px; object-fit: cover; border-radius: 12px; background: #1B1512; box-shadow: 0 0 0 1px rgba(244,236,224,.12), 0 16px 34px rgba(0,0,0,.55); }
+.sh-board-row .ph { display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 16px; color: #C7B39E; }
+.sh-board-row figcaption { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sh-board-row figcaption b { font-size: 18px; font-weight: 600; color: #F4ECE0; }
+.sh-board-row figcaption span { font-family: var(--mono); font-size: 15px; color: #C7B39E; }
+.sh-board.coming figcaption span { color: var(--gold); }
+/* Halloween Scares in the creature feature's green; Christmas Movies in red and pine */
+.sh-board.halloween h1 { color: #9BE07A; text-shadow: 3px 3px 0 #2A0B33, 0 0 34px rgba(120,220,110,.4); }
+.sh-board.halloween .k { color: #E8731C; }
+.sh-board.halloween img { box-shadow: 0 0 0 2px rgba(150,220,130,.35), 0 16px 34px rgba(0,0,0,.55); }
+.sh-board.christmas h1 { color: #F7EEDD; text-shadow: 3px 3px 0 #7A1A16, 0 0 34px rgba(200,50,43,.45); }
+.sh-board.christmas .k { color: #7FB77E; }
+.tasterow.seasonal { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.tasterow.seasonal.halloween .foryou-head h2 { color: #3F6B2E; }
+.tasterow.seasonal.christmas .foryou-head h2 { color: #9B2A22; }

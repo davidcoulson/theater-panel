@@ -118,11 +118,23 @@ export function Watch() {
 // to Request with its name already typed in.
 function ForYou({ onPlex }) {
   const [data, err] = useLoad(() => get('/api/taste'), []);
+  // The holiday shelf leads the tab while its season lasts ("?season=" tries one out of season).
+  const [season] = useLoad(() => get(`/api/seasonal${route.params.season ? `?season=${encodeURIComponent(route.params.season)}` : ''}`).catch(() => null), []);
   const rows = data?.rows || [];
   if (err) return html`<div class="scroll foryou"><div class="empty">${err.message}</div></div>`;
   if (!data) return html`<div class="scroll foryou"><div class="empty">Reading what you have been watching…</div></div>`;
   if (!rows.length) return html`<div class="scroll foryou"><div class="empty">Nothing to go on yet. Watch something and come back.</div></div>`;
   return html`<div class="scroll foryou">
+    ${season?.items?.length ? html`<section class=${`tasterow seasonal ${season.id}`}>
+      <div class="foryou-head"><h2>${season.title}</h2><span>${season.kicker} · ${season.total} films</span></div>
+      <div class="strip hscroll">
+        ${season.items.slice(0, 24).map((r) => html`<button type="button" class="poster-btn" key=${r.id} onClick=${() => onPlex(String(r.id))}>
+          <${Poster} src=${r.poster} title=${r.title}>${!r.watched && html`<span class="corner" title="Unwatched"></span>`}<//>
+          <span class="t ellipsis">${r.title}</span>
+          <span class="y">${r.year || ''}${r.rating ? ` · ${Number(r.rating).toFixed(1)}★` : ''}</span>
+        </button>`)}
+      </div>
+    </section>` : null}
     <div class="foryou-head"><h2>You'll love this</h2><span>Picked from the last few things the house finished</span></div>
     ${rows.map((row) => html`<section class="tasterow" key=${row.seed.id}>
       <div class="seed">
