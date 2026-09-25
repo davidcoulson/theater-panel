@@ -4,7 +4,11 @@
 //   Halloween Scares   all of October
 //   Christmas Movies   Thanksgiving through New Year's Eve
 //
-// Both start from Kometa's seasonal collections in Plex ("Halloween.", "Christmas.") - owned and
+// With a Trakt client ID on the settings page, each shelf is a curated public Trakt list (one
+// per season, default hdlists') cut down to the films you own, in the list's order - the
+// honorary Christmas films added if the list forgot them. Without one, or if Trakt is down:
+//
+// both start from Kometa's seasonal collections in Plex ("Halloween.", "Christmas.") - owned and
 // playable - and keep only what belongs on the shelf. Kometa's lists are broad: its Halloween
 // collection has Twilight and Fantastic Beasts in it for their vampires and wizards. So a
 // Halloween Scare has to be filed as Horror, or be about Halloween itself (trick-or-treating, a
@@ -13,8 +17,10 @@
 // falls back to films you own that TMDB tags with the holiday, through the same test (TMDB's
 // "christmas" tag alone leads with the Harry Potter films, for their Christmas scenes).
 
+import { config } from './config.mjs';
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
+import * as trakt from './trakt.mjs';
 import { thanksgiving } from './accents.mjs';
 
 const HALLOWEEN = /hallowe'?en|trick.or.treat|haunt|ghost|witch|pumpkin|spook|jack-o|all hallows/i;
@@ -57,8 +63,18 @@ export async function shelf(season = seasonNow()) {
   const hit = cache.get(season);
   if (hit && hit.day === day && Date.now() - hit.at < 6 * 3600e3) return hit.v;
 
-  let items = (await plex.collectionItems(s.collection).catch(() => [])).filter(s.keep);
+  let items = [];
   let source = 'kometa';
+  if (config.trakt.clientId) {
+    try {
+      items = await plex.byTmdb(await trakt.listTmdbIds(config.trakt.lists[season]));
+      source = 'trakt';
+    } catch (e) { console.warn('[seasonal] trakt:', e.message); }
+  }
+  if (items.length < 8) {
+    items = (await plex.collectionItems(s.collection).catch(() => [])).filter(s.keep);
+    source = 'kometa';
+  }
   if (items.length < 8) {
     const tagged = await seerr.byKeyword(s.keyword).catch(() => []);
     const owned = tagged.filter((r) => r.plexKey && s.keep(r));
@@ -71,7 +87,8 @@ export async function shelf(season = seasonNow()) {
     if (hit) items.push(hit);
   }
   const seed = [...day].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const shuffled = items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))
+  // A Trakt list is ranked, so it keeps its order; the fallbacks reshuffle daily, unwatched first.
+  const shuffled = source === 'trakt' ? items : items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))
     .sort((a, b) => (a.it.watched - b.it.watched) || (a.k - b.k)).map((x) => x.it);
   const v = { id: season, title: s.title, kicker: s.kicker, source, total: items.length, items: shuffled.slice(0, 40) };
   cache.set(season, { at: Date.now(), day, v });
