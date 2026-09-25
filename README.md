@@ -174,6 +174,17 @@ with a Queue button if the library has it and a Request button if it does not.
 from a year of history: when the room fills up, films or series, and the titles that keep coming
 back.
 
+## The soundbar
+
+With a JBL bar on Home Assistant through the JBL integration, one name on the settings page
+(the entity stem, `jbl_bar_1300x` for a bar named "JBL Bar 1300X") wires it in. Volume and mute
+on Showtime, the guest remote and the lobby go to the bar instead of the Apple TV, Showtime shows
+the level and gets a **Late night** button (Night mode and PureVoice together), and Movie time
+puts the bar in Smart mode with Night mode off. The **Sound** chip opens the mixer: volume, the
+listening modes, the EQ presets and the seven-band graphic EQ plus the Custom preset's three
+bands, the Bass, Rear and Atmos level steps, both rear speakers' battery and dock status, and a
+Calibrate button with a keep-quiet countdown. A rear left off its dock turns the chip red.
+
 ## Cinema mode
 
 The room is dark but nothing is playing - the break, the credits, someone deciding what's next -
