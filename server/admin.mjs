@@ -40,6 +40,9 @@ export const FIELDS = [
   { group: 'Mystery box', key: 'MYSTERY_FAMILY', label: 'Family night: G and PG only', type: 'bool', default: false },
   { group: 'Mystery box', key: 'MYSTERY_QUALITY', label: 'Picture quality', type: 'select', options: [['any', 'Any'], ['4k', '4K only'], ['hdr', 'HDR only']], help: 'A showcase draw: only films the projector can show off.' },
   { group: 'Mystery box', key: 'MYSTERY_SKIP_DISLIKED', label: 'Skip what the house rated two stars or under', type: 'bool', default: true, help: 'The "How was it?" card\'s ratings. Off, a panned film can still be drawn, though its genres already count against it.' },
+  { group: 'Mystery box', key: 'MYSTERY_RATED_ONLY', label: 'Only films with a rating', type: 'bool', default: true, help: 'G, PG, PG-13, R, NC-17 or a TV rating. Festival and straight-to-streaming titles that never got one are left out.' },
+  { group: 'Mystery box', key: 'MYSTERY_MAINSTREAM_ONLY', label: 'Only mainstream studios', type: 'bool', default: true, help: 'The majors and their usual partners (Disney, Warner, Universal, Paramount, Sony, Lionsgate, A24, Netflix, Legendary, Blumhouse...). Keeps out TV-movie houses, festival producers and fan compilations, which Plex often rates highly on a handful of votes.' },
+  { group: 'Mystery box', key: 'MYSTERY_STUDIOS_EXTRA', label: 'Also count as mainstream', type: 'list', help: 'Studio names as Plex shows them on a film\'s page, for anything the built-in list misses.' },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
   { group: 'Seerr', key: 'SEERR_PUBLIC_URL', label: 'Address for phones', type: 'text', placeholder: 'https://seerr.bauercoulson.com', help: "What the Scan to request QR opens on a guest's phone. The URL above is how the panel reaches Seerr on your network; this is how a phone reaches it from anywhere. Blank uses the URL above." },

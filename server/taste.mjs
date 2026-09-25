@@ -85,15 +85,41 @@ export const forget = () => { seedCache = { at: 0, key: '', list: null }; rowCac
 // round trips to Plex.
 export const warm = () => seeds(8).then(() => rows()).catch((e) => console.warn('[taste] warm:', e.message));
 
+// Studios whose films count as mainstream for the Mystery box, matched as a substring of the
+// studio Plex records (the first production company, so partners like Legendary and Thunder Road
+// are here beside the majors). Anything else - a Hallmark house, a festival film's producer, a
+// fan compilation - is out while "mainstream only" is on; the admin page can add names.
+export const MAINSTREAM_STUDIOS = [
+  'disney', 'pixar', 'marvel', 'lucasfilm', '20th century', 'searchlight', 'fox',
+  'warner', 'new line', 'dc studios', 'dc films', 'hbo', 'castle rock', 'village roadshow',
+  'universal', 'focus features', 'dreamworks', 'illumination', 'amblin', 'working title', 'blumhouse',
+  'paramount', 'nickelodeon', 'skydance', 'bad robot', 'platinum dunes',
+  'columbia', 'sony', 'tristar', 'screen gems', 'ghost corps', 'original film',
+  'lionsgate', 'lions gate', 'summit', 'thunder road', 'millennium', 'nu image',
+  'mgm', 'metro-goldwyn', 'united artists', 'orion', 'eon productions', 'annapurna',
+  'netflix', 'amazon', 'apple', 'a24', 'neon', 'legendary', 'miramax', 'dimension', 'stx', 'open road',
+  'studiocanal', 'canal+', 'gaumont', 'pathé', 'pathe', 'eone', 'entertainment one', 'bbc film', 'film4',
+  'plan b', 'scott free', 'syncopy', 'monkeypaw', '87north', 'atomic monster', 'temple hill', 'imagine entertainment',
+  'jerry bruckheimer', 'happy madison', 'point grey', 'regency', 'chernin', 'lightstorm', 'toho', 'studio ghibli', 'laika', 'aardman',
+];
+const mainstream = (studio, extra) => {
+  const s = (studio || '').toLowerCase();
+  return Boolean(s) && [...MAINSTREAM_STUDIOS, ...extra].some((m) => s.includes(m));
+};
+const RATED = /^(G|PG|PG-13|R|NC-17|TV-)/i;
+
 // The Mystery box: an unwatched film inside the admin page's limits (by default the last ten
-// years, rated 7 or better), weighted towards the genres the house has been watching, so it is a
-// surprise but not a random one. Returns the pick and the reason, and plays nothing by itself -
-// the panel counts down first so it can be waved off.
+// years, rated 7 or better, carrying a rating, from a mainstream studio), weighted towards the
+// genres the house has been watching, so it is a surprise but not a random one. Returns the
+// pick and the reason, and plays nothing by itself - the panel counts down first so it can be
+// waved off.
 export async function mystery({ filters = [], exclude = [] } = {}) {
   const rules = config.mystery;
   const want = ['unwatched', 'recent', 'rated', rules.family ? 'family' : '', rules.quality === 'any' ? '' : rules.quality, ...filters].filter(Boolean);
+  // The merged index answers from memory, so the whole shuffled pile is cheap to ask for; the
+  // rules below then thin it, and the first few hundred that survive are as random as any.
   const [pool, list] = await Promise.all([
-    plex.listLibrary(plex.MERGED, { filters: [...new Set(want)], sort: 'random', size: 200 }),
+    plex.listLibrary(plex.MERGED, { filters: [...new Set(want)], sort: 'random', size: 5000 }),
     seeds(8).catch(() => []),
   ]);
   const skip = new Set(exclude.map(String));
@@ -103,12 +129,15 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     .filter((i) => !(i.genres || []).some((g) => rules.excludeGenres.includes(g.toLowerCase())))
     .filter((i) => !rules.settleDays || !i.addedAt || i.addedAt < settledBefore)
     .filter((i) => !rules.excludeLibraries.includes((i.library || '').toLowerCase()))
-    .filter((i) => !rules.skipDisliked || i.userRating == null || i.userRating > 4);
+    .filter((i) => !rules.skipDisliked || i.userRating == null || i.userRating > 4)
+    .filter((i) => !rules.ratedOnly || RATED.test(i.contentRating || ''))
+    .filter((i) => !rules.mainstreamOnly || mainstream(i.studio, rules.studiosExtra))
+    .slice(0, 300);
   if (!items.length) {
     const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
       rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', rules.quality === 'any' ? '' : `in ${rules.quality.toUpperCase()}`,
       rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : '', rules.excludeLibraries.length ? `not in ${rules.excludeLibraries.join(', ')}` : '',
-      rules.settleDays ? `older than ${rules.settleDays} days here` : ''].filter(Boolean).join(', ');
+      rules.settleDays ? `older than ${rules.settleDays} days here` : '', rules.ratedOnly ? 'with a rating' : '', rules.mainstreamOnly ? 'from a mainstream studio' : ''].filter(Boolean).join(', ');
     throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
   }
 
