@@ -91,17 +91,24 @@ export const warm = () => seeds(8).then(() => rows()).catch((e) => console.warn(
 // the panel counts down first so it can be waved off.
 export async function mystery({ filters = [], exclude = [] } = {}) {
   const rules = config.mystery;
+  const want = ['unwatched', 'recent', 'rated', rules.family ? 'family' : '', rules.quality === 'any' ? '' : rules.quality, ...filters].filter(Boolean);
   const [pool, list] = await Promise.all([
-    plex.listLibrary(plex.MERGED, { filters: [...new Set(['unwatched', 'recent', 'rated', ...filters])], sort: 'random', size: 200 }),
+    plex.listLibrary(plex.MERGED, { filters: [...new Set(want)], sort: 'random', size: 200 }),
     seeds(8).catch(() => []),
   ]);
   const skip = new Set(exclude.map(String));
+  const settledBefore = Date.now() / 1000 - rules.settleDays * 86400;
   const items = pool.items.filter((i) => !skip.has(String(i.id)))
     .filter((i) => !rules.maxMinutes || !i.duration || i.duration <= rules.maxMinutes * 60000)
-    .filter((i) => !(i.genres || []).some((g) => rules.excludeGenres.includes(g.toLowerCase())));
+    .filter((i) => !(i.genres || []).some((g) => rules.excludeGenres.includes(g.toLowerCase())))
+    .filter((i) => !rules.settleDays || !i.addedAt || i.addedAt < settledBefore)
+    .filter((i) => !rules.excludeLibraries.includes((i.library || '').toLowerCase()))
+    .filter((i) => !rules.skipDisliked || i.userRating == null || i.userRating > 4);
   if (!items.length) {
     const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
-      rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : ''].filter(Boolean).join(', ');
+      rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', rules.quality === 'any' ? '' : `in ${rules.quality.toUpperCase()}`,
+      rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : '', rules.excludeLibraries.length ? `not in ${rules.excludeLibraries.join(', ')}` : '',
+      rules.settleDays ? `older than ${rules.settleDays} days here` : ''].filter(Boolean).join(', ');
     throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
   }
 

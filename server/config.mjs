@@ -188,6 +188,16 @@ function build(env) {
     minRating: Math.max(0, Math.min(10, Number(env.MYSTERY_MIN_RATING ?? 7) || 0)),
     maxMinutes: Math.max(0, Math.min(1000, Number(env.MYSTERY_MAX_MINUTES) || 0)),
     excludeGenres: list(env.MYSTERY_EXCLUDE_GENRES, []).map((g) => g.toLowerCase()),
+    // Let new arrivals settle: nothing added in the last so many days (0 = draw straight away).
+    settleDays: Math.max(0, Math.min(365, Number(env.MYSTERY_SETTLE_DAYS ?? 2) || 0)),
+    // Family night: G and PG (and the TV equivalents) only.
+    family: env.MYSTERY_FAMILY === 'true',
+    // 'any', '4k' or 'hdr': a showcase draw.
+    quality: ['4k', 'hdr'].includes(env.MYSTERY_QUALITY) ? env.MYSTERY_QUALITY : 'any',
+    // Plex library names the box never draws from (a kids' or a documentary library).
+    excludeLibraries: list(env.MYSTERY_EXCLUDE_LIBRARIES, []).map((l) => l.toLowerCase()),
+    // Never a title the house rated two stars or under on the "How was it?" card.
+    skipDisliked: env.MYSTERY_SKIP_DISLIKED !== 'false',
   },
   // Intermission: the snack bar screen on the panel, and a corny little march on the theater
   // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.

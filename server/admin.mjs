@@ -35,6 +35,11 @@ export const FIELDS = [
   { group: 'Mystery box', key: 'MYSTERY_MIN_RATING', label: 'Lowest rating', type: 'text', placeholder: '7', help: "Plex's audience rating, 0-10. A film with no rating is left out. 0 takes anything." },
   { group: 'Mystery box', key: 'MYSTERY_MAX_MINUTES', label: 'Longest film (minutes)', type: 'text', help: 'Blank for any length.' },
   { group: 'Mystery box', key: 'MYSTERY_EXCLUDE_GENRES', label: 'Never these genres', type: 'list', help: 'Genres as Plex names them: Horror, Documentary, Animation... Blank excludes nothing.' },
+  { group: 'Mystery box', key: 'MYSTERY_EXCLUDE_LIBRARIES', label: 'Never these libraries', type: 'libraries', help: "A kids' or a documentary library the box should leave alone. Blank draws from every movie library." },
+  { group: 'Mystery box', key: 'MYSTERY_SETTLE_DAYS', label: 'Let new arrivals settle (days)', type: 'text', placeholder: '2', help: 'Nothing added to Plex more recently than this, so a half-finished download or an unmatched title never comes up. 0 draws straight away.' },
+  { group: 'Mystery box', key: 'MYSTERY_FAMILY', label: 'Family night: G and PG only', type: 'bool', default: false },
+  { group: 'Mystery box', key: 'MYSTERY_QUALITY', label: 'Picture quality', type: 'select', options: [['any', 'Any'], ['4k', '4K only'], ['hdr', 'HDR only']], help: 'A showcase draw: only films the projector can show off.' },
+  { group: 'Mystery box', key: 'MYSTERY_SKIP_DISLIKED', label: 'Skip what the house rated two stars or under', type: 'bool', default: true, help: 'The "How was it?" card\'s ratings. Off, a panned film can still be drawn, though its genres already count against it.' },
 
   { group: 'Seerr', key: 'SEERR_URL', label: 'URL', type: 'text' },
   { group: 'Seerr', key: 'SEERR_PUBLIC_URL', label: 'Address for phones', type: 'text', placeholder: 'https://seerr.bauercoulson.com', help: "What the Scan to request QR opens on a guest's phone. The URL above is how the panel reaches Seerr on your network; this is how a phone reaches it from anywhere. Blank uses the URL above." },
