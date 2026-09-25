@@ -198,6 +198,12 @@ function build(env) {
     excludeLibraries: list(env.MYSTERY_EXCLUDE_LIBRARIES, []).map((l) => l.toLowerCase()),
     // Never a title the house rated two stars or under on the "How was it?" card.
     skipDisliked: env.MYSTERY_SKIP_DISLIKED !== 'false',
+    // Only films that carry a rating (G, PG, PG-13, R, NC-17 or a TV rating): festival and
+    // straight-to-streaming titles that never got one are out.
+    ratedOnly: env.MYSTERY_RATED_ONLY !== 'false',
+    // Only films from a mainstream studio (taste.mjs has the list), plus any named here.
+    mainstreamOnly: env.MYSTERY_MAINSTREAM_ONLY !== 'false',
+    studiosExtra: list(env.MYSTERY_STUDIOS_EXTRA, []).map((s) => s.toLowerCase()),
   },
   // Intermission: the snack bar screen on the panel, and a corny little march on the theater
   // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.

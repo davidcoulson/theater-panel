@@ -62,6 +62,7 @@ export function mapItem(m, { poster = [300, 450] } = {}) {
     leafCount: m.leafCount, viewedLeafCount: m.viewedLeafCount,
     contentRating: m.contentRating,
     rating: m.audienceRating ?? m.rating,
+    studio: m.studio,
     genres: tags(m.Genre, 3),
     addedAt: m.addedAt,
     is4k: media?.videoResolution === '4k',
