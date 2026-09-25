@@ -11,7 +11,8 @@ import { route, currentAccent } from '../app.mjs';
 const HOLD = 14000;   // ms per title
 
 export function Showing() {
-  const [items] = useLoad(() => get('/api/showing').catch(() => []), []);
+  // "?season=halloween" / "christmas" shows the holiday board out of season.
+  const [items] = useLoad(() => get(`/api/showing${route.params.season ? `?season=${encodeURIComponent(route.params.season)}` : ''}`).catch(() => []), []);
   const [i, setI] = useState(0);
   const [now, setNow] = useState(clock());
   const streams = useStreams();
@@ -32,16 +33,17 @@ export function Showing() {
     <div class="sh-empty">Nothing to show yet</div></main>`;
 
   const it = items[i % items.length];
+  const board = it.kind === 'board';
   // Creature feature: at Halloween the lobby board turns into a drive-in B-movie card, green
   // and flickering, with the titles announced the way a 1958 double bill would have been.
   const creature = currentAccent()?.id === 'halloween';
   return html`<main class=${`showing ${creature ? 'creature' : ''}`}>
-    ${items.map((m, k) => html`<div class=${`sh-art ${k === i % items.length ? 'on' : ''}`} key=${m.id}
-      style=${m.art ? `background-image:url('${m.art}')` : ''}></div>`)}
+    ${items.map((m, k) => { const art = m.art || m.items?.find((x) => x.art)?.art; return html`<div class=${`sh-art ${k === i % items.length ? 'on' : ''}`} key=${m.id}
+      style=${art ? `background-image:url('${art}')` : ''}></div>`; })}
     <div class="sh-veil"></div>
     <div class="sh-clock">${now.hm}<small>${now.ampm}</small>${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span>`}</div>
-    ${creature && html`<div class="creature-card"><span class="c1">Tonight's</span><span class="c2">Creature Feature</span><span class="c3">presented in Terror-Vision</span></div>`}
-    <div class="sh-body" key=${it.id}>
+    ${creature && !board && html`<div class="creature-card"><span class="c1">Tonight's</span><span class="c2">Creature Feature</span><span class="c3">presented in Terror-Vision</span></div>`}
+    ${board ? html`<${Board} it=${it} key=${it.id} />` : html`<div class="sh-body" key=${it.id}>
       ${it.poster && html`<img class="sh-poster" src=${it.poster} alt="" />`}
       <div class="sh-text">
         <div class="sh-label"><span class=${`dot ${it.kind === 'soon' ? '' : 'on'}`}></span>${it.label}</div>
@@ -50,8 +52,22 @@ export function Showing() {
         ${it.tagline || it.summary ? html`<p class="clamp3">${it.tagline || it.summary}</p>` : null}
         ${it.badges?.length ? html`<div class="sh-badges">${it.badges.map((b) => html`<span class="qb big">${b}</span>`)}</div>` : null}
       </div>
-    </div>
+    </div>`}
     <div class="sh-dots">${items.map((m, k) => html`<i class=${k === i % items.length ? 'on' : ''}></i>`)}</div>
     <div class="sh-hint"><${Icon} name="film" size=${18} color="#8C7866" />Touch to wake</div>
   </main>`;
+}
+
+// A board between the posters: the holiday shelf, or Coming soon from the request queue. A row
+// of posters under a marquee title, each with its year, or when it arrives.
+function Board({ it }) {
+  return html`<div class=${`sh-board ${it.board} ${it.season || ''}`}>
+    <div class="sh-board-head"><div class="k">${it.kicker}</div><h1>${it.title}</h1></div>
+    <div class="sh-board-row">
+      ${it.items.map((p) => html`<figure key=${p.id}>
+        ${p.poster ? html`<img src=${p.poster} alt="" />` : html`<div class="ph">${p.title}</div>`}
+        <figcaption><b class="ellipsis">${p.title}</b><span>${it.board === 'coming' ? p.when : p.year || ''}</span></figcaption>
+      </figure>`)}
+    </div>
+  </div>`;
 }

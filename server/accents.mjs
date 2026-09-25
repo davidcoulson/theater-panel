@@ -33,7 +33,7 @@ export function parseBirthdays(text) {
 }
 
 // US Thanksgiving: the fourth Thursday of November.
-function thanksgiving(year) {
+export function thanksgiving(year) {
   const first = new Date(year, 10, 1).getDay();           // 0 = Sunday
   return 1 + ((4 - first + 7) % 7) + 21;                  // day of month
 }

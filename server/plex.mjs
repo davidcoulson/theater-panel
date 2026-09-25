@@ -554,3 +554,17 @@ export async function rate(ratingKey, rating) {
   staleMovies();
   return { ratingKey: String(ratingKey), rating: r };
 }
+
+// Every film in the movie libraries' collections whose title matches - Kometa's seasonal
+// collections ("Halloween.", "Christmas.") for the holiday shelves. One entry per film, as its
+// best copy, like the merged Movies tab.
+export const collectionItems = (re) => cached(`coll:${re}`, 6 * 3600e3, async () => {
+  const libs = (await sections()).filter((l) => l.type === 'movie');
+  const lists = await Promise.all(libs.map(async (l) => {
+    const c = await plex(`/library/sections/${l.id}/collections`).catch(() => null);
+    const hits = (c?.Metadata || []).filter((m) => re.test(m.title));
+    const kids = await Promise.all(hits.map((h) => plex(`/library/collections/${h.ratingKey}/children`).then((r) => r.Metadata || []).catch(() => [])));
+    return kids.flat();
+  }));
+  return bestCopies(lists.flat().filter((m) => m.type === 'movie')).map((m) => mapItem(m));
+});

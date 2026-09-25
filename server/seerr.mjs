@@ -192,8 +192,10 @@ export async function requests(take = 8) {
       id: r.id,
       title: info?.title || `TMDB ${m.tmdbId}`,
       year: info?.year,
+      releaseDate: info?.releaseDate || null,
       mediaType: m.mediaType || r.type,
       poster: info?.poster,
+      backdrop: info?.backdrop || null,
       label,
       progress,
       eta: dl?.estimatedCompletionTime || null,
@@ -207,4 +209,17 @@ export async function requests(take = 8) {
 
 export async function counts() {
   return seerr('/request/count');
+}
+
+// TMDB's keyword discovery through Seerr, a few pages deep: the fallback for a holiday shelf when
+// Kometa has not built that season's collection yet.
+export async function byKeyword(keywordId, pages = 5) {
+  const out = [];
+  for (let page = 1; page <= pages; page++) {
+    const d = await seerr('/discover/movies', { params: { keywords: String(keywordId), page } }).catch(() => null);
+    if (!d?.results?.length) break;
+    out.push(...d.results.map((r) => ({ ...mapResult({ ...r, mediaType: 'movie' }), overview: r.overview || '' })));
+    if (page >= d.totalPages) break;
+  }
+  return out;
 }
