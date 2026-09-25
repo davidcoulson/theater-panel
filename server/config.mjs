@@ -150,6 +150,8 @@ function build(env) {
     // A swell before a film is an event; before the fourth episode of a sitcom it is a delay.
     // Movies only by default; the Play button offers it either way when it is configured.
     moviesOnly: env.PREROLL_MOVIES_ONLY !== 'false',
+    // A switch in Home Assistant (and the settings page) to leave the URL set but skip the swell.
+    enabled: env.PREROLL_ENABLED !== 'false',
     // Creature feature: at Halloween the swell is replaced by the sting next to it on disk.
     // Only when the pre-roll is the panel's own sound, so a custom URL is left alone.
     spookyUrl: env.PREROLL_SPOOKY_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'preroll-spooky.mp3') : ''),
@@ -175,6 +177,19 @@ function build(env) {
   intermission: {
     url: env.INTERMISSION_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'intermission.mp3') : ''),
     minutes: Math.max(1, Math.min(60, Number(env.INTERMISSION_MINUTES || 15))),
+  },
+  // The panel as a Home Assistant device, over the ESPHome native API (server/hass.mjs). HA's
+  // ESPHome integration adds it by host and port; the key is a 32-byte base64 Noise key like an
+  // ESPHome node's, blank for a plaintext connection.
+  hass: {
+    enabled: env.ESPHOME_ENABLED !== 'false',
+    name: (env.ESPHOME_NAME || 'theater-panel').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'theater-panel',
+    friendlyName: env.ESPHOME_FRIENDLY_NAME || 'Theater panel',
+    port: Math.max(1, Math.min(65535, Number(env.ESPHOME_PORT) || 6053)),
+    noiseKey: env.ESPHOME_NOISE_KEY || '',
+    area: env.ESPHOME_AREA || 'Home Theater',
+    esphomeVersion: env.ESPHOME_VERSION || '2025.12.0',
+    mdns: env.ESPHOME_MDNS === 'true',
   },
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },

@@ -235,7 +235,7 @@ export function prerollUrl() {
 // Whether this Play should be led in by the swell: the panel's own choice when it made one,
 // otherwise the rule (configured at all, and a film rather than an episode).
 export function wantsPreroll(body = {}) {
-  if (!config.preroll.url) return false;
+  if (!config.preroll.url || !config.preroll.enabled) return false;
   if (body.preroll === true || body.preroll === false) return body.preroll;
   return !(config.preroll.moviesOnly && body.type === 'episode');
 }

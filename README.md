@@ -189,6 +189,28 @@ update whenever a new one is pushed, and the Auto Update Applications plugin can
 Publish with `npm run push`. It builds amd64 and arm64 with Docker (not OCI) manifest types and no
 attestations: Unraid's update check can't read an OCI index and reports "not available".
 
+## The panel as a Home Assistant device
+
+The panel speaks the ESPHome native API (through [esphome-device](https://github.com/davidcoulson/esphome-device)),
+so Home Assistant's own ESPHome integration adds it like a board, with no MQTT and no custom
+integration. **Settings → Devices & services → Add integration → ESPHome**, then the container's
+address and port 6053 (the settings page can change the port and set a Noise encryption key).
+
+What it exposes:
+
+- **Controls:** theme, holiday accent and accent weather (the same as `/api/look`), cinema mode
+  and pre-roll switches, the sleep timer as a select, and buttons for the scenes, the Mystery box
+  and "Surprise me" (picks and starts a film).
+- **Sensors:** now playing, playback progress, film playing, Plex streams, panels open, the
+  active accent and the build; an update entity that compares the running build with GHCR
+  (its Install button fires the `esphome.theater_panel_update_requested` event for an automation
+  to act on, since Unraid pulls the image, not the panel).
+- **Actions:** `esphome.theater_panel_play` (`rating_key`, `part_id`, `preroll`),
+  `esphome.theater_panel_navigate` (`route`), `esphome.theater_panel_voice` (`intent`, `query`)
+  and `esphome.theater_panel_scene` (`name`). These do what the `rest_command`s in
+  `ha/theater.yaml` do, without the panel key.
+- **Event:** `mystery_box_pick` fires when a pick goes up on the panels.
+
 ## Home Assistant setup
 
 1. Copy `ha/theater.yaml` to `/config/packages/` (with `packages: !include_dir_named packages`

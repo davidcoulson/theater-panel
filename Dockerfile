@@ -13,6 +13,7 @@ ENV NODE_ENV=production \
     BUILD_TIME=$BUILD_TIME
 
 COPY package.json package-lock.json ./
+COPY vendor ./vendor
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY server ./server

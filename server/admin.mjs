@@ -14,6 +14,14 @@ export const FIELDS = [
   { group: 'Home Assistant', key: 'HA_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.3.6:8123' },
   { group: 'Home Assistant', key: 'HA_TOKEN', label: 'Long-lived access token', type: 'secret' },
 
+  { group: 'Home Assistant device', key: 'ESPHOME_ENABLED', label: 'Appear in Home Assistant as a device', type: 'bool', default: true, help: 'The panel speaks the ESPHome native API, so Home Assistant\'s own ESPHome integration adds it like a board: theme, accent, cinema mode, sleep timer, scenes and the Mystery box as controls, what is playing as sensors, and play/navigate/voice as actions. Add it under Settings > Devices & services > ESPHome with this container\'s address and the port below.' },
+  { group: 'Home Assistant device', key: 'ESPHOME_PORT', label: 'Port', type: 'text', placeholder: '6053', help: 'The port Home Assistant connects to. 6053 is what ESPHome boards use; change it if something else on the host has it.' },
+  { group: 'Home Assistant device', key: 'ESPHOME_NOISE_KEY', label: 'Encryption key', type: 'secret', help: 'Optional. A 32-byte base64 key (openssl rand -base64 32), the same kind an ESPHome node uses; give Home Assistant the same key when adding the device. Blank connects in plain text, which is fine on a trusted network.' },
+  { group: 'Home Assistant device', key: 'ESPHOME_NAME', label: 'Device name', type: 'text', placeholder: 'theater-panel', help: 'Lower-case with hyphens, like an ESPHome node name; entity ids start with it. Changing it makes a new device in Home Assistant.' },
+  { group: 'Home Assistant device', key: 'ESPHOME_FRIENDLY_NAME', label: 'Shown as', type: 'text', placeholder: 'Theater panel' },
+  { group: 'Home Assistant device', key: 'ESPHOME_AREA', label: 'Suggested area', type: 'text', placeholder: 'Home Theater' },
+  { group: 'Home Assistant device', key: 'ESPHOME_MDNS', label: 'Announce over mDNS', type: 'bool', default: false, help: 'Only useful when the container shares a network segment with Home Assistant (host networking). On a bridge or macvlan network add the device by address instead.' },
+
   { group: 'Plex', key: 'PLEX_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.6.3:32400' },
   { group: 'Plex', key: 'PLEX_TOKEN', label: 'Token', type: 'secret' },
   { group: 'Plex', key: 'PLEX_LIBRARIES', label: 'Libraries, in tab order', type: 'libraries', help: 'Movie libraries are merged into one Movies tab. Blank shows every movie and TV library.' },
@@ -63,6 +71,7 @@ export const FIELDS = [
   { group: 'Display', key: 'BIRTHDAYS', label: 'Birthdays', type: 'text', placeholder: 'Michelle=01-01, David=03-16', help: 'Name=MM-DD, comma separated. On the day the birthday accent wins.' },
   { group: 'Projector apps', key: 'PREROLL_URL', label: 'Pre-roll sound URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/preroll.mp3', help: 'A deep swell on the theater speakers while the lights go down, before the film starts. Must be a URL the speaker itself can fetch; the panel serves its own at /assets/preroll.mp3 with no key needed. Blank turns pre-roll off.' },
   { group: 'Projector apps', key: 'PREROLL_SECONDS', label: 'Pre-roll length (seconds)', type: 'text', placeholder: '16', help: 'How long to wait before the film starts. The panel\'s own swell runs 17 seconds.' },
+  { group: 'Projector apps', key: 'PREROLL_ENABLED', label: 'Pre-roll on', type: 'bool', default: true, help: 'Off keeps the URL but skips the swell; the same switch is on the Home Assistant device.' },
   { group: 'Projector apps', key: 'PREROLL_MOVIES_ONLY', label: 'Pre-roll for films only', type: 'bool', default: true, help: 'A swell before a film is an event; before the fourth episode of a sitcom it is a delay. Off plays it for episodes too. Either way the Play button offers it for the title in front of you.' },
   { group: 'Projector apps', key: 'INTERMISSION_URL', label: 'Intermission march URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/intermission.mp3', help: "Plays in the room when Intermission starts, while the panel shows the snack bar. Blank uses the panel's own march when the pre-roll URL points at /assets/preroll.mp3; clear both to have no sound." },
   { group: 'Projector apps', key: 'INTERMISSION_MINUTES', label: 'Intermission length (minutes)', type: 'text', placeholder: '15', help: 'The countdown on the snack bar screen. Five more minutes on the screen adds to it.' },
