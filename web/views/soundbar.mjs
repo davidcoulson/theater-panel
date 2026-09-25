@@ -58,14 +58,14 @@ export function SoundSheet({ onClose }) {
     ${!anyReported && html`<p class="hint">Home Assistant has not reported the soundbar yet. Once the JBL integration is set up and the name on the settings page matches, everything here comes alive.</p>`}
     <div class="body">
       <section class="volume">
-        <button type="button" class="dbtn" aria-label="Volume down" onClick=${() => sound({ cmd: 'vol_down' })}><${Icon} name="volm" size=${36} w=${1.8} /></button>
+        <button type="button" class="dbtn" aria-label="Volume down" disabled=${volume.value != null && volume.value <= 0} onClick=${() => sound({ cmd: 'vol_down' })}><${Icon} name="volm" size=${36} w=${1.8} /></button>
         <div class="dial">
           <input class="range" type="range" min="0" max="100" step="1" value=${pending.volume ?? volume.value ?? 0} disabled=${volume.value == null}
             onInput=${(e) => setPending({ ...pending, volume: Number(e.target.value) })}
             onChange=${(e) => { const n = Number(e.target.value); setPending((p) => { const q = { ...p }; delete q.volume; return q; }); sound({ cmd: 'volume', value: n }); }} />
           <div class=${`n mono ${volume.value == null ? 'off' : ''}`}>${pending.volume ?? volume.value ?? '–'}</div>
         </div>
-        <button type="button" class="dbtn" aria-label="Volume up" onClick=${() => sound({ cmd: 'vol_up' })}><${Icon} name="volp" size=${36} w=${1.8} /></button>
+        <button type="button" class="dbtn" aria-label="Volume up" disabled=${volume.value != null && volume.value >= 100} onClick=${() => sound({ cmd: 'vol_up' })}><${Icon} name="volp" size=${36} w=${1.8} /></button>
         <button type="button" class="dbtn" aria-label="Mute" onClick=${() => sound({ cmd: 'mute' })}><${Icon} name="mute" size=${32} w=${1.8} /><span class="s">Mute</span></button>
       </section>
 
