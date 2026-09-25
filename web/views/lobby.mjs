@@ -255,6 +255,13 @@ function Projector() {
   const current = runningApp ? null : picked || games?.active;
   const picture = useEntity(ents.pictureMode)?.state;
   const nowPlaying = useNowPlaying(on, current, tv);
+  // The light engine's temperatures, from the projector plugin: a quiet line, and a nudge when
+  // the laser runs hot enough to be worth a break.
+  const hotAt = useStore((s) => s.projectorHotC) || 65;
+  // Home Assistant reports in the house's unit; the threshold is in °C, so compare in °C.
+  const temps = useStore((s) => (s.entities.projectorTemps || []).map((id) => s.states[id]).filter((e) => e && !['unknown', 'unavailable'].includes(e.state))
+    .map((e) => { const unit = e.attributes?.unit_of_measurement || '°C'; const value = Number(e.state); return { name: (e.attributes?.friendly_name || '').replace(/^.*?:\s*/, '').replace(/^.*NexiGo Aurora Pro /, '').replace(/ temperature$/i, ''), value, unit, celsius: unit === '°F' ? (value - 32) * 5 / 9 : value }; }));
+  const hot = temps.length > 0 && temps[0].celsius >= hotAt;
 
   async function pickSource(s) {
     setPicked(s.id);
@@ -280,6 +287,7 @@ function Projector() {
       <div style="min-width:0;flex:1"><div style="font-size:21px;font-weight:600">NexiGo Aurora Pro</div>
       <div class="muted ellipsis" style="font-size:16px">${!on ? 'Tap a source or app to start' : nowPlaying || 'Nothing playing'}</div></div>
     </div>
+    ${temps.length > 0 && html`<div class=${`temps ${hot ? 'hot' : ''}`} title="Light engine temperatures"><${Icon} name="therm" size=${18} />${temps.slice(0, 4).map((x) => `${x.name} ${Math.round(x.value)}${x.unit === '°F' ? '°F' : '°'}`).join(' · ')}${hot ? ' · running hot, worth a break' : ''}</div>`}
     <div class="label" style="margin:18px 0 8px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>

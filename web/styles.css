@@ -785,3 +785,6 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .rate .sequel { display: flex; align-items: center; gap: 14px; margin-top: 8px; font-size: 16px; }
 .rate .sequel .btn { height: 44px; padding: 0 16px; }
 .poster-btn .season-out { position: absolute; left: 8px; bottom: 8px; padding: 4px 9px; border-radius: 8px; background: var(--gold); color: #2A1C14; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+.tweaks .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.proj .temps { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.proj .temps.hot { color: #B8461E; font-weight: 600; }

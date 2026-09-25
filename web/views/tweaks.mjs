@@ -6,8 +6,8 @@ import { useState } from 'preact/hooks';
 import { html, Icon } from '../lib/ui.mjs';
 import { get, post, useLoad, toast } from '../lib/api.mjs';
 
-const ORDER = ['Mystery box', 'Display', 'Projector apps', 'Year in review'];
-const TITLES = { 'Projector apps': 'Pre-roll and intermission', 'Year in review': 'December' };
+const ORDER = ['Mystery box', 'Tonight', 'Display', 'Projector apps', 'Year in review'];
+const TITLES = { 'Projector apps': 'Pre-roll', 'Year in review': 'December' };
 
 export function TweaksSheet({ onClose }) {
   const [data, err] = useLoad(() => get('/api/tweaks'), []);
@@ -15,6 +15,9 @@ export function TweaksSheet({ onClose }) {
   const [busy, setBusy] = useState(false);
   // "Draw ten": the saved rules, run ten times, listed instead of the settings until dismissed.
   const [preview, setPreview] = useState(null);
+  // One group at a time, on tabs, so nothing needs a long scroll on the wall.
+  const [tab, setTab] = useState(() => { try { return localStorage.getItem('tp-tweaks-tab') || ''; } catch { return ''; } });
+  const pickTab = (g) => { setTab(g); try { localStorage.setItem('tp-tweaks-tab', g); } catch {} };
   async function drawTen() {
     setPreview([]);
     try { setPreview(await get('/api/mystery/preview?n=10')); } catch (e) { toast(e.message, true); setPreview(null); }
@@ -28,6 +31,7 @@ export function TweaksSheet({ onClose }) {
     finally { setBusy(false); }
   }
   const groups = ORDER.filter((g) => data?.fields.some((f) => f.group === g));
+  const current = groups.includes(tab) ? tab : groups[0];
   return html`<div class="mystery-sheet tweaks" role="dialog" aria-label="Panel settings">
     <div class="h">
       <div><div class="eyebrow">Behind the panel</div><div class="t">Settings</div></div>
@@ -47,10 +51,10 @@ export function TweaksSheet({ onClose }) {
           <button type="button" class="btn big ghost" onClick=${drawTen} disabled=${!preview.length}><${Icon} name="dice" size=${24} color="#F4F0E8" />Again</button>
           <button type="button" class="btn primary big" style="flex-grow:1" onClick=${() => setPreview(null)}>Back to settings</button>
         </div>`
-      : html`<div class="body">${groups.map((g) => html`<section key=${g}>
-          <h3>${TITLES[g] || g}</h3>
-          ${data.fields.filter((f) => f.group === g).map((f) => html`<${Row} key=${f.key} f=${f} value=${values[f.key]} libraries=${data.libraries} onChange=${(v) => put(f.key, v)} />`)}
-        </section>`)}</div>
+      : html`<div class="tabs">${groups.map((g) => html`<button type="button" class="filter" aria-pressed=${g === current ? 'true' : 'false'} onClick=${() => pickTab(g)}>${TITLES[g] || g}</button>`)}</div>
+        <div class="body">${current && html`<section key=${current}>
+          ${data.fields.filter((f) => f.group === current).map((f) => html`<${Row} key=${f.key} f=${f} value=${values[f.key]} libraries=${data.libraries} onChange=${(v) => put(f.key, v)} />`)}
+        </section>`}</div>
         <div class="acts">
           <button type="button" class="btn primary big" style="flex-grow:1" disabled=${busy || !draft} onClick=${save}>Save</button>
           <button type="button" class="btn big ghost" title="Ten Mystery box draws under the saved rules" onClick=${drawTen}><${Icon} name="dice" size=${24} color="#F4F0E8" />Draw ten</button>
