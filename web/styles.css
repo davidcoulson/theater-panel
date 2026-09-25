@@ -160,7 +160,9 @@ html.a-fall { --gold: #C75E12; }
 main.view { flex-grow: 1; min-width: 0; height: 1080px; padding: 30px 44px; display: flex; flex-direction: column; gap: 22px; }
 
 header.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
-header.top .kicker { font-size: 16px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+/* One line, and it may run past the title without widening its column: the chips sit a row
+   below, so a long kicker (the Christmas countdown) passes over empty space. */
+header.top .kicker { font-size: 16px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; max-width: 0; overflow: visible; }
 header.top h1 { margin: 0; font-family: var(--disp); font-weight: 800; font-size: 60px; line-height: 1; text-transform: uppercase; color: var(--choc); }
 header.top .right { display: flex; align-items: center; gap: 12px; }
 
@@ -717,3 +719,14 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .tasterow.seasonal.christmas .foryou-head h2 { color: #9B2A22; }
 /* "2 streams · 8:22 PM": the count before the time, a small dot between them */
 .sh-clock .dot-sep { align-self: center; width: 8px; height: 8px; border-radius: 4px; background: #C7B39E; margin: 0 10px; opacity: .7; }
+
+/* ---------- the Lacey Chabert ribbon ---------- */
+/* a sash across the poster's top-left corner, the way a video shop stickered its staff picks */
+.poster .ribbon, .sh-board-row .pic .ribbon { position: absolute; top: 18px; left: -34px; width: 150px; transform: rotate(-45deg); padding: 4px 0; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #FFF6EA; background: #B5282B; box-shadow: 0 2px 6px rgba(0,0,0,.35); pointer-events: none; z-index: 2; }
+.sh-board-row .pic { position: relative; overflow: hidden; border-radius: 12px; }
+.sh-board-row .pic .ribbon { top: 22px; left: -36px; width: 170px; font-size: 13px; padding: 5px 0; }
+.sh-board.hallmark h1 { color: #F7EEDD; text-shadow: 3px 3px 0 #7A1A16, 0 0 34px rgba(200,50,43,.45); }
+.sh-board.hallmark .k { color: #E3A865; }
+.tasterow.seasonal.hallmark .foryou-head h2 { color: #9B2A22; }
+/* the Christmas countdown: in Home's date line, and under the idle screen's clock */
+.sh-countdown { position: absolute; top: 112px; right: 64px; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; letter-spacing: 1px; color: #C7B39E; }

@@ -1,8 +1,10 @@
 // The holiday shelves and the Coming soon board: things for the idle screen to show between the
 // films in progress, and a shelf on the For you tab while the season lasts.
 //
-//   Halloween Scares   all of October
-//   Christmas Movies   Thanksgiving through New Year's Eve
+//   Halloween Scares      all of October
+//   Christmas Movies      Thanksgiving through New Year's Eve
+//   Hallmark Christmas    the same window: Hallmark Media's Christmas films, and a ribbon on every
+//                         one with Lacey Chabert in it, because there are so many
 //
 // With a TMDB API key on the settings page, each shelf is a public TMDB list (one per season)
 // cut down to the films you own, in the list's order - the honorary Christmas films added if
@@ -44,12 +46,49 @@ const SEASONS = {
   },
 };
 
-// Which holiday shelf is up today, if any.
+// Which holiday shelf is up today, if any (the first of them; seasonsNow has the whole set).
 export function seasonNow(now = new Date()) {
   const m = now.getMonth() + 1, d = now.getDate();
   if (m === 10) return 'halloween';
   if ((m === 11 && d >= thanksgiving(now.getFullYear())) || m === 12) return 'christmas';
   return null;
+}
+// Every shelf up today: Christmas brings the Hallmark shelf with it.
+export function seasonsNow(now = new Date()) {
+  const s = seasonNow(now);
+  return s === 'christmas' ? ['christmas', 'hallmark'] : s ? [s] : [];
+}
+
+// Hallmark Media on TMDB, and Lacey Chabert.
+const HALLMARK_STUDIO = 53015;
+const CHRISTMAS_KEYWORD = 207317;
+const LACEY = 22082;
+
+// The Hallmark shelf: Hallmark Media's Christmas films that are in the library, with a ribbon
+// on each one Lacey Chabert is in and a count of them in the kicker. Nothing else filters it -
+// a Hallmark Christmas film is exactly what it says it is.
+async function hallmarkShelf() {
+  const [films, credits] = await Promise.all([
+    seerr.ownedBy({ studio: HALLMARK_STUDIO, keywords: String(CHRISTMAS_KEYWORD) }),
+    seerr.personMovies(LACEY).catch(() => []),
+  ]);
+  // TMDB files some of her Hallmark Christmas films under other production companies, or without
+  // the keyword, so her owned Christmas titles join the shelf whether or not the studio search
+  // found them - it's her shelf as much as Hallmark's.
+  const lacey = new Set(credits.map((r) => r.id));
+  // (Black Christmas is a Christmas title she is in; it is not a Hallmark film.)
+  const all = [...films, ...credits.filter((r) => r.plexKey && CHRISTMAS.test(r.title) && !r.horror)];
+  const seen = new Set();
+  const items = [];
+  for (const r of all) {
+    if (seen.has(r.plexKey)) continue;
+    seen.add(r.plexKey);
+    items.push({ id: String(r.plexKey), type: 'movie', title: r.title, year: r.year, poster: r.poster, art: r.backdrop, rating: r.rating, watched: false, ribbon: lacey.has(r.id) ? 'Lacey Chabert' : undefined });
+  }
+  // Lacey's first, so the joke lands on the idle screen's eight; the rest newest first.
+  items.sort((a, b) => (b.ribbon ? 1 : 0) - (a.ribbon ? 1 : 0) || (b.year || 0) - (a.year || 0));
+  const hers = items.filter((i) => i.ribbon).length;
+  return { id: 'hallmark', title: 'Hallmark Christmas', kicker: `${items.length} in your library · ${hers} of them with Lacey Chabert`, source: 'tmdb', total: items.length, items: items.slice(0, 40) };
 }
 
 const cache = new Map();
@@ -57,11 +96,16 @@ const cache = new Map();
 // The shelf for a season: { id, title, kicker, items }, or null out of season. Unwatched first,
 // in an order that changes daily, so the idle screen doesn't show the same eight every time.
 export async function shelf(season = seasonNow()) {
-  const s = SEASONS[season];
-  if (!s) return null;
   const day = new Date().toDateString();
   const hit = cache.get(season);
   if (hit && hit.day === day && Date.now() - hit.at < 6 * 3600e3) return hit.v;
+  if (season === 'hallmark') {
+    const v = await hallmarkShelf();
+    cache.set(season, { at: Date.now(), day, v });
+    return v;
+  }
+  const s = SEASONS[season];
+  if (!s) return null;
 
   let items = [];
   let source = 'kometa';
@@ -114,4 +158,11 @@ export async function coming(limit = 8) {
   // A title asked for twice (another season, or 1080p and 4K) is one poster, at its best status.
   const seen = new Set();
   return items.filter((i) => { const k = `${i.mediaType}:${i.title}:${i.year}`; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, limit);
+}
+
+// All the shelves up today (or for a season named to try one out of season), in order.
+export async function shelves(season) {
+  const ids = season ? (season === 'christmas' ? ['christmas', 'hallmark'] : [season]) : seasonsNow();
+  const out = await Promise.all(ids.map((id) => shelf(id).catch((e) => { console.warn('[seasonal]', id, e.message); return null; })));
+  return out.filter((v) => v?.items?.length);
 }

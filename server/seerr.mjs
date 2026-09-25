@@ -223,3 +223,23 @@ export async function byKeyword(keywordId, pages = 5) {
   }
   return out;
 }
+
+// TMDB discovery through Seerr with a studio and keywords, a few pages deep: Hallmark Media's
+// Christmas films for the Hallmark shelf. Only what Seerr knows is in Plex comes back.
+export async function ownedBy({ studio, keywords }, pages = 8) {
+  const out = [];
+  for (let page = 1; page <= pages; page++) {
+    const d = await seerr('/discover/movies', { params: { ...(studio ? { studio } : {}), ...(keywords ? { keywords } : {}), page } }).catch(() => null);
+    if (!d?.results?.length) break;
+    out.push(...d.results.filter((r) => r.mediaInfo?.ratingKey).map((r) => mapResult({ ...r, mediaType: 'movie' })));
+    if (page >= d.totalPages) break;
+  }
+  return out;
+}
+
+// Every film a person is in (Lacey Chabert, for the Hallmark shelf), with the Plex key on the
+// ones Seerr knows are in the library.
+export async function personMovies(personId) {
+  const d = await seerr(`/person/${Number(personId)}/combined_credits`);
+  return (d.cast || []).filter((c) => c.mediaType === 'movie').map((c) => ({ ...mapResult({ ...c, mediaType: 'movie' }), horror: (c.genreIds || []).includes(27) }));
+}

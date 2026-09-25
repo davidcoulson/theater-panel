@@ -165,3 +165,18 @@ export function livePosition(st) {
   if (st.state === 'playing' && a.media_position_updated_at) pos += (Date.now() - Date.parse(a.media_position_updated_at)) / 1000;
   return Math.min(pos, a.media_duration || pos);
 }
+
+// The Christmas countdown, from the first of November: "31 days until Christmas", "Christmas
+// Eve", "Merry Christmas" on the day, and nothing the rest of the year. "?countdown=1" on a route
+// shows it out of season.
+export function christmasCountdown(now = new Date(), force = false) {
+  const m = now.getMonth(), d = now.getDate();
+  if (!force && !(m === 10 || (m === 11 && d <= 25))) return null;
+  const xmas = new Date(now.getFullYear(), 11, 25);
+  const today = new Date(now.getFullYear(), m, d);
+  const days = Math.round((xmas - today) / 864e5);
+  if (days < 0) return null;
+  if (days === 0) return { days, text: 'Merry Christmas' };
+  if (days === 1) return { days, text: "Christmas Eve" };
+  return { days, text: `${days} days to Christmas` };
+}
