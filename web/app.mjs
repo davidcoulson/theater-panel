@@ -115,7 +115,7 @@ export function currentAccent() {
 // Cinema mode: the room is dark, but nothing is playing. Showtime and the idle board look after
 // themselves; every other screen would sit there at full brightness, lighting the room from the
 // wall, so the whole palette drops instead (see html.cinema in styles.css). It follows the room:
-// the Movie time and Intermission scenes, or the downlights down with the accent lights up.
+// the downlights under a quarter, or off.
 // "?cinema=1" pins it on this panel, "cinema=" clears the override, and the settings page can
 // turn the whole idea off.
 let cinemaOverride = null;
@@ -126,17 +126,15 @@ export function setCinema(value) {
 }
 // The lights decide, not the scene helper: the helper only changes when a scene runs, so
 // switching the downlights on at the wall (or in HA) left it saying "Intermission" and the panel
-// dark in a lit room. Downlights up is never dark; downlights down is dark when the room is set
-// for it - accent lights glowing, or a movie scene in progress.
+// dark in a lit room. The downlights are the room's light: under a quarter, or off, is dark,
+// whatever the accent lights and the scene are doing (they used to have a say, which left the
+// panel bright in a room with the downlights barely on and the accents off).
 function roomIsDark(s) {
-  const [downlights, ...accents] = s.entities?.lights || [];
+  const [downlights] = s.entities?.lights || [];
   const down = s.states[downlights];
   if (!down || down.state === 'unavailable') return false;
   const pct = down.state === 'on' ? ((down.attributes?.brightness ?? 255) / 255) * 100 : 0;
-  if (pct >= 25) return false;
-  const scene = s.states['input_select.theater_scene']?.state;
-  const glow = accents.some((id) => s.states[id]?.state === 'on');
-  return glow || scene === 'Movie time' || scene === 'Intermission';
+  return pct < 25;
 }
 function applyCinema() {
   const s = getState();
