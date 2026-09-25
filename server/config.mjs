@@ -216,6 +216,17 @@ function build(env) {
     url: env.INTERMISSION_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'intermission.mp3') : ''),
     minutes: Math.max(1, Math.min(60, Number(env.INTERMISSION_MINUTES || 15))),
   },
+  // Tonight: the evening around a film. Trailers on the projector before it (SmartTube takes a
+  // YouTube link), the lights a few minutes before those, a break in the middle of a long film.
+  tonight: {
+    trailers: env.TRAILERS_ENABLED !== 'false',
+    trailerCount: Math.max(0, Math.min(5, Number(env.TRAILERS_COUNT ?? 2) || 0)),
+    trailerSeconds: Math.max(30, Math.min(600, Number(env.TRAILERS_SECONDS ?? 150) || 150)),
+    trailerPackage: env.TRAILERS_PACKAGE || 'org.smarttube.stable',
+    preshowMinutes: Math.max(0, Math.min(60, Number(env.PRESHOW_MINUTES ?? 10) || 0)),
+    autoIntermissionMinutes: Math.max(0, Math.min(600, Number(env.AUTO_INTERMISSION_MINUTES ?? 120) || 0)),
+    guestHours: Math.max(1, Math.min(24, Number(env.GUEST_HOURS ?? 6) || 6)),
+  },
   // The panel as a Home Assistant device, over the ESPHome native API (server/hass.mjs). HA's
   // ESPHome integration adds it by host and port; the key is a 32-byte base64 Noise key like an
   // ESPHome node's, blank for a plaintext connection.

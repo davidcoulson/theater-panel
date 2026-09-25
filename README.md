@@ -100,6 +100,12 @@ the top title, the longest sitting - to the Home Assistant `notify` targets list
 Set **Whose taste to follow** on the settings page (Plex > account names) to keep the
 recommendations out of the kids' anime; blank follows the whole house.
 
+**Whole season out**, a filter on TV libraries, keeps only the shows whose current season is
+complete: every episode of it in the library and nothing more to come (Plex says what is on disk,
+TMDB says how long the season is and whether it is still airing). Sort by Recently added and a
+new show only appears once it can be watched straight through. Every show tile says where its
+season stands: `S3 · 8/8`, or `6/8 · airing`.
+
 ## Before, during and after the film
 
 **The pre-roll swell.** With a sound set under Projector apps, Play sends a deep swell to the
@@ -142,6 +148,31 @@ itself after twenty minutes.
 
 **The dog at the deck door.** When UniFi hears barking or sees an animal on the deck camera, a
 card with a snapshot appears - even over a film - with a button to let her in.
+
+## The evening
+
+**Tonight** (the chip on the lobby, or the Tonight button on a film) plans the evening around
+one film: pick it, pick a time or Now. A scheduled evening runs the Pre-show lights a few minutes
+before, then **coming attractions** on the projector (trailers for films in the library nobody
+has seen yet, from TMDB, played back to back in the projector's YouTube app), then the feature.
+A film longer than the setting gets its **intermission at the halfway mark** by itself. The times
+are on the sheet, on the idle screen's first slide, and on the Home Assistant device as the
+`Tonight` sensor. `/marquee` is a page for a panel outside the room: the poster, the title and
+the showtimes, updated on its own.
+
+**Guest remote**: a chip on the lobby shows a QR that opens a phone page with the basics for the
+evening (pause, skip, volume, the break, the lights) and nothing else. The link lasts the
+evening, or until it is ended from the panel.
+
+**Last time**: coming back to a film after days away, the Continue watching card says when it
+was, how far in, and who was watching, and a Recap button plays the last two minutes again first.
+
+**Next in the series**: when a film ends, the rating card names the next film in its series,
+with a Queue button if the library has it and a Request button if it does not.
+
+**Usual for a Friday**: the Tonight sheet opens with what this weekday normally looks like here,
+from a year of history: when the room fills up, films or series, and the titles that keep coming
+back.
 
 ## Cinema mode
 

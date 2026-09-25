@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#17100B">
+<title>Theater remote</title>
+<link rel="icon" href="/assets/icon.png">
+<style>
+  :root { --bg: #17100B; --card: #221710; --line: #3A2A1E; --ink: #F4ECE0; --muted: #B9A797; --gold: #E3A865; --acc: #8F4E1C; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 20px 16px 40px; min-height: 100vh; }
+  h1 { font-size: 15px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin: 0 0 4px; }
+  .title { font-size: 26px; font-weight: 700; line-height: 1.15; margin: 0 0 2px; min-height: 30px; }
+  .sub { color: var(--muted); margin: 0 0 18px; min-height: 22px; }
+  .track { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 0 0 22px; }
+  .track i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .5s; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  button { appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 18px; font: inherit; font-weight: 600; padding: 22px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  button:active { background: var(--acc); }
+  button .k { font-size: 30px; line-height: 1; }
+  button .s { font-size: 13px; color: var(--muted); }
+  .wide { grid-column: span 3; padding: 26px 10px; }
+  .two { grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .note { color: var(--muted); font-size: 14px; text-align: center; margin-top: 16px; min-height: 20px; }
+  .err { color: #F2B8A0; }
+  .gone { text-align: center; padding: 60px 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Home theater</h1>
+<div class="title" id="title">Standing by</div>
+<div class="sub" id="sub"></div>
+<div class="track"><i id="bar"></i></div>
+<div class="grid" id="grid">
+  <button type="button" data-cmd="back10"><span class="k">&#9664;&#9664;</span><span class="s">10 s</span></button>
+  <button type="button" data-cmd="play_pause"><span class="k" id="pp">&#9646;&#9646;</span><span class="s" id="pps">Pause</span></button>
+  <button type="button" data-cmd="fwd30"><span class="k">&#9654;&#9654;</span><span class="s">30 s</span></button>
+  <button type="button" data-cmd="vol_down"><span class="k">&#8722;</span><span class="s">Quieter</span></button>
+  <button type="button" data-cmd="aisle_glow"><span class="k">&#9788;</span><span class="s">Aisle glow</span></button>
+  <button type="button" data-cmd="vol_up"><span class="k">+</span><span class="s">Louder</span></button>
+  <div class="two">
+    <button type="button" data-cmd="intermission"><span class="k">&#9749;</span><span class="s">Intermission</span></button>
+    <button type="button" data-cmd="movie_time"><span class="k">&#9654;</span><span class="s">Back to the film</span></button>
+  </div>
+  <button type="button" class="wide" data-cmd="lights_up"><span class="k">&#9728;</span><span class="s">Lights up</span></button>
+</div>
+<div class="note" id="note"></div>
+<script>
+// The guest remote: the evening's token rides the link, the panel decides what a guest may do.
+const token = new URLSearchParams(location.search).get('t') || '';
+const q = `?t=${encodeURIComponent(token)}`;
+const $ = (id) => document.getElementById(id);
+const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); const m = Math.floor(s / 60); return `${Math.floor(m / 60) ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : m}:${String(s % 60).padStart(2, '0')}`; };
+function gone(text) { document.body.innerHTML = `<h1>Home theater</h1><div class="gone">${text}</div>`; }
+function draw(s) {
+  $('title').textContent = s.title || (s.tonight?.item ? `Tonight: ${s.tonight.item.title}` : 'Standing by');
+  const scene = s.scene ? ` · ${s.scene}` : '';
+  $('sub').textContent = (s.state === 'playing' ? 'Now showing' : s.state === 'paused' ? 'Paused' : s.tonight?.at ? `Starts at ${new Date(s.tonight.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Nothing playing') + scene
+    + (s.duration ? ` · ${mmss(s.duration - s.viewOffset)} left` : '');
+  $('bar').style.width = s.duration ? `${Math.min(100, (s.viewOffset / s.duration) * 100)}%` : '0';
+  $('pp').innerHTML = s.state === 'playing' ? '&#9646;&#9646;' : '&#9654;';
+  $('pps').textContent = s.state === 'playing' ? 'Pause' : 'Play';
+}
+async function load() {
+  try {
+    const r = await fetch(`/api/guest/state${q}`);
+    if (r.status === 401) return gone('This link has expired. Ask for a new QR on the theater panel.');
+    draw(await r.json());
+  } catch {}
+}
+for (const b of document.querySelectorAll('button[data-cmd]')) {
+  b.onclick = async () => {
+    $('note').textContent = '';
+    try {
+      const r = await fetch(`/api/guest/act${q}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cmd: b.dataset.cmd }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'That did not work');
+      setTimeout(load, 1200);
+    } catch (e) { $('note').innerHTML = `<span class="err">${e.message}</span>`; }
+  };
+}
+if (!token) gone('Open this page from the QR on the theater panel.');
+else { load(); setInterval(load, 5000); }
+</script>
+</body>
+</html>

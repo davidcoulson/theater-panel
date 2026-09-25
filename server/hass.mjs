@@ -89,6 +89,7 @@ function build(opts) {
       await ctx.run({ action: 'play', ratingKey: pick.item.id, type: pick.item.type });
     }),
     nowPlaying: d.textSensor({ name: 'Now playing', icon: 'mdi:movie-open-play' }),
+    tonight: d.textSensor({ name: 'Tonight', icon: 'mdi:ticket-confirmation' }),
     progress: d.sensor({ name: 'Playback progress', unit: '%', accuracyDecimals: 0, icon: 'mdi:progress-clock' }),
     playing: d.binarySensor({ name: 'Film playing', deviceClass: 'running' }),
     online: d.binarySensor({ name: 'Panel online', deviceClass: 'connectivity', category: 'diagnostic' }),
@@ -182,6 +183,13 @@ async function pushVersion(force = false) {
 
 // Hooks from the server: sessions and streams from the Plex poll, the sleep timer, HA states.
 export function sessions(sessionsNow, streamsNow) { last = { sessions: sessionsNow, streams: streamsNow }; refresh(); }
+// The evening's plan for any dashboard outside the room: "Title · 8:00 PM", "Title · now", or blank.
+let tonightText = '';
+export function tonight(plan) {
+  const when = !plan ? '' : plan.at ? new Date(plan.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : plan.state === 'done' ? 'finished' : 'now';
+  tonightText = plan ? `${plan.item.title} · ${when}` : '';
+  if (dev) ent.tonight.set(tonightText);
+}
 export function panelsChanged() { if (dev) { ent.online.set(ctx.panels() > 0); ent.panels.set(ctx.panels()); } }
 // Every event the server broadcasts to the panels passes through here too.
 export function observe(event) {

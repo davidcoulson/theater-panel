@@ -757,3 +757,31 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .tweaks .pick .what { font-size: 20px; line-height: 1.25; }
 .tweaks .pick .meta { font-size: 15px; color: #C7B39E; margin-top: 2px; }
 .tweaks .pick .why { font-size: 15px; color: var(--gold); margin-top: 2px; }
+
+/* ---------- tonight, the guest remote, the rewind line, the sequel line ---------- */
+.chip.on { background: var(--choc); border-color: var(--choc); color: #F4F0E8; }
+.hero .rewind { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; color: #C7B39E; }
+.mystery-sheet.tonight { inset: 70px 110px 70px; gap: 16px; }
+.tonight .usual { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; color: #C7B39E; }
+.tonight .body { flex-grow: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.tonight .lbl { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-top: 6px; }
+.tonight .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.tonight .filter { color: #F4ECE0; background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.2); }
+.tonight .filter[aria-pressed="true"], .tonight .filter.on { background: var(--gold); border-color: var(--gold); color: #2A1C14; }
+.tonight .search { background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.2); }
+.tonight .search input { color: #F4ECE0; }
+.tonight .hint { font-size: 16px; color: #C7B39E; margin: 0; }
+.tonight .acts { display: flex; gap: 14px; }
+.tonight .plan { flex-grow: 1; display: flex; gap: 34px; min-height: 0; }
+.tonight .plan .art { width: 320px; flex-shrink: 0; }
+.tonight .plan .info { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.tonight .plan .meta { font-size: 19px; color: #C7B39E; }
+.tonight .slots { display: flex; flex-wrap: wrap; gap: 18px 36px; }
+.tonight .slots div { display: flex; flex-direction: column; gap: 4px; }
+.tonight .slots b { font-family: var(--disp); font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tonight .slots span { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #C7B39E; }
+.tonight .slots .now b, .tonight .slots .now span { color: var(--gold); }
+.tonight .trailers { display: flex; flex-wrap: wrap; gap: 8px; }
+.rate .sequel { display: flex; align-items: center; gap: 14px; margin-top: 8px; font-size: 16px; }
+.rate .sequel .btn { height: 44px; padding: 0 16px; }
+.poster-btn .season-out { position: absolute; left: 8px; bottom: 8px; padding: 4px 9px; border-radius: 8px; background: var(--gold); color: #2A1C14; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }

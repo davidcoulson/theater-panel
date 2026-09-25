@@ -6,6 +6,7 @@ import { config } from './config.mjs';
 import { plexImage, extImage } from './images.mjs';
 import { BRANDS, brandById, brandForName } from './networks.mjs';
 import { httpError } from './admin.mjs';
+import * as tv from './tv.mjs';
 
 const FAMILY_RATINGS = ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-Y7-FV', 'TV-G', 'TV-PG'];
 const SORTS = {
@@ -53,6 +54,7 @@ export function mapItem(m, { poster = [300, 450] } = {}) {
     title: m.title,
     year: m.year,
     showTitle: isEp ? m.grandparentTitle : m.type === 'season' ? m.parentTitle : undefined,
+    showKey: isEp ? m.grandparentRatingKey : undefined,
     season: isEp ? m.parentIndex : m.type === 'season' ? m.index : undefined,
     episode: isEp ? m.index : undefined,
     summary: m.summary,
@@ -65,6 +67,7 @@ export function mapItem(m, { poster = [300, 450] } = {}) {
     studio: m.studio,
     genres: tags(m.Genre, 3),
     addedAt: m.addedAt,
+    lastViewedAt: m.lastViewedAt ? m.lastViewedAt * 1000 : null,
     is4k: media?.videoResolution === '4k',
     // Grid badges. HDR is not in listings; listLibrary fills it in from Plex's hdr filter.
     quality: media ? {
@@ -305,8 +308,8 @@ async function decorate(sectionId, items) {
     const hdr = await hdrKeys(sectionId).catch(() => new Set());
     for (const it of items) if (it.quality) it.quality.hdr = hdr.has(it.id);
   } else if (type === 'show') {
-    const brands = await showBrands(sectionId).catch(() => new Map());
-    for (const it of items) it.brand = brands.get(it.id);
+    const [brands, status] = await Promise.all([showBrands(sectionId).catch(() => new Map()), tv.seasons(sectionId, plex, listShows).catch(() => new Map())]);
+    for (const it of items) { it.brand = brands.get(it.id); const s = status.get(String(it.id)); if (s) it.season = s; }
   }
   return items;
 }
@@ -332,15 +335,30 @@ export async function listLibrary(sectionId, { filters = [], genre, brand, sort 
     if (!f) return { total: 0, items: [] };
     p[f.field] = f.ids;
   }
+  // Whole season out: Plex cannot ask that, so the whole listing comes back, the shows whose
+  // current season is complete stay, and the page is cut from those.
+  if (filters.includes('wholeSeason') && (await sectionType(sectionId)) === 'show') {
+    const status = await tv.seasons(sectionId, plex, listShows, { wait: true });
+    const mc = await plex(`/library/sections/${sectionId}/all`, { ...p, 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '5000' });
+    const all = (mc.Metadata || []).map((m) => mapItem(m)).filter((it) => status.get(String(it.id))?.complete);
+    const items = await decorate(sectionId, all.slice(start, start + size));
+    return { total: all.length, items };
+  }
   const mc = await plex(`/library/sections/${sectionId}/all`, p);
   const items = await decorate(sectionId, (mc.Metadata || []).map((m) => mapItem(m)));
   return { total: mc.totalSize ?? mc.size ?? 0, items };
 }
 
+// Every show in a TV section with its TMDB id, for the whole-season pass.
+async function listShows(sectionId) {
+  const mc = await plex(`/library/sections/${sectionId}/all`, { type: '2', includeGuids: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '5000' }, { timeoutMs: 60000 });
+  return (mc.Metadata || []).map((m) => ({ id: m.ratingKey, title: m.title, tmdb: Number(((m.Guid || []).map((g) => g.id).find((g) => g.startsWith('tmdb://')) || '').slice(7)) || null }));
+}
+
 export async function item(id) {
   id = plexId(id, 'item id');
   // includeOnDeck answers the "what plays next" question for a show in the same call.
-  const mc = await plex(`/library/metadata/${id}`, { includeOnDeck: '1' });
+  const mc = await plex(`/library/metadata/${id}`, { includeOnDeck: '1', includeGuids: '1' });
   const m = mc.Metadata?.[0];
   if (!m) throw httpError(404, 'Not found');
   const out = {
@@ -348,6 +366,7 @@ export async function item(id) {
     directors: tags(m.Director, 2),
     cast: tags(m.Role, 4),
     studio: m.studio,
+    tmdb: Number(((m.Guid || []).map((g) => g.id).find((g) => g.startsWith('tmdb://')) || '').slice(7)) || null,
     tagline: m.tagline,
     genres: tags(m.Genre, 4),
     versions: (m.Media || []).map((v, i) => ({ index: i, id: v.id, label: versionLabel(v) || `Version ${i + 1}` })),

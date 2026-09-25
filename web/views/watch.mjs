@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Play, Poster, Seg, Header, useDebounced } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, runtime, endsAt, toast } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, runtime, endsAt, toast, openTonight } from '../lib/api.mjs';
 import { play } from './lobby.mjs';
 import { go, route } from '../app.mjs';
 import { useNetworks, NetworkPicker, PosterLabels } from './networks.mjs';
@@ -14,6 +14,7 @@ const FILTERS = [
   { key: 'family', label: 'Family friendly' },
   { key: '4k', label: '4K', movieOnly: true },
   { key: 'hdr', label: 'HDR', movieOnly: true },
+  { key: 'wholeSeason', label: 'Whole season out', showOnly: true },
 ];
 const SORTS = [
   { value: 'added', label: 'Recently added' },
@@ -46,7 +47,7 @@ export function Watch() {
   const byNetwork = libId === 'networks';
   const forYou = libId === 'foryou';
   const libType = byNetwork ? null : libs?.find((l) => l.id === libId)?.type;
-  const activeFilters = filters.filter((f) => !(FILTERS.find((x) => x.key === f)?.movieOnly && libType !== 'movie')).join(',');
+  const activeFilters = filters.filter((f) => { const d = FILTERS.find((x) => x.key === f); return !(d?.movieOnly && libType !== 'movie') && !(d?.showOnly && libType !== 'show'); }).join(',');
   const brandName = networks.find((n) => n.id === brand)?.name;
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export function Watch() {
         ${forYou && !q ? html`<button type="button" class="filter" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${18} />Mystery box</button>
           <button type="button" class="filter" onClick=${() => go('year')}><${Icon} name="chart" size=${18} />Year in review</button>` : null}
         ${byNetwork && brand && html`<button type="button" class="filter" onClick=${() => { setBrand(null); setSelected(null); }}><${Icon} name="left" size=${18} />All networks</button>`}
-        ${forYou ? null : byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
+        ${forYou ? null : byNetwork ? html`<button type="button" class="filter" aria-pressed=${filters.includes('unwatched') ? 'true' : 'false'} onClick=${() => toggle('unwatched')}>${filters.includes('unwatched') && html`<${Icon} name="check" size=${18} />`}Unwatched</button>` : FILTERS.filter((f) => !(f.movieOnly && libType === 'show') && !(f.showOnly && libType !== 'show')).map((f) => html`<button type="button" class="filter" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} disabled=${!!q} onClick=${() => toggle(f.key)}>
           ${filters.includes(f.key) && html`<${Icon} name="check" size=${18} />`}${f.label}</button>`)}
         ${!byNetwork && !forYou && SORTS.map((s) => html`<button type="button" class="filter" aria-pressed=${sort === s.value ? 'true' : 'false'} disabled=${!!q}
           onClick=${() => { setSort(s.value); if (s.value === 'random') setSeed(seed + 1); }}>
@@ -188,9 +189,10 @@ function Tile({ m, selected, onSelect }) {
       ${!m.watched && !pct && html`<span class="corner" title="Unwatched"></span>`}
       <${PosterLabels} brand=${m.brand} quality=${m.quality} lifted=${pct > 0} />
       ${pct > 0 && html`<span class="prog"><i style=${`width:${pct}%`}></i></span>`}
+      ${m.season?.complete && html`<span class="season-out" title=${`Season ${m.season.index}: all ${m.season.total} episodes are here`}>S${m.season.index} complete</span>`}
     <//>
     <span class="t ellipsis">${name}</span>
-    <span class="y">${m.type === 'episode' ? `S${m.season} · E${m.episode}` : m.type === 'show' ? `${m.year || ''} · ${m.leafCount} eps` : m.year}</span>
+    <span class="y">${m.type === 'episode' ? `S${m.season} · E${m.episode}` : m.type === 'show' ? (m.season ? `S${m.season.index} · ${m.season.have}/${m.season.total}${m.season.airing ? ' · airing' : ''}` : `${m.year || ''} · ${m.leafCount} eps`) : m.year}</span>
   </button>`;
 }
 
@@ -235,7 +237,8 @@ function Detail({ id, onOpen }) {
           <img src=${e.still} alt="" loading="lazy" />
           <span style="min-width:0"><b>${e.episode}. ${e.title}</b><br /><span class="muted mono" style="font-size:14px">${runtime(e.duration)}${e.watched ? ' · watched' : ''}</span></span></button>`)}</div>`}
       ` : html`
-        <div class="endsat"><${Icon} name="moon" color="var(--amb)" />${it.viewOffset ? `Resume now, ends at ${endsAt(remaining)}` : `Start now, ends at ${endsAt(remaining)}`}</div>
+        <div class="endsat"><${Icon} name="moon" color="var(--amb)" />${it.viewOffset ? `Resume now, ends at ${endsAt(remaining)}` : `Start now, ends at ${endsAt(remaining)}`}
+          <button type="button" class="btn ghost" style="margin-left:auto;height:44px;padding:0 14px" title="Plan the evening around it" onClick=${() => openTonight(it)}><${Icon} name="film" size=${20} />Tonight</button></div>
         ${subOptions && html`<div><div class="label" style="margin-bottom:6px">Subtitles</div><${Seg} options=${subOptions} value=${currentSub} onChange=${setSubs} /></div>`}
       `}
       <div style="flex-grow:1"></div>

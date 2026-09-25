@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -20,6 +20,7 @@ export function Lobby() {
   const ents = useStore((s) => s.entities);
   const temp = useEntity(ents.temperature);
   const occ = useEntity(ents.occupancy);
+  const plan = useStore((s) => s.tonight);
   const tv = useEntity(ents.appleTv);
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
@@ -46,6 +47,8 @@ export function Lobby() {
       <${StreamsChip} onClick=${() => setStreamsOpen(true)} />
       ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
+      <button type="button" class=${`chip ${plan ? 'on' : ''}`} onClick=${() => openTonight()}><${Icon} name="film" size=${20} />${plan ? `Tonight · ${plan.at ? new Date(plan.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : plan.state === 'feature' ? 'on' : 'ready'}` : 'Tonight'}</button>
+      <button type="button" class="chip" onClick=${() => openGuest()}><${Icon} name="remote" size=${20} />Guest remote</button>
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
       ${services.plex && html`<button type="button" class="chip" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${20} />Mystery box</button>`}
       <${SleepChip} />
@@ -123,6 +126,9 @@ function Continue() {
   if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   const it = deck[i % deck.length];
   const pct = it.duration ? Math.round((it.viewOffset / it.duration) * 100) : 0;
+  // Coming back after days away: when it was, how far in, and who was watching.
+  const rewind = it.viewOffset > 0 && it.lastViewedAt && Date.now() - it.lastViewedAt > 36 * 3600e3
+    ? `Last time ${ago(it.lastViewedAt)} · ${runtime(it.viewOffset)} in${it.who ? ` · with ${it.who}` : ''}` : '';
   const left = (it.duration || 0) - (it.viewOffset || 0);
   const name = it.showTitle || it.title;
   const n = deck.length;
@@ -170,14 +176,19 @@ function Continue() {
         <div class="bar"><i style=${`width:${pct}%`}></i></div>
         <div class="times"><span>${[it.year, it.viewOffset ? `${runtime(left)} left` : runtime(left)].filter(Boolean).join(' · ')}</span><span>ends ${endsAt(left)}</span></div>
       </div>
+      ${rewind && html`<div class="rewind"><${Icon} name="moon" size=${18} color="var(--gold)" />${rewind}</div>`}
       <div style="display:flex;gap:12px">
         <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>
+        ${rewind && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Play the last two minutes again first" onClick=${() => play(it, true, { offset: Math.max(0, it.viewOffset - 120000) })}><${Icon} name="back" size=${24} color="#F4F0E8" />Recap</button>`}
         ${it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Start over" title="Start over" onClick=${() => play(it, false)}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>`}
+        ${it.type === 'movie' && !it.viewOffset && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Plan the evening around it" onClick=${() => openTonight(it)}><${Icon} name="film" size=${24} color="#F4F0E8" />Tonight</button>`}
       </div>
     </div>
     </div>
   </section>`;
 }
+
+const ago = (ms) => { const d = Math.round((Date.now() - ms) / 86400e3); return d <= 1 ? 'yesterday' : d < 14 ? `${d} days ago` : d < 60 ? `${Math.round(d / 7)} weeks ago` : `${Math.round(d / 30)} months ago`; };
 
 export async function play(item, resume = true, extra = {}) {
   const r = await act({ action: 'play', ratingKey: item.id, type: item.type, offset: resume ? item.viewOffset : 0, ...extra });

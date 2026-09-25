@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast, playbackState, openTweaks, closeTweaks } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -22,6 +22,7 @@ import { Pick } from './views/pick.mjs';
 import { Year } from './views/year.mjs';
 import { Intermission } from './views/intermission.mjs';
 import { TweaksSheet } from './views/tweaks.mjs';
+import { TonightSheet, GuestSheet } from './views/tonight.mjs';
 
 const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
@@ -154,8 +155,11 @@ function RateCard() {
   // "?rate=1" puts the card up for a look without sitting through a film first.
   const v = route.params.rate === '1' ? { id: 'demo', title: 'Dune: Part Two', year: 2024, poster: null, votes: [5, 4] } : live;
   useEffect(() => { setMine(0); setHover(0); }, [v?.id]);
+  // Sequel radar: the next film in the series, in the library or a tap away from a request.
+  const [related] = useLoad(() => (v?.id && v.id !== 'demo' ? get(`/api/plex/related/${v.id}`) : Promise.resolve(null)), [v?.id]);
   if (!v?.id) return null;
   const votes = v.votes || [];
+  const next = related?.next;
   const average = votes.length ? votes.reduce((a, b) => a + b, 0) / votes.length : 0;
   const send = async (stars) => {
     setMine(stars);
@@ -176,6 +180,11 @@ function RateCard() {
       <span class="tally">${votes.length
         ? `${average.toFixed(1)} from ${votes.length} ${votes.length === 1 ? 'person' : 'people'} · anyone else?`
         : 'Everyone gets a say'}</span>
+      ${next && html`<div class="sequel">
+        <span><b>Next in the series:</b> ${next.title}${next.year ? ` (${next.year})` : ''}${!next.released ? ' · not out yet' : next.owned?.watched ? ' · seen' : ''}</span>
+        ${next.owned ? html`<button type="button" class="btn ghost" onClick=${() => post('/api/tonight', { ratingKey: next.owned.id }).then(() => toast(`${next.title} is up for tonight`)).catch((e) => toast(e.message, true))}>Queue it</button>`
+          : next.released ? html`<button type="button" class="btn ghost" onClick=${() => post('/api/seerr/request', { mediaType: 'movie', mediaId: next.tmdb }).then(() => toast(`Asked for ${next.title}`)).catch((e) => toast(e.message, true))}>Request it</button>` : null}
+      </div>`}
     </div>
     <button type="button" class="skip" onClick=${() => post('/api/rate', { dismiss: true }).catch(() => {})}>${votes.length ? 'Done' : 'Skip'}</button>
   </div>`;
@@ -423,6 +432,8 @@ function App() {
 
   const haunt = useHaunting(currentAccent()?.id === 'halloween');
   const tweaks = useStore((s) => s.tweaks);
+  const tonightOpen = useStore((s) => s.tonightOpen);
+  const guestOpen = useStore((s) => s.guestOpen);
   const View = VIEWS[r.name] || Lobby;
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
@@ -435,6 +446,8 @@ function App() {
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />
     ${tweaks && html`<${TweaksSheet} onClose=${closeTweaks} />`}
+    ${tonightOpen && html`<${TonightSheet} item=${tonightOpen.item} onClose=${closeTonight} />`}
+    ${guestOpen && html`<${GuestSheet} onClose=${closeGuest} />`}
     <${Weather} key=${`fx-${r.name}`} />
     <${Celebration} />
     <${DogAtDoor} />

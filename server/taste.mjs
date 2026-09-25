@@ -199,6 +199,40 @@ export async function preview({ n = 10, filters = [] } = {}) {
   return out;
 }
 
+// ---------- habits ----------
+
+// When the room is actually used: a year of history as a weekday-by-hour grid, plus what the
+// current weekday usually looks like (its busiest hour, films versus series, the titles that
+// keep coming back). Cached for an hour; the grid does not move fast.
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+let habitsCache = { at: 0, v: null };
+export async function habits() {
+  if (habitsCache.v && Date.now() - habitsCache.at < 3600e3) return habitsCache.v;
+  const rows = await plex.history({ size: 6000, since: Date.now() - 365 * 86400e3, dedupe: false });
+  const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  const byDay = Array.from({ length: 7 }, () => ({ plays: 0, movies: 0, shows: 0, titles: new Map() }));
+  for (const r of rows) {
+    if (!r.viewedAt) continue;
+    const d = new Date(r.viewedAt);
+    grid[d.getDay()][d.getHours()] += 1;
+    const day = byDay[d.getDay()];
+    day.plays += 1;
+    if (r.type === 'movie') day.movies += 1; else day.shows += 1;
+    day.titles.set(r.title, (day.titles.get(r.title) || 0) + 1);
+  }
+  const days = byDay.map((d, i) => {
+    const hours = grid[i];
+    const peakHour = hours.indexOf(Math.max(...hours));
+    // The usual start: the first evening hour that carries a fifth of the day's peak.
+    const start = hours.findIndex((n, h) => h >= 16 && n >= Math.max(1, hours[peakHour] * 0.2));
+    return { day: i, name: DAY_NAMES[i], plays: d.plays, movies: d.movies, shows: d.shows, peakHour: d.plays ? peakHour : null, startHour: start >= 0 ? start : null,
+      titles: [...d.titles.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([title, plays]) => ({ title, plays })) };
+  });
+  const v = { grid, days, today: days[new Date().getDay()], max: Math.max(1, ...grid.flat()), weeks: 52 };
+  habitsCache = { at: Date.now(), v };
+  return v;
+}
+
 // ---------- Year in review ----------
 
 // The house's year, from Plex's history: how much was watched, by whom, what came back most

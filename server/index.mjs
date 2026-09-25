@@ -23,6 +23,9 @@ import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
+import * as tonight from './tonight.mjs';
+import * as guest from './guest.mjs';
+import * as tmdb from './tmdb.mjs';
 import { netList, clientIp } from './net.mjs';
 import { versions } from './version.mjs';
 import * as hass from './hass.mjs';
@@ -99,6 +102,7 @@ async function pollSessions() {
       const { sessions: all, streams: everything } = await plex.activity();
       const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName) : all;
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
+      tonight.observe(mine).catch((e) => console.warn('[tonight]', e.message));
       if (mine.length) playing = mine[0];
       else if (playing) {
         const done = playing;
@@ -158,6 +162,8 @@ const isHttps = (req) => req.headers['x-forwarded-proto'] === 'https' || Boolean
 
 function authorized(req, url, res) {
   if (!config.panelKey || PUBLIC.has(url.pathname)) return true;
+  // The guest remote: its page and its two calls open with the evening's token, nothing else.
+  if ((url.pathname === '/guest' || url.pathname === '/api/guest/state' || url.pathname === '/api/guest/act') && guest.valid(url.searchParams.get('t') || '')) return true;
   if (config.trustedNetworks.length && isTrusted(clientIp(req, isProxy))) return true;
   const cookie = /(?:^|;\s*)tp_key=([^;]+)/.exec(req.headers.cookie || '')?.[1];
   const given = url.searchParams.get('key') || (cookie && decodeURIComponent(cookie)) || '';
@@ -247,7 +253,18 @@ get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
 get(/^\/api\/tweaks$/, () => admin.tweaks());
 post(/^\/api\/tweaks$/, async (m, q, body) => { const r = admin.saveTweaks(body?.values); await applySettings(); return r; });
 
-get(/^\/api\/plex\/ondeck$/, (m, q) => plex.onDeck(Math.min(Number(q.get('size') || 12), 60)));
+// Continue watching, with who last watched each one (from the server's history), for the
+// "last time" line when someone comes back to a film after days away.
+get(/^\/api\/plex\/ondeck$/, async (m, q) => {
+  const deck = await plex.onDeck(Math.min(Number(q.get('size') || 12), 60));
+  const [hist, accounts] = await Promise.all([plex.history({ size: 400 }).catch(() => []), plex.accounts().catch(() => [])]);
+  const names = new Map(accounts.map((a) => [a.id, a.name]));
+  for (const it of deck) {
+    const row = hist.find((r) => r.key === String(it.showKey || it.id));
+    if (row) { it.who = names.get(row.account) || null; it.lastViewedAt ??= row.viewedAt; }
+  }
+  return deck;
+});
 get(/^\/api\/plex\/recent$/, (m, q) => plex.recentlyAdded(Math.min(Number(q.get('size') || 16), 60)));
 const qrSvg = (text) => QRCode.toString(String(text).slice(0, 300), { type: 'svg', margin: 1, color: { dark: '#25170F', light: '#0000' } });
 
@@ -260,6 +277,63 @@ get(/^\/api\/taste$/, async () => (config.plex.url ? { rows: await taste.rows({ 
 
 // The Mystery box: one unwatched film, weighted towards what the house has been watching. The
 // panel counts down and then plays it, so this only picks.
+// Tonight: the film, the time, the trailers, the break. One plan at a time.
+get(/^\/api\/tonight$/, () => tonight.state() || {});
+post(/^\/api\/tonight$/, async (m, q, body = {}) => {
+  if (body.clear) return tonight.cancel() || {};
+  if (body.skip) return tonight.skip();
+  if (body.start && !body.ratingKey) return tonight.start();
+  if (!/^\d+$/.test(String(body.ratingKey || ''))) throw admin.httpError(400, 'Which film?');
+  const at = body.at ? Number(body.at) : null;
+  if (at && (!Number.isFinite(at) || at < Date.now() - 60e3 || at > Date.now() + 36 * 3600e3)) throw admin.httpError(400, 'Pick a time later today or tomorrow');
+  const s = await tonight.set({ ratingKey: body.ratingKey, at, trailers: body.trailers !== false });
+  return body.start ? tonight.start() : s;
+});
+// The marquee outside the room: the plan with everything a poster board needs, and the times.
+get(/^\/api\/marquee$/, async () => {
+  const plan = tonight.state();
+  const showing = sessions[0] || null;
+  return { plan, showing: showing ? { title: showing.title, showTitle: showing.showTitle, year: showing.year, poster: showing.poster, state: showing.state, viewOffset: showing.viewOffset, duration: showing.duration } : null, scene: ha.states['input_select.theater_scene']?.state || '', now: Date.now() };
+});
+
+// The film before and after this one in its series, and whether the library has them.
+get(/^\/api\/plex\/related\/(\d+)$/, async (m) => {
+  const it = await plex.item(m[1]);
+  if (!it.tmdb || !config.tmdb.apiKey) return { collection: null, prev: null, next: null };
+  const n = await tmdb.neighbours(it.tmdb).catch(() => ({ collection: null, prev: null, next: null }));
+  const owned = await plex.byTmdb([n.prev?.tmdb, n.next?.tmdb].filter(Boolean)).catch(() => []);
+  const own = (x) => x ? { ...x, owned: owned.find((o) => o.tmdb === x.tmdb) || null } : null;
+  return { collection: n.collection, prev: own(n.prev), next: own(n.next) };
+});
+
+// When the room is used: a year of history by weekday and hour.
+get(/^\/api\/habits$/, () => taste.habits());
+
+// The guest remote. Start and end need the panel; state and act need the evening's token.
+post(/^\/api\/guest\/start$/, () => guest.start(config.tonight.guestHours));
+post(/^\/api\/guest\/end$/, () => { guest.end(); return { ok: true }; });
+get(/^\/api\/guest$/, () => guest.state() || {});
+get(/^\/api\/guest\/state$/, () => {
+  const s = sessions[0];
+  const tv = ha.states[config.entities.appleTv];
+  return {
+    title: s ? (s.showTitle ? `${s.showTitle} · ${s.title}` : s.title) : (tv?.attributes?.media_title || ''),
+    state: s ? s.state : (tv?.state || 'off'), viewOffset: s?.viewOffset || 0, duration: s?.duration || 0,
+    scene: ha.states['input_select.theater_scene']?.state || '', tonight: tonight.state(), expires: guest.state()?.expires || null,
+  };
+});
+const GUEST_ACTS = {
+  play_pause: { action: 'transport', cmd: 'play_pause' }, vol_up: { action: 'transport', cmd: 'vol_up' }, vol_down: { action: 'transport', cmd: 'vol_down' },
+  back10: { action: 'transport', cmd: 'seek_rel', seconds: -10 }, fwd30: { action: 'transport', cmd: 'seek_rel', seconds: 30 },
+  intermission: { action: 'scene', name: 'intermission' }, movie_time: { action: 'scene', name: 'movie_time' }, lights_up: { action: 'scene', name: 'lights_up' }, aisle_glow: { action: 'aisle_glow' },
+};
+post(/^\/api\/guest\/act$/, async (m, q, body = {}) => {
+  const act = GUEST_ACTS[body.cmd];
+  if (!act) throw admin.httpError(400, 'Not something a guest can do');
+  await runAction(ha, act);
+  return { ok: true };
+});
+
 // The settings sheet's audit: ten draws under the saved rules, nothing started.
 get(/^\/api\/mystery\/preview$/, (m, q) => taste.preview({ n: Math.min(20, Math.max(1, Number(q.get('n')) || 10)), filters: (q.get('filters') || '').split(',').filter(Boolean) }));
 get(/^\/api\/mystery$/, (m, q) => taste.mystery({
@@ -450,7 +524,7 @@ let lastAccent = accentNow().id;
 setInterval(() => { const id = accentNow().id; if (id !== lastAccent) { lastAccent = id; broadcast('settings', {}); } }, 60 * 60e3).unref();
 
 const inlineHashes = await (async () => {
-  const files = ['index.html', 'admin.html', 'vote.html', 'fxgrid.html', 'basement.html', 'basement/dev.html'];
+  const files = ['index.html', 'admin.html', 'vote.html', 'guest.html', 'marquee.html', 'fxgrid.html', 'basement.html', 'basement/dev.html'];
   const out = new Set();
   for (const f of files) {
     const html = await readFile(join(WEB, f), 'utf8').catch(() => '');
@@ -585,6 +659,8 @@ const server = createServer(async (req, res) => {
     }
     if (path === '/admin' || path === '/admin/') return serveFile(res, join(WEB, 'admin.html'));
     if (path === '/vote' || path === '/vote/') return serveFile(res, join(WEB, 'vote.html'));
+    if (path === '/guest' || path === '/guest/') return serveFile(res, join(WEB, 'guest.html'));
+    if (path === '/marquee' || path === '/marquee/') return serveFile(res, join(WEB, 'marquee.html'));
 
     if (path.startsWith('/api/')) {
       for (const [method, re, fn] of routes) {
@@ -617,6 +693,7 @@ await initImageCache();
 sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
 hass.apply();
+tonight.init({ ha, broadcast, onChange: (plan) => hass.tonight(plan) });
 ha.start();
 pollSessions();
 if (config.plex.url) { plex.warmMovies(); taste.warm(); seasonal.warm(); }
