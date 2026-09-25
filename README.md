@@ -183,7 +183,8 @@ the level and gets a **Late night** button (Night mode and PureVoice together), 
 puts the bar in Smart mode with Night mode off. The **Sound** chip opens the mixer: volume, the
 listening modes, the EQ presets and the seven-band graphic EQ plus the Custom preset's three
 bands, the Bass, Rear and Atmos level steps, both rear speakers' battery and dock status, and a
-Calibrate button with a keep-quiet countdown. A rear left off its dock turns the chip red.
+Calibrate button with a keep-quiet countdown, and a THX button that counts five and plays the
+Deep Note on the theater speaker. A rear left off its dock turns the chip red.
 
 ## Cinema mode
 
