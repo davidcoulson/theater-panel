@@ -101,7 +101,9 @@ export async function shelf(season = seasonNow()) {
   if (hit && hit.day === day && Date.now() - hit.at < 6 * 3600e3) return hit.v;
   if (season === 'hallmark') {
     const v = await hallmarkShelf();
-    cache.set(season, { at: Date.now(), day, v });
+    // An empty shelf is a Seerr that was not answering yet (the first seconds after a restart),
+    // not a fact worth six hours: cache it for a minute.
+    cache.set(season, { at: v.items.length ? Date.now() : Date.now() - 6 * 3600e3 + 60e3, day, v });
     return v;
   }
   const s = SEASONS[season];
@@ -135,7 +137,7 @@ export async function shelf(season = seasonNow()) {
   const shuffled = source === 'tmdb-list' ? items : items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))
     .sort((a, b) => (a.it.watched - b.it.watched) || (a.k - b.k)).map((x) => x.it);
   const v = { id: season, title: s.title, kicker: s.kicker, source, total: items.length, items: shuffled.slice(0, 40) };
-  cache.set(season, { at: Date.now(), day, v });
+  cache.set(season, { at: items.length ? Date.now() : Date.now() - 6 * 3600e3 + 60e3, day, v });
   return v;
 }
 
