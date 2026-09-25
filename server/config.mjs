@@ -107,6 +107,9 @@ function build(env) {
     musicPlayers: list(env.ENTITY_MUSIC_PLAYERS, []),
     // Android Debug Bridge media_player for the projector. Empty until ADB is tested.
     projector: env.ENTITY_PROJECTOR || '',
+    // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
+    // from the device name, so one stem on the settings page finds them all.
+    soundbar: soundbarIds(env.SOUNDBAR_PREFIX || '', list(env.SOUNDBAR_REARS, ['left', 'right'])),
     // The projector's light-engine temperatures (the Kiosk Satellite plugin's sensors), for the
     // line on the Projector card and the running-hot nudge.
     projectorTemps: list(env.ENTITY_PROJECTOR_TEMPS, []),
@@ -181,6 +184,10 @@ function build(env) {
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way
   // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
   curtainSeconds: Math.max(0, Math.min(600, Number(env.CURTAIN_SECONDS ?? 90) || 0)),
+  // The soundbar's knobs that are the panel's business rather than the bar's.
+  soundbarStep: Math.max(1, Math.min(20, Number(env.SOUNDBAR_STEP ?? 2) || 2)),
+  soundbarMovieSmart: env.SOUNDBAR_MOVIE_SMART !== 'false',
+  soundbarCalibrationSeconds: Math.max(10, Math.min(300, Number(env.SOUNDBAR_CALIBRATION_SECONDS ?? 45) || 45)),
   // The projector counts as running hot at or above this laser temperature (°C).
   projectorHotC: Math.max(0, Math.min(150, Number(env.PROJECTOR_HOT_C ?? 65) || 0)),
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
@@ -282,6 +289,25 @@ function build(env) {
   return c;
 }
 
+// The soundbar's entities from its name stem, as jbl_integration names them: "JBL Bar 1300X"
+// becomes the stem jbl_bar_1300x, and its rears are their own devices under it.
+export function soundbarIds(prefix, rears = ['left', 'right']) {
+  const p = String(prefix || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!p) return null;
+  return {
+    prefix: p,
+    volume: `number.${p}_volume`, power: `switch.${p}_power`,
+    night: `switch.${p}_night_mode`, pureVoice: `switch.${p}_purevoice`, smart: `switch.${p}_smart_mode`,
+    preset: `select.${p}_eq_preset`,
+    bands: ['125hz', '250hz', '500hz', '1000hz', '2000hz', '4000hz', '8000hz'].map((b) => `number.${p}_${b}`),
+    custom: ['eq_1_low', 'eq_2_mid', 'eq_3_high'].map((b) => `number.${p}_${b}`),
+    buttons: { mute: `button.${p}_mute`, volumeUp: `button.${p}_increase_volume`, volumeDown: `button.${p}_lower_volume`, bass: `button.${p}_bass`, rear: `button.${p}_rear`, atmos: `button.${p}_atmos`, calibration: `button.${p}_calibration`, moment: `button.${p}_moment`, playPause: `button.${p}_play_pause` },
+    rears: rears.map((ch) => { const c = ch.trim().toLowerCase(); return { channel: c, battery: `sensor.${p}_rear_speaker_${c}_battery`, charging: `binary_sensor.${p}_rear_speaker_${c}_charging`, docked: `binary_sensor.${p}_rear_speaker_${c}_docked` }; }),
+  };
+}
+
+export const soundbarEntities = (sb) => !sb ? [] : [sb.volume, sb.power, sb.night, sb.pureVoice, sb.smart, sb.preset, ...sb.bands, ...sb.custom, ...sb.rears.flatMap((r) => [r.battery, r.charging, r.docked])];
+
 export const config = build(effectiveVars());
 
 export function watchedEntities() {
@@ -289,7 +315,7 @@ export function watchedEntities() {
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
-    ...e.dogSensors, ...e.projectorTemps,
+    ...e.dogSensors, ...e.projectorTemps, ...soundbarEntities(e.soundbar),
     'input_select.theater_scene',
   ].filter(Boolean);
 }

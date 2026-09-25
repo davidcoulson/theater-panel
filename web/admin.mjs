@@ -22,7 +22,7 @@ async function api(path, body) {
 const PAGES = [
   { id: 'overview', label: 'Overview', icon: 'home' },
   { id: 'connections', label: 'Connections', icon: 'server', groups: ['Home Assistant', 'Home Assistant device', 'Plex', 'Seerr', 'TMDB'], blurb: 'Where the panel gets its pictures, its room, and its holiday lists from, and how it shows up in Home Assistant as a device.' },
-  { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Lights'], blurb: 'The Home Assistant entities behind each control, and the favourite moods.' },
+  { id: 'room', label: 'Room', icon: 'bulb', groups: ['Entities', 'Soundbar', 'Lights'], blurb: 'The Home Assistant entities behind each control, the soundbar, and the favourite moods.' },
   { id: 'projector', label: 'Projector & games', icon: 'pad', groups: ['Projector apps', 'Tonight', 'Games'], blurb: 'Apps launched over ADB, the evening around a film, the HDMI switcher, consoles and the gaming PC.' },
   { id: 'display', label: 'Display', icon: 'eye', groups: ['Display', 'Mystery box', 'Year in review'], blurb: 'Theme, holiday accents, the idle screen, what shows on posters, what the Mystery box may pick, and the December message.' },
   { id: 'access', label: 'Access', icon: 'user', groups: ['Access'], blurb: 'Who gets in without the panel key.' },

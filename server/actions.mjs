@@ -30,6 +30,11 @@ export async function runAction(ha, body) {
     case 'scene': {
       if (!SCENES.includes(body.name)) throw new Error('Unknown scene');
       const run = await script(ha, body.name);
+      // The bar follows the room: a film gets Smart mode and no Night mode, unless told otherwise.
+      if (body.name === 'movie_time' && e.soundbar && config.soundbarMovieSmart) {
+        soundbar(ha, { cmd: 'smart', on: true }).catch(() => {});
+        soundbar(ha, { cmd: 'night', on: false }).catch(() => {});
+      }
       // The break gets its jingle: the panel shows the snack bar, the room hears the march.
       if (body.name === 'intermission' && config.intermission.url && body.quiet !== true) {
         const speaker = e.musicPlayers[0] || e.musicPlayer;
@@ -108,7 +113,11 @@ export async function runAction(ha, body) {
       return ha.callService('input_number', 'set_value', { value: clamp(Number(body.value), 0, 255) }, { target: { entity_id: body.entity_id } });
     }
 
+    case 'soundbar': return soundbar(ha, body);
+
     case 'transport': {
+      // Volume and mute go to the soundbar once there is one: it is the thing making the sound.
+      if (e.soundbar && ['vol_up', 'vol_down', 'mute'].includes(body.cmd)) return soundbar(ha, { cmd: body.cmd, on: body.muted });
       // Films in Plezy play on the projector's own Android, where the Apple TV cannot pause
       // them: whichever player actually has something going gets the button.
       if (transportTarget(ha) === 'projector') return projectorKey(ha, body);
@@ -228,6 +237,46 @@ export function livePosition(a, state) {
 }
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Number(n)));
+
+// The soundbar, through the JBL integration's entities: volume as a number, the modes as
+// switches, the EQ as a select and seven numbers, the rest as buttons the bar's remote has.
+async function soundbar(ha, body) {
+  const sb = config.entities.soundbar;
+  if (!sb) throw new Error('No soundbar on the settings page');
+  const number = (id, value) => ha.callService('number', 'set_value', { value }, { target: { entity_id: id } });
+  const press = (id) => ha.callService('button', 'press', {}, { target: { entity_id: id } });
+  const flip = (id, on) => ha.callService('switch', on ? 'turn_on' : 'turn_off', {}, { target: { entity_id: id } });
+  const level = () => Number(ha.states[sb.volume]?.state);
+  switch (body.cmd) {
+    case 'volume': return number(sb.volume, clamp(body.value, 0, 100));
+    case 'vol_up': return Number.isFinite(level()) ? number(sb.volume, clamp(level() + config.soundbarStep, 0, 100)) : press(sb.buttons.volumeUp);
+    case 'vol_down': return Number.isFinite(level()) ? number(sb.volume, clamp(level() - config.soundbarStep, 0, 100)) : press(sb.buttons.volumeDown);
+    case 'mute': return press(sb.buttons.mute);
+    case 'night': return flip(sb.night, Boolean(body.on));
+    case 'purevoice': return flip(sb.pureVoice, Boolean(body.on));
+    case 'smart': return flip(sb.smart, Boolean(body.on));
+    // Late night: quieter dynamics and clearer speech together, and back again.
+    case 'late_night': return Promise.all([flip(sb.night, Boolean(body.on)), flip(sb.pureVoice, Boolean(body.on))]);
+    case 'power': return flip(sb.power, Boolean(body.on));
+    case 'preset': return ha.callService('select', 'select_option', { option: String(body.option || '').slice(0, 64) }, { target: { entity_id: sb.preset } });
+    case 'band': {
+      const i = Number(body.index);
+      if (!Number.isInteger(i) || i < 0 || i >= sb.bands.length) throw new Error('Unknown band');
+      return number(sb.bands[i], clamp(body.value, -9, 9));
+    }
+    case 'custom': {
+      const i = Number(body.index);
+      if (!Number.isInteger(i) || i < 0 || i >= sb.custom.length) throw new Error('Unknown band');
+      return number(sb.custom[i], clamp(body.value, -9, 9));
+    }
+    case 'bass': return press(sb.buttons.bass);
+    case 'rear': return press(sb.buttons.rear);
+    case 'atmos': return press(sb.buttons.atmos);
+    case 'moment': return press(sb.buttons.moment);
+    case 'calibrate': return press(sb.buttons.calibration);
+    default: throw new Error('Unknown soundbar command');
+  }
+}
 
 // Which swell: the creature feature sting while the Halloween accent is up, the usual one
 // otherwise. (The accent follows the calendar unless it is pinned on the settings page.)

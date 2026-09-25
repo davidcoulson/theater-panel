@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, closeSound } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -23,6 +23,7 @@ import { Year } from './views/year.mjs';
 import { Intermission } from './views/intermission.mjs';
 import { TweaksSheet } from './views/tweaks.mjs';
 import { TonightSheet, GuestSheet } from './views/tonight.mjs';
+import { SoundSheet } from './views/soundbar.mjs';
 
 const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
@@ -435,6 +436,7 @@ function App() {
   const tweaks = useStore((s) => s.tweaks);
   const tonightOpen = useStore((s) => s.tonightOpen);
   const guestOpen = useStore((s) => s.guestOpen);
+  const soundOpen = useStore((s) => s.soundOpen);
   const View = VIEWS[r.name] || Lobby;
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
@@ -449,6 +451,7 @@ function App() {
     ${tweaks && html`<${TweaksSheet} onClose=${closeTweaks} />`}
     ${tonightOpen && html`<${TonightSheet} item=${tonightOpen.item} onClose=${closeTonight} />`}
     ${guestOpen && html`<${GuestSheet} onClose=${closeGuest} />`}
+    ${soundOpen && html`<${SoundSheet} onClose=${closeSound} />`}
     <${Weather} key=${`fx-${r.name}`} />
     <${Celebration} />
     <${DogAtDoor} />

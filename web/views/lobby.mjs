@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -21,6 +21,9 @@ export function Lobby() {
   const temp = useEntity(ents.temperature);
   const occ = useEntity(ents.occupancy);
   const plan = useStore((s) => s.tonight);
+  const soundbar = useStore((s) => s.entities.soundbar);
+  // A rear speaker left off its dock is the thing that goes wrong with detachable rears.
+  const undocked = useStore((s) => (s.entities.soundbar?.rears || []).filter((r) => s.states[r.docked]?.state === 'off').map((r) => r.channel));
   const tv = useEntity(ents.appleTv);
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
@@ -49,6 +52,7 @@ export function Lobby() {
       ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
       <button type="button" class=${`chip ${plan ? 'on' : ''}`} onClick=${() => openTonight()}><${Icon} name="film" size=${20} />${plan ? `Tonight · ${plan.at ? new Date(plan.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : plan.state === 'feature' ? 'on' : 'ready'}` : 'Tonight'}</button>
       <button type="button" class="chip" onClick=${() => openGuest()}><${Icon} name="remote" size=${20} />Guest remote</button>
+      ${soundbar && html`<button type="button" class=${`chip ${undocked.length ? 'warn' : ''}`} onClick=${() => openSound()}><${Icon} name="spk" size=${20} />${undocked.length ? `${undocked.join(' and ')} rear off its dock` : 'Sound'}</button>`}
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
       ${services.plex && html`<button type="button" class="chip" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${20} />Mystery box</button>`}
       <${SleepChip} />

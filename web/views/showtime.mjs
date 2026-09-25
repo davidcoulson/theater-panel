@@ -21,6 +21,12 @@ export function Showtime() {
   const [muted, setMuted] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(route.params.sleep === '1');
   const sleep = useStore((s) => s.sleep);
+  // The soundbar, once there is one: its level under the volume buttons, and Late night.
+  const sb = useStore((s) => s.entities.soundbar);
+  const sbVolume = useEntity(sb?.volume);
+  const sbNight = useEntity(sb?.night);
+  const sbPure = useEntity(sb?.pureVoice);
+  const lateNight = sbNight?.state === 'on' && sbPure?.state === 'on';
 
   const native = useStore((s) => Boolean(s.theater));
   // Showtime owns theater mode: on while this screen is up, off when it goes (Full controls,
@@ -72,6 +78,8 @@ export function Showtime() {
           <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume up" onClick=${() => t('vol_up')}><${Icon} name="volp" size=${48} w=${1.8} /></button>
           <button type="button" class="dbtn" style="height:110px" aria-label="Mute" aria-pressed=${muted ? 'true' : 'false'} onClick=${() => { setMuted(!muted); t('mute', { muted: !muted }); }}><${Icon} name="mute" size=${40} w=${1.8} /><span class="s">${muted ? 'Unmute' : 'Mute'}</span></button>
           <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume down" onClick=${() => t('vol_down')}><${Icon} name="volm" size=${48} w=${1.8} /></button>
+          ${sb && html`<div class="sb-level" title="Soundbar volume"><i style=${`width:${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? Number(sbVolume.state) : 0}%`}></i><span class="mono">${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? sbVolume.state : '–'}</span></div>
+          <button type="button" class="dbtn" style="height:90px" aria-pressed=${lateNight ? 'true' : 'false'} onClick=${() => act({ action: 'soundbar', cmd: 'late_night', on: !lateNight })}><${Icon} name="moon" size=${32} w=${1.8} /><span class="s">Late night</span></button>`}
         </div>
         <div class="transport">
           <button type="button" class="skip" aria-label="Back 10 seconds" onClick=${() => t('seek_rel', { seconds: -10 })}><${Icon} name="back" size=${64} w=${1.6} /><span class="mono" style="font-size:20px;color:var(--d-dim)">10s</span></button>
