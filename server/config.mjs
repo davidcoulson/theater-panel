@@ -201,6 +201,9 @@ function build(env) {
     // Only films that carry a rating (G, PG, PG-13, R, NC-17 or a TV rating): festival and
     // straight-to-streaming titles that never got one are out.
     ratedOnly: env.MYSTERY_RATED_ONLY !== 'false',
+    // Nothing rated below this: 'any', 'PG', 'PG-13' or 'R' (TV ratings count as their film
+    // equivalents), so a kids' film never comes up on an adults' night.
+    minContentRating: ['PG', 'PG-13', 'R'].includes(env.MYSTERY_MIN_CONTENT_RATING) ? env.MYSTERY_MIN_CONTENT_RATING : 'any',
     // Only films from a mainstream studio (taste.mjs has the list), plus any named here.
     mainstreamOnly: env.MYSTERY_MAINSTREAM_ONLY !== 'false',
     studiosExtra: list(env.MYSTERY_STUDIOS_EXTRA, []).map((s) => s.toLowerCase()),

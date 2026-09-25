@@ -107,6 +107,12 @@ const mainstream = (studio, extra) => {
   return Boolean(s) && [...MAINSTREAM_STUDIOS, ...extra].some((m) => s.includes(m));
 };
 const RATED = /^(G|PG|PG-13|R|NC-17|TV-)/i;
+// Content ratings in order, TV ratings folded onto their film equivalents, for "nothing below".
+const RATING_RANK = { 'TV-Y': 0, 'TV-Y7': 0, 'TV-G': 0, G: 0, 'TV-PG': 1, PG: 1, 'TV-14': 2, 'PG-13': 2, 'TV-MA': 3, R: 3, 'NC-17': 4 };
+const ratedAtLeast = (contentRating, floor) => {
+  const rank = RATING_RANK[(contentRating || '').toUpperCase()];
+  return rank != null && rank >= RATING_RANK[floor];
+};
 
 // The Mystery box: an unwatched film inside the admin page's limits (by default the last ten
 // years, rated 7 or better, carrying a rating, from a mainstream studio), weighted towards the
@@ -132,13 +138,15 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     .filter((i) => !rules.excludeLibraries.includes((i.library || '').toLowerCase()))
     .filter((i) => !rules.skipDisliked || i.userRating == null || i.userRating > 4)
     .filter((i) => !rules.ratedOnly || RATED.test(i.contentRating || ''))
+    .filter((i) => rules.minContentRating === 'any' || ratedAtLeast(i.contentRating, rules.minContentRating))
     .filter((i) => !rules.mainstreamOnly || mainstream(i.studio, rules.studiosExtra))
     .slice(0, 300);
   if (!items.length) {
     const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
       rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', only ? `in ${only.toUpperCase()}` : '',
       rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : '', rules.excludeLibraries.length ? `not in ${rules.excludeLibraries.join(', ')}` : '',
-      rules.settleDays ? `older than ${rules.settleDays} days here` : '', rules.ratedOnly ? 'with a rating' : '', rules.mainstreamOnly ? 'from a mainstream studio' : ''].filter(Boolean).join(', ');
+      rules.settleDays ? `older than ${rules.settleDays} days here` : '', rules.ratedOnly ? 'with a rating' : '',
+      rules.minContentRating === 'any' ? '' : `rated ${rules.minContentRating} or above`, rules.mainstreamOnly ? 'from a mainstream studio' : ''].filter(Boolean).join(', ');
     throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
   }
 
