@@ -734,3 +734,20 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .tasterow.seasonal.hallmark .foryou-head h2 { color: #9B2A22; }
 /* the Christmas countdown: in Home's date line, and under the idle screen's clock */
 .sh-countdown { position: absolute; top: 112px; right: 64px; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; letter-spacing: 1px; color: #C7B39E; }
+
+/* ---------- the panel's own settings sheet (seven taps on the version) ---------- */
+.rail .build { cursor: default; user-select: none; }
+.mystery-sheet.tweaks { inset: 60px 120px 60px; gap: 14px; }
+.tweaks .body { flex-grow: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 26px; padding-right: 8px; }
+.tweaks section h3 { font-family: var(--disp); font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin: 0 0 4px; }
+.tweaks .row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.tweaks .lbl { flex: 0 1 50%; font-size: 19px; font-weight: 600; }
+.tweaks .lbl small { display: block; font-weight: 400; font-size: 14px; line-height: 1.35; color: #C7B39E; margin-top: 3px; }
+.tweaks .chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.tweaks .filter { color: #F4ECE0; background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.2); height: 44px; font-size: 16px; }
+.tweaks .filter[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #2A1C14; }
+.tweaks input[type="text"] { width: 340px; height: 48px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.25); color: #F4ECE0; font-size: 18px; padding: 0 14px; outline: none; }
+.tweaks .rangerow { display: flex; align-items: center; gap: 14px; width: 360px; }
+.tweaks .rangerow input { flex-grow: 1; }
+.tweaks .hint { font-size: 15px; color: #C7B39E; }
+.tweaks .acts { display: flex; gap: 14px; }

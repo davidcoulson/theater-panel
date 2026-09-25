@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast, playbackState } from './lib/api.mjs';
+import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, toast, playbackState, openTweaks, closeTweaks } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -21,6 +21,7 @@ import { Showing } from './views/showing.mjs';
 import { Pick } from './views/pick.mjs';
 import { Year } from './views/year.mjs';
 import { Intermission } from './views/intermission.mjs';
+import { TweaksSheet } from './views/tweaks.mjs';
 
 const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
 const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
@@ -310,6 +311,13 @@ function Rail({ current }) {
   const bright = Math.max(0, Math.min(1, (Number(accent?.attributes?.brightness) || 0) / 255));
   const glow = 0.15 + 0.5 * bright;
   const theater = useStore((s) => Boolean(s.theater?.active));
+  // Seven taps on the version number, within a few seconds, open the panel's settings sheet.
+  const taps = useRef([]);
+  const tapVersion = () => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((t) => now - t < 4000), now];
+    if (taps.current.length >= 7) { taps.current = []; openTweaks(); }
+  };
   const build = useStore((s) => s.build) || {};
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   // The holiday accent: its glow fills the rail while the accents are off, and its glyph sits
@@ -328,7 +336,7 @@ function Rail({ current }) {
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
     ${hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Emblem} id=${hol.id} size=${68} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
-    ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''}>
+    ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''} onClick=${tapVersion}>
       <span>${build.version.split('.').slice(0, 3).join('.')}</span>
       <span>${build.version.split('.').slice(3).join('.')}</span>
     </div>`}
@@ -414,6 +422,7 @@ function App() {
   }, [sound?.at]);
 
   const haunt = useHaunting(currentAccent()?.id === 'halloween');
+  const tweaks = useStore((s) => s.tweaks);
   const View = VIEWS[r.name] || Lobby;
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
@@ -425,6 +434,7 @@ function App() {
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
     <${View} key=${r.name + JSON.stringify(r.params)} />
+    ${tweaks && html`<${TweaksSheet} onClose=${closeTweaks} />`}
     <${Weather} key=${`fx-${r.name}`} />
     <${Celebration} />
     <${DogAtDoor} />

@@ -243,6 +243,10 @@ get(/^\/api\/plex\/brand\/([a-z]+)$/, (m, q) => plex.brandBrowse(m[1], { filters
 get(/^\/api\/networks$/, () => (config.seerr.url ? seerr.networks() : [])); 
 get(/^\/api\/plex\/item\/(\d+)$/, (m) => plex.item(m[1]));
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
+// The panel's own settings sheet: the harmless knobs, behind the panel's auth like every action.
+get(/^\/api\/tweaks$/, () => admin.tweaks());
+post(/^\/api\/tweaks$/, async (m, q, body) => { const r = admin.saveTweaks(body?.values); await applySettings(); return r; });
+
 get(/^\/api\/plex\/ondeck$/, (m, q) => plex.onDeck(Math.min(Number(q.get('size') || 12), 60)));
 get(/^\/api\/plex\/recent$/, (m, q) => plex.recentlyAdded(Math.min(Number(q.get('size') || 16), 60)));
 const qrSvg = (text) => QRCode.toString(String(text).slice(0, 300), { type: 'svg', margin: 1, color: { dark: '#25170F', light: '#0000' } });
