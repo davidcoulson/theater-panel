@@ -90,6 +90,13 @@ export const FIELDS = [
   { group: 'Projector apps', key: 'PREROLL_ENABLED', label: 'Pre-roll on', type: 'bool', default: true, help: 'Off keeps the URL but skips the swell; the same switch is on the Home Assistant device.' },
   { group: 'Projector apps', key: 'PREROLL_MOVIES_ONLY', label: 'Pre-roll for films only', type: 'bool', default: true, help: 'A swell before a film is an event; before the fourth episode of a sitcom it is a delay. Off plays it for episodes too. Either way the Play button offers it for the title in front of you.' },
   { group: 'Projector apps', key: 'INTERMISSION_URL', label: 'Intermission march URL', type: 'text', placeholder: 'https://ht-kiosk.coulson.io/assets/intermission.mp3', help: "Plays in the room when Intermission starts, while the panel shows the snack bar. Blank uses the panel's own march when the pre-roll URL points at /assets/preroll.mp3; clear both to have no sound." },
+  { group: 'Tonight', key: 'TRAILERS_ENABLED', label: 'Trailers before the film', type: 'bool', default: true, help: 'Coming attractions: trailers for films in the library nobody has seen yet, played on the projector before the feature. Needs the TMDB key.' },
+  { group: 'Tonight', key: 'TRAILERS_COUNT', label: 'How many trailers', type: 'text', placeholder: '2' },
+  { group: 'Tonight', key: 'TRAILERS_SECONDS', label: 'Seconds per trailer', type: 'text', placeholder: '150', help: 'The projector moves to the next trailer after this long; most run about two and a half minutes.' },
+  { group: 'Tonight', key: 'TRAILERS_PACKAGE', label: 'App that plays them', type: 'text', placeholder: 'org.smarttube.stable', help: 'The YouTube app on the projector, by package name. SmartTube is the default; the official app is com.google.android.youtube.tv.' },
+  { group: 'Tonight', key: 'PRESHOW_MINUTES', label: 'Pre-show lights before the trailers (minutes)', type: 'text', placeholder: '10', help: 'For a scheduled evening: the Pre-show scene runs this long before the trailers start. 0 skips it.' },
+  { group: 'Tonight', key: 'AUTO_INTERMISSION_MINUTES', label: 'Intermission for films longer than (minutes)', type: 'text', placeholder: '120', help: 'An evening started from the panel takes its break at the halfway mark of a film at least this long. 0 never does.' },
+  { group: 'Tonight', key: 'GUEST_HOURS', label: 'Guest remote lasts (hours)', type: 'text', placeholder: '6', help: 'How long the link on a guest\'s phone works after the QR is shown.' },
   { group: 'Projector apps', key: 'INTERMISSION_MINUTES', label: 'Intermission length (minutes)', type: 'text', placeholder: '15', help: 'The countdown on the snack bar screen. Five more minutes on the screen adds to it.' },
   { group: 'Year in review', key: 'WRAPPED_DATE', label: 'Send the year\'s numbers on (MM-DD)', type: 'text', placeholder: '12-26', help: 'The Wrapped message: hours, plays, the top titles, who watched most, the longest sitting. Goes out once, after 9 in the morning on that day.' },
   { group: 'Year in review', key: 'WRAPPED_NOTIFY', label: 'Send it to', type: 'list', domain: 'notify', help: 'Home Assistant notify entities: phones, the kitchen display. Empty sends nothing.' },
@@ -196,6 +203,7 @@ const TWEAK_KEYS = new Set([
   ...FIELDS.filter((f) => f.group === 'Mystery box').map((f) => f.key),
   'THEME', 'ACCENT', 'ACCENT_INTENSITY', 'BIRTHDAYS', 'ARRIVAL_HOURS', 'IDLE_MINUTES', 'CINEMA_MODE', 'SHOW_QUALITY_BADGES', 'SHOW_NETWORK_BADGES',
   'PREROLL_ENABLED', 'PREROLL_MOVIES_ONLY', 'PREROLL_SECONDS', 'INTERMISSION_MINUTES', 'WRAPPED_DATE',
+  ...FIELDS.filter((f) => f.group === 'Tonight').map((f) => f.key),
 ]);
 
 export async function tweaks() {

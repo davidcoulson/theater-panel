@@ -54,6 +54,11 @@ export const clearMystery = () => set({ mystery: null });
 // The panel's own settings sheet, opened by seven taps on the version number in the rail.
 export const openTweaks = () => set({ tweaks: true });
 export const closeTweaks = () => set({ tweaks: false });
+// Tonight's plan sheet (the Tonight chip, a film's page) and the guest remote's QR sheet.
+export const openTonight = (item = null) => set({ tonightOpen: { item } });
+export const closeTonight = () => set({ tonightOpen: null });
+export const openGuest = () => set({ guestOpen: true });
+export const closeGuest = () => set({ guestOpen: false });
 
 let toastTimer;
 export function toast(text, err = false) {
@@ -67,6 +72,7 @@ let bootBuild = null;
 export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
   const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {}, intermission: s.intermission || {} })).catch(() => {});
+  const loadTonight = () => get('/api/tonight').then((d) => set({ tonight: d?.item ? d : null })).catch(() => {});
   loadSettings();
   get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
   // EventSource only retries by itself on a dropped connection. A non-200 answer (502/503 while
@@ -101,6 +107,7 @@ export async function startLive({ navigate } = {}) {
     es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
     // Saved on the admin page: pick up the new entities, apps and display options.
     es.addEventListener('settings', loadSettings);
+    loadTonight();
     // The sleep timer, armed from Showtime and counted down by the server.
     es.addEventListener('sleep', (e) => {
       const d = JSON.parse(e.data);
@@ -113,6 +120,8 @@ export async function startLive({ navigate } = {}) {
     es.addEventListener('sound', (e) => set({ sound: { ...JSON.parse(e.data), at: Date.now() } }));
     // A film just finished: the panel asks how it was.
     es.addEventListener('rate', (e) => set({ rate: JSON.parse(e.data) }));
+    // Tonight's plan: the film, the time, where the evening is. {} when there is none.
+    es.addEventListener('tonight', (e) => { const d = JSON.parse(e.data); set({ tonight: d?.item ? d : null }); });
     // Movie night: the shortlist and the running tally.
     es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
     // Home Assistant (or anything with access to the panel's API) can move the panel to a route.

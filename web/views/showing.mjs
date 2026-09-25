@@ -12,7 +12,10 @@ const HOLD = 14000;   // ms per title
 
 export function Showing() {
   // "?season=halloween" / "christmas" shows the holiday board out of season.
-  const [items] = useLoad(() => get(`/api/showing${route.params.season ? `?season=${encodeURIComponent(route.params.season)}` : ''}`).catch(() => []), []);
+  const [loaded] = useLoad(() => get(`/api/showing${route.params.season ? `?season=${encodeURIComponent(route.params.season)}` : ''}`).catch(() => []), []);
+  // Tonight's plan leads the slideshow while there is one: the poster, the time, the times.
+  const plan = useStore((s) => s.tonight);
+  const items = !loaded ? loaded : plan?.item ? [tonightSlide(plan), ...loaded.filter((x) => x.id !== 'tonight')] : loaded;
   const [i, setI] = useState(0);
   const [now, setNow] = useState(clock());
   const streams = useStreams();
@@ -61,6 +64,18 @@ export function Showing() {
     <div class="sh-dots">${items.map((m, k) => html`<i class=${k === cur ? 'on' : ''}></i>`)}</div>
     <div class="sh-hint"><${Icon} name="film" size=${18} color="#8C7866" />Touch to wake</div>
   </main>`;
+}
+
+// The evening's plan as a poster slide, in the same shape as a Now Showing title.
+function tonightSlide(plan) {
+  const at = (ms) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const it = plan.item;
+  const label = plan.state === 'feature' ? 'Now showing' : plan.state === 'trailers' ? 'Coming attractions' : plan.at ? `Tonight at ${at(plan.at)}` : 'Tonight';
+  const badges = [];
+  if (plan.trailers?.length) badges.push(`${plan.trailers.length} trailer${plan.trailers.length === 1 ? '' : 's'} first`);
+  if (plan.times?.intermission) badges.push(`Intermission ${at(plan.times.intermission)}`);
+  if (plan.times?.ends) badges.push(`Ends ${at(plan.times.ends)}`);
+  return { id: 'tonight', kind: 'tonight', label, title: it.title, year: it.year, runtime: it.duration, contentRating: it.contentRating, genres: it.genres, summary: it.summary, poster: it.poster, art: it.art, badges };
 }
 
 // A board between the posters: the holiday shelf, or Coming soon from the request queue. A row
