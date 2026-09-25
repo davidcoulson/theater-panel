@@ -4,26 +4,37 @@
 //   Halloween Scares   all of October
 //   Christmas Movies   Thanksgiving through New Year's Eve
 //
-// Both come from Kometa's seasonal collections in Plex ("Halloween.", "Christmas.") - owned,
-// playable, and already curated. Kometa only builds a season's collection inside its own window,
-// so until it does, the shelf falls back to films you own that TMDB tags with the holiday, kept
-// only when the title or plot actually mentions it (TMDB's "christmas" tag alone leads with the
-// Harry Potter films, for their Christmas scenes).
+// Both start from Kometa's seasonal collections in Plex ("Halloween.", "Christmas.") - owned and
+// playable - and keep only what belongs on the shelf. Kometa's lists are broad: its Halloween
+// collection has Twilight and Fantastic Beasts in it for their vampires and wizards. So a
+// Halloween Scare has to be filed as Horror, or be about Halloween itself (trick-or-treating, a
+// haunting, ghosts, witches); a Christmas Movie has to mention Christmas in its title or plot.
+// Kometa only builds a season's collection inside its own window, so until it does the shelf
+// falls back to films you own that TMDB tags with the holiday, through the same test (TMDB's
+// "christmas" tag alone leads with the Harry Potter films, for their Christmas scenes).
 
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
 import { thanksgiving } from './accents.mjs';
 
+const HALLOWEEN = /hallowe'?en|trick.or.treat|haunt|ghost|witch|pumpkin|spook|jack-o|all hallows/i;
+const CHRISTMAS = /christmas|santa|xmas|noel|sleigh|\belf\b|grinch|scrooge|nutcracker|reindeer|mistletoe|north pole/i;
+// Christmas movies whatever anyone's database says - Die Hard's plot summary is all terrorists
+// and Nakatomi Plaza. Always on the shelf when they're in the library, found by title if neither
+// Kometa's collection nor TMDB's holiday tag has them.
+const HONORARY_CHRISTMAS = ['Die Hard', 'Gremlins', 'Lethal Weapon', 'Iron Man 3', 'Batman Returns', 'Trading Places', 'Edward Scissorhands'];
+const honorary = (it) => HONORARY_CHRISTMAS.some((t) => t.toLowerCase() === String(it.title).toLowerCase());
 const SEASONS = {
   halloween: {
     title: 'Halloween Scares', kicker: 'All October, from your library',
     collection: /^halloween\.?$/i, keyword: 3335,
-    mention: /hallowe'?en|spook|witch|haunt|ghost|monster|vampire|zombie|trick.or.treat|pumpkin|werewolf/i,
+    keep: (it) => it.horror || (it.allGenres || it.genres || []).includes('Horror') || HALLOWEEN.test(`${it.title} ${it.summary || it.overview || ''}`),
   },
   christmas: {
     title: 'Christmas Movies', kicker: "Thanksgiving to New Year's Eve, from your library",
     collection: /^(christmas|holiday)\.?$/i, keyword: 207317,
-    mention: /christmas|santa|xmas|holiday|noel|sleigh|\belf\b|grinch|scrooge|nutcracker|reindeer|mistletoe/i,
+    always: HONORARY_CHRISTMAS,
+    keep: (it) => honorary(it) || CHRISTMAS.test(`${it.title} ${it.summary || it.overview || ''}`),
   },
 };
 
@@ -46,13 +57,18 @@ export async function shelf(season = seasonNow()) {
   const hit = cache.get(season);
   if (hit && hit.day === day && Date.now() - hit.at < 6 * 3600e3) return hit.v;
 
-  let items = await plex.collectionItems(s.collection).catch(() => []);
+  let items = (await plex.collectionItems(s.collection).catch(() => [])).filter(s.keep);
   let source = 'kometa';
   if (items.length < 8) {
     const tagged = await seerr.byKeyword(s.keyword).catch(() => []);
-    const owned = tagged.filter((r) => r.plexKey && s.mention.test(`${r.title} ${r.overview}`));
+    const owned = tagged.filter((r) => r.plexKey && s.keep(r));
     items = owned.map((r) => ({ id: String(r.plexKey), type: 'movie', title: r.title, year: r.year, poster: r.poster, art: r.backdrop, rating: r.rating, watched: false }));
     source = 'tmdb';
+  }
+  for (const title of s.always || []) {
+    if (items.some((it) => it.title.toLowerCase() === title.toLowerCase())) continue;
+    const hit = (await plex.search(title, 10).catch(() => [])).find((m) => m.type === 'movie' && m.title.toLowerCase() === title.toLowerCase());
+    if (hit) items.push(hit);
   }
   const seed = [...day].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const shuffled = items.map((it, i) => ({ it, k: ((seed ^ (i * 2654435761)) >>> 0) % 100000 }))

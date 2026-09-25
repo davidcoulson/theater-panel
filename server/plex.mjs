@@ -566,5 +566,7 @@ export const collectionItems = (re) => cached(`coll:${re}`, 6 * 3600e3, async ()
     const kids = await Promise.all(hits.map((h) => plex(`/library/collections/${h.ratingKey}/children`).then((r) => r.Metadata || []).catch(() => [])));
     return kids.flat();
   }));
-  return bestCopies(lists.flat().filter((m) => m.type === 'movie')).map((m) => mapItem(m));
+  // All the genres, not mapItem's first three: the holiday shelves check for Horror, which is
+  // often listed after Comedy or Fantasy.
+  return bestCopies(lists.flat().filter((m) => m.type === 'movie')).map((m) => ({ ...mapItem(m), allGenres: tags(m.Genre) }));
 });

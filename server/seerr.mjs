@@ -218,7 +218,7 @@ export async function byKeyword(keywordId, pages = 5) {
   for (let page = 1; page <= pages; page++) {
     const d = await seerr('/discover/movies', { params: { keywords: String(keywordId), page } }).catch(() => null);
     if (!d?.results?.length) break;
-    out.push(...d.results.map((r) => ({ ...mapResult({ ...r, mediaType: 'movie' }), overview: r.overview || '' })));
+    out.push(...d.results.map((r) => ({ ...mapResult({ ...r, mediaType: 'movie' }), overview: r.overview || '', horror: (r.genreIds || []).includes(27) })));
     if (page >= d.totalPages) break;
   }
   return out;
