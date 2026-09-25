@@ -336,15 +336,15 @@ post(/^\/api\/voice$/, async (m, q, body) => {
 // Idle screen: Plex's own titles (in progress, just added), with two boards woven in - the
 // holiday shelf while its season lasts, and Coming soon from the request queue.
 // "?season=halloween" or "christmas" shows a shelf out of season (for a look, or a screenshot).
-const seasonParam = (q) => (['halloween', 'christmas'].includes(q.get('season')) ? q.get('season') : undefined);
+const seasonParam = (q) => (['halloween', 'christmas', 'hallmark'].includes(q.get('season')) ? q.get('season') : undefined);
 get(/^\/api\/showing$/, async (m, q) => {
-  const [plexItems, soon, shelf] = await Promise.all([
+  const [plexItems, soon, shelves] = await Promise.all([
     config.plex.url ? plex.showing(10).catch(() => []) : [],
     config.seerr.url ? seasonal.coming(6).catch(() => []) : [],
-    config.plex.url ? seasonal.shelf(seasonParam(q)).catch(() => null) : null,
+    config.plex.url ? seasonal.shelves(seasonParam(q)).catch(() => []) : [],
   ]);
   const boards = [];
-  if (shelf?.items?.length >= 4) boards.push({ id: `board-${shelf.id}`, kind: 'board', board: 'seasonal', season: shelf.id, title: shelf.title, kicker: shelf.kicker, items: shelf.items.slice(0, 8) });
+  for (const shelf of shelves) if (shelf.items.length >= 4) boards.push({ id: `board-${shelf.id}`, kind: 'board', board: 'seasonal', season: shelf.id, title: shelf.title, kicker: shelf.kicker, items: shelf.items.slice(0, 8) });
   if (soon.length >= 2) boards.push({ id: 'board-coming', kind: 'board', board: 'coming', title: 'Coming soon', kicker: 'Asked for, and on its way', items: soon });
   // a board every few titles, so the idle screen alternates between them and the posters
   const out = [];
@@ -352,8 +352,8 @@ get(/^\/api\/showing$/, async (m, q) => {
   return [...out, ...boards];
 });
 
-// The holiday shelf on its own (the For you tab), and Coming soon.
-get(/^\/api\/seasonal$/, (m, q) => (config.plex.url ? seasonal.shelf(seasonParam(q)) : null));
+// The holiday shelves on their own (the For you tab), and Coming soon.
+get(/^\/api\/seasonal$/, async (m, q) => ({ shelves: config.plex.url ? await seasonal.shelves(seasonParam(q)) : [] }));
 get(/^\/api\/coming$/, async () => ({ items: config.seerr.url ? await seasonal.coming(8) : [] }));
 
 get(/^\/api\/plex\/search$/, (m, q) => plex.search(q.get('q') || ''));

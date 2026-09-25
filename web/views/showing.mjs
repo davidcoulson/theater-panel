@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import { html, Icon } from '../lib/ui.mjs';
-import { get, useLoad, useStore, clock, runtime } from '../lib/api.mjs';
+import { get, useLoad, useStore, clock, runtime, christmasCountdown } from '../lib/api.mjs';
 import { useStreams } from './streams.mjs';
 import { route, currentAccent } from '../app.mjs';
 
@@ -42,6 +42,7 @@ export function Showing() {
       style=${art ? `background-image:url('${art}')` : ''}></div>`; })}
     <div class="sh-veil"></div>
     <div class="sh-clock">${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span><span class="dot-sep" aria-hidden="true"></span>`}${now.hm}<small>${now.ampm}</small></div>
+    ${(() => { const c = christmasCountdown(new Date(), route.params.countdown === '1'); return c && html`<div class="sh-countdown"><${Icon} name="tree" size=${22} color="#7FB77E" />${c.text}</div>`; })()}
     ${creature && !board && html`<div class="creature-card"><span class="c1">Tonight's</span><span class="c2">Creature Feature</span><span class="c3">presented in Terror-Vision</span></div>`}
     ${board ? html`<${Board} it=${it} key=${it.id} />` : html`<div class="sh-body" key=${it.id}>
       ${it.poster && html`<img class="sh-poster" src=${it.poster} alt="" />`}
@@ -65,7 +66,7 @@ function Board({ it }) {
     <div class="sh-board-head"><div class="k">${it.kicker}</div><h1>${it.title}</h1></div>
     <div class="sh-board-row">
       ${it.items.map((p) => html`<figure key=${p.id}>
-        ${p.poster ? html`<img src=${p.poster} alt="" />` : html`<div class="ph">${p.title}</div>`}
+        <div class="pic">${p.poster ? html`<img src=${p.poster} alt="" />` : html`<div class="ph">${p.title}</div>`}${p.ribbon && html`<span class="ribbon">${p.ribbon}</span>`}</div>
         <figcaption><b class="ellipsis">${p.title}</b><span>${it.board === 'coming' ? p.when : p.year || ''}</span></figcaption>
       </figure>`)}
     </div>

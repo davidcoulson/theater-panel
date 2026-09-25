@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -33,11 +33,12 @@ export function Lobby() {
   const spoken = useStore((s) => s.mystery);
   useEffect(() => { if (spoken) setMystery(true); }, [spoken]);
   const services = useStore((s) => s.services) || {};
+  const countdown = christmasCountdown(new Date(), route.params.countdown === '1');
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const part = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
 
   return html`<main class="view">
-    <${Header} title="Home Theater" kicker=${`${weekday} ${part}`}>
+    <${Header} title="Home Theater" kicker=${countdown ? `${weekday} ${part} · ${countdown.text}` : `${weekday} ${part}`}>
       ${arrivals.list.length > 0 && html`<button type="button" class="chip arrival" onClick=${() => go('watch', { item: arrivals.list[0].plexId })}>
         ${arrivals.list[0].poster && html`<img src=${arrivals.list[0].poster} alt="" />`}
         <span><b>Now in Plex</b> ${arrivals.list[0].title}</span>${arrivals.list.length > 1 && html`<span class="more">+${arrivals.list.length - 1}</span>`}
