@@ -491,8 +491,10 @@ script:
     fields:
       projector: { description: "unused; the plugin's switch is fixed below" }
     sequence:
-      - condition: template
-        value_template: "{{ states('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture') not in ['unavailable', 'unknown'] }}"
+      # A projector still booting after a CEC wake has no switch yet; give it the boot time.
+      - wait_template: "{{ states('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture') not in ['unavailable', 'unknown'] }}"
+        timeout: "00:01:30"
+        continue_on_timeout: false
       - action: switch.turn_on
         target: { entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture }
 
@@ -681,6 +683,26 @@ automation:
           - action: script.theater_projector_light_off
         else:
           - action: script.theater_projector_light_on
+
+  # A cold boot lights the laser with the boot animation and leaves it on. The projector cannot
+  # be told to boot dark, but the plugin's switch coming back is the moment to decide: with no
+  # source awake, blank it (the front bar goes to its standby lights). A boot caused by the Apple
+  # TV waking finds the Apple TV on and leaves the picture alone.
+  - id: theater_projector_dark_after_boot
+    alias: "Theater: projector boots dark when nothing is on"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture
+        from: unavailable
+        to: "on"
+        for: "00:00:05"
+    conditions:
+      - condition: state
+        entity_id: media_player.home_theater
+        state: ["off", "standby", "unavailable"]
+    actions:
+      - action: script.theater_projector_light_off
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
