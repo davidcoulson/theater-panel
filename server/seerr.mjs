@@ -229,7 +229,8 @@ export async function byKeyword(keywordId, pages = 5) {
 export async function ownedBy({ studio, keywords }, pages = 8) {
   const out = [];
   for (let page = 1; page <= pages; page++) {
-    const d = await seerr('/discover/movies', { params: { ...(studio ? { studio } : {}), ...(keywords ? { keywords } : {}), page } }).catch(() => null);
+    const d = await seerr('/discover/movies', { params: { ...(studio ? { studio } : {}), ...(keywords ? { keywords } : {}), page } })
+      .catch((e) => { console.warn(`[seerr] discover studio=${studio} page ${page}:`, e.message); return null; });
     if (!d?.results?.length) break;
     out.push(...d.results.filter((r) => r.mediaInfo?.ratingKey).map((r) => mapResult({ ...r, mediaType: 'movie' })));
     if (page >= d.totalPages) break;
