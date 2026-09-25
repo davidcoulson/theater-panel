@@ -140,13 +140,15 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     .filter((i) => !rules.ratedOnly || RATED.test(i.contentRating || ''))
     .filter((i) => rules.minContentRating === 'any' || ratedAtLeast(i.contentRating, rules.minContentRating))
     .filter((i) => !rules.mainstreamOnly || mainstream(i.studio, rules.studiosExtra))
+    .filter((i) => !rules.studiosExclude.some((s) => (i.studio || '').toLowerCase().includes(s)))
     .slice(0, 300);
   if (!items.length) {
     const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
       rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', only ? `in ${only.toUpperCase()}` : '',
       rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : '', rules.excludeLibraries.length ? `not in ${rules.excludeLibraries.join(', ')}` : '',
       rules.settleDays ? `older than ${rules.settleDays} days here` : '', rules.ratedOnly ? 'with a rating' : '',
-      rules.minContentRating === 'any' ? '' : `rated ${rules.minContentRating} or above`, rules.mainstreamOnly ? 'from a mainstream studio' : ''].filter(Boolean).join(', ');
+      rules.minContentRating === 'any' ? '' : `rated ${rules.minContentRating} or above`, rules.mainstreamOnly ? 'from a mainstream studio' : '',
+      rules.studiosExclude.length ? `not by ${rules.studiosExclude.join(', ')}` : ''].filter(Boolean).join(', ');
     throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
   }
 
@@ -181,6 +183,20 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     : pick.hits.length ? `More ${pick.hits[0].toLowerCase()} for the house`
     : 'Never started, and highly rated';
   return { item: pick.it, why, pool: items.length };
+}
+
+// Ten draws in a row, each kept out of the next, so the rules can be audited from the panel's
+// settings sheet without starting anything.
+export async function preview({ n = 10, filters = [] } = {}) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let r;
+    try { r = await mystery({ filters, exclude: out.map((x) => x.id) }); } catch { break; }
+    const it = r.item;
+    out.push({ id: it.id, title: it.title, year: it.year, rating: it.rating, minutes: it.duration ? Math.round(it.duration / 60000) : null,
+      contentRating: it.contentRating, studio: it.studio, res: it.quality?.res, hdr: Boolean(it.quality?.hdr), genres: it.genres || [], why: r.why });
+  }
+  return out;
 }
 
 // ---------- Year in review ----------

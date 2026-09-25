@@ -207,6 +207,8 @@ function build(env) {
     // Only films from a mainstream studio (taste.mjs has the list), plus any named here.
     mainstreamOnly: env.MYSTERY_MAINSTREAM_ONLY !== 'false',
     studiosExtra: list(env.MYSTERY_STUDIOS_EXTRA, []).map((s) => s.toLowerCase()),
+    // Studios the box never draws from, whatever else is on (a TV-movie house, say).
+    studiosExclude: list(env.MYSTERY_STUDIOS_EXCLUDE, []).map((s) => s.toLowerCase()),
   },
   // Intermission: the snack bar screen on the panel, and a corny little march on the theater
   // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.
