@@ -807,12 +807,16 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .sound .volume .dial { flex-grow: 1; display: flex; align-items: center; gap: 18px; }
 .sound .volume .dial input { flex-grow: 1; }
 .sound .volume .dial .n { font-family: var(--disp); font-size: 54px; line-height: 1; width: 110px; text-align: right; }
-.sound .bands { display: flex; align-items: flex-end; gap: 18px; height: 250px; padding: 8px 4px 0; }
-.sound .bands .gap { width: 24px; border-left: 1px solid rgba(255,255,255,.12); align-self: stretch; }
-.sound .band { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
-.sound .band .v { font-size: 15px; color: #C7B39E; height: 20px; }
-.sound .band .l { font-size: 14px; color: #C7B39E; letter-spacing: 1px; }
-.sound .band input.vert { writing-mode: vertical-lr; direction: rtl; width: 34px; flex-grow: 1; min-height: 140px; }
+.sound .eq { width: 100%; height: auto; aspect-ratio: 1000 / 190; display: block; touch-action: none; user-select: none; }
+.sound .eq .guide { stroke: rgba(255,255,255,.14); stroke-width: 2; }
+.sound .eq .base { stroke: rgba(255,255,255,.28); stroke-width: 2; }
+.sound .eq .tick { stroke: rgba(255,255,255,.35); stroke-width: 2; }
+.sound .eq .dot { fill: #F4ECE0; stroke: var(--choc2); stroke-width: 2; transition: r .12s; }
+.sound .eq .dot.on { fill: var(--gold); }
+.sound .eq .off .dot { fill: rgba(255,255,255,.25); }
+.sound .eq text { font-family: var(--mono); fill: #C7B39E; font-size: 12px; }
+.sound .eq .l { font-family: var(--sans, inherit); letter-spacing: 1.5px; text-transform: uppercase; font-size: 11px; }
+.sound .eq .unit { font-size: 11px; }
 .sound .rears-cal { display: flex; gap: 40px; align-items: flex-start; }
 .sound .rears-cal > div { flex: 1; }
 .sound .cal { display: flex; align-items: center; gap: 16px; font-size: 17px; }
