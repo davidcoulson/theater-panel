@@ -19,49 +19,20 @@
 #   Plezy         media_player.plex_plezy_aurora_pro (the projector's Plex client, as HA's Plex
 #                                                     integration names it; lights follow it)
 
-# Move the panel to one of its screens from an automation or script, e.g.
-#   action: rest_command.theater_panel_navigate
-#   data: { route: "#/watch?brand=netflix" }
-# Kiosk Satellite's own navigate service moves the HA dashboard around the panel, not the panel.
+# The panel is a Home Assistant device over the ESPHome native API (Settings > Devices &
+# services > ESPHome, the container's address, port 6053). That brings its controls and sensors
+# (the theme and accent, cinema mode, the sleep timer, what is playing, the build and an update
+# entity) and these actions, which the scripts below use:
+#   esphome.theater_panel_navigate  data: { route: "#/watch?brand=netflix" }   move every panel
+#   esphome.theater_panel_play      data: { rating_key: "12345" }              start a title
+#   esphome.theater_panel_scene     data: { name: pre_show }                   run a scene
+#   esphome.theater_panel_voice     data: { intent: play, query: "Jaws" }      what the sentences do
+# An action returns nothing, so the voice intents wait for the panel's "Voice answer" sensor
+# to change and speak that. Kiosk Satellite's own navigate service moves the HA dashboard
+# around the panel, not the panel.
 #
-# The panel makes itself a key on first run (unless ALLOW_OPEN=1), and every request without it
-# gets 401: the build sensor stays unknown, voice does nothing, navigate is ignored. Here Home
-# Assistant's address is in the panel's TRUST_NETWORKS, so these calls need no key. Elsewhere,
-# put the key in secrets.yaml and add it: `params: { key: !secret theater_panel_key }` on the
-# rest sensor, and the whole URL with ?key=<PANEL_KEY> as a secret on each rest_command
-# (!secret cannot sit inside a template).
-
-# Which build the panel is running, and whether a newer image is waiting on GHCR. Home Assistant
-# turns this into an update entity below.
-rest:
-  - resource: "https://ht-kiosk.coulson.io/api/version"
-    scan_interval: 1800
-    sensor:
-      - name: "Theater panel build"
-        unique_id: theater_panel_build
-        value_template: "{{ value_json.installed }}"
-        json_attributes: [installed, latest, update, built, image]
-    binary_sensor:
-      - name: "Theater panel update available"
-        unique_id: theater_panel_update_available
-        device_class: update
-        value_template: "{{ value_json.update }}"
-
-rest_command:
-  # Voice goes through the panel: it finds the title in Plex and starts it the same way the
-  # panel's own Play button does. See the sentences in custom_sentences/en/theater.yaml.
-  theater_panel_voice:
-    url: "https://ht-kiosk.coulson.io/api/voice"
-    method: post
-    # The panel only takes JSON posts, and only with this content type.
-    content_type: "application/json"
-    payload: '{{ {"intent": intent, "query": query | default(""), "name": name | default(""), "route": route | default("")} | to_json }}'
-
-  theater_panel_navigate:
-    url: https://ht-kiosk.coulson.io/api/navigate
-    method: POST
-    content_type: application/json
-    payload: '{{ {"route": route} | to_json }}'
+# Entity ids below are what HA made for a device called "theater-panel" in the Home Theater
+# area; if yours differ, change them here.
 
 input_select:
   theater_scene:
@@ -582,18 +553,22 @@ intent_script:
   TheaterPlay:
     description: "Play something from Plex in the theater"
     action:
-      - action: rest_command.theater_panel_voice
+      - action: esphome.theater_panel_voice
         data: { intent: play, query: "{{ title }}" }
-        response_variable: panel
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: sensor.home_theater_theater_panel_voice_answer
+            not_to: ["…", "unknown", "unavailable"]
+        timeout: "00:00:15"
+      - variables:
+          answer: "{{ wait.trigger.to_state.state if wait.trigger else '' }}"
     speech:
-      text: >-
-        {% set r = panel.content if panel is defined and panel.content is mapping else {} %}
-        {{ "Starting " ~ r.spoken if r.get('ok') else (r.get('spoken') or "I could not find " ~ title ~ " in Plex") }}
+      text: "{{ answer or 'The theater panel did not answer' }}"
 
   TheaterScene:
     description: "Run one of the theater's scenes"
     action:
-      - action: rest_command.theater_panel_voice
+      - action: esphome.theater_panel_voice
         data: { intent: scene, name: "{{ scene }}" }
     speech:
       text: "{{ scene | replace('_', ' ') | capitalize }}"
@@ -601,55 +576,44 @@ intent_script:
   TheaterSurprise:
     description: "Let the panel pick something and start it"
     action:
-      - action: rest_command.theater_panel_voice
+      - action: esphome.theater_panel_voice
         data: { intent: mystery }
-        response_variable: panel
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: sensor.home_theater_theater_panel_voice_answer
+            not_to: ["…", "unknown", "unavailable"]
+        timeout: "00:00:15"
+      - variables:
+          answer: "{{ wait.trigger.to_state.state if wait.trigger else '' }}"
     speech:
-      text: >-
-        {% set spoken = (panel.content.spoken if panel is defined and panel.content is defined else none) %}
-        {{ "Tonight you are watching " ~ spoken if spoken else "I could not find anything to watch" }}
+      text: "{{ answer or 'I could not find anything to watch' }}"
 
   TheaterScreen:
     description: "Move the theater panel to one of its screens"
     action:
-      - action: rest_command.theater_panel_voice
-        data: { intent: navigate, route: "#/{{ screen }}" }
+      - action: esphome.theater_panel_navigate
+        data: { route: "#/{{ screen }}" }
     speech:
       text: "Showing {{ screen }}"
 
 automation:
-  # Publish the panel's version to MQTT so Home Assistant shows a proper update entity
-  # (update.theater_panel) next to everything else it tracks. It reports only; installing is a
-  # Docker pull on Unraid:
-  #   /usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container theater-panel
-  - id: theater_panel_update_entity
-    alias: "Theater: publish the panel's version to MQTT"
-    mode: queued
+  # The panel's update entity (update.home_theater_theater_panel_panel_image) compares the
+  # running build with GHCR. Its Install button cannot pull the image - Unraid does that - so the
+  # panel fires this event instead and HA leaves a note with the command.
+  - id: theater_panel_update_requested
+    alias: "Theater: the panel's Install button"
+    mode: single
     triggers:
-      - trigger: homeassistant
-        event: start
-      - trigger: state
-        entity_id: sensor.theater_panel_build
+      - trigger: event
+        event_type: esphome.theater_panel_update_requested
     actions:
-      - action: mqtt.publish
+      - action: persistent_notification.create
         data:
-          topic: homeassistant/update/theater_panel/config
-          retain: true
-          payload: >-
-            {{ {"name": none, "unique_id": "theater_panel_image",
-                "state_topic": "theater/panel/version",
-                "device": {"identifiers": ["theater_panel"], "name": "Theater panel",
-                           "manufacturer": "davidcoulson", "model": "theater-panel"},
-                "entity_picture": "https://raw.githubusercontent.com/davidcoulson/theater-panel/main/web/assets/icon.png",
-                "release_url": "https://github.com/davidcoulson/theater-panel/commits/main"} | to_json }}
-      - action: mqtt.publish
-        data:
-          topic: theater/panel/version
-          retain: true
-          payload: >-
-            {{ {"installed_version": state_attr('sensor.theater_panel_build', 'installed'),
-                "latest_version": state_attr('sensor.theater_panel_build', 'latest'),
-                "title": "Theater panel"} | to_json }}
+          notification_id: theater_panel_update
+          title: Theater panel update
+          message: >-
+            A newer panel image is on GHCR ({{ trigger.event.data.image | default('ghcr.io/davidcoulson/theater-panel:latest') }}).
+            On Unraid: /usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container theater-panel
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for

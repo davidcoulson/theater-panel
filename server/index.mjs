@@ -137,7 +137,7 @@ async function readBody(req) {
   catch { throw admin.httpError(400, 'Body is not valid JSON'); }
 }
 
-// Every POST must be JSON sent by our own pages (or HA's rest_commands, which set the type
+// Every POST must be JSON sent by our own pages (or a rest_command, which sets the type
 // too). A cross-site HTML form can post text/plain but never application/json, and browsers
 // label anything from another site with Sec-Fetch-Site, so between the two a page elsewhere on
 // the LAN cannot drive the theater through someone's trusted-network address.
@@ -416,7 +416,7 @@ get(/^\/api\/steam\/library$/, () => steamLibrary());
 
 // Move every open panel to a route (#/showtime, #/watch?brand=netflix, #/games...). Kiosk
 // Satellite's navigate service now moves the HA page around the panel, so HA automations reach
-// the panel's own routes through here (rest_command.theater_panel_navigate in ha/theater.yaml).
+// the panel's own routes through here or, as a device, esphome.theater_panel_navigate.
 post(/^\/api\/navigate$/, (m, q, body) => {
   const route = String(body.route || '');
   if (!/^#?\/?[a-z]+(\?[\w=&%.,-]*)?$/i.test(route)) throw admin.httpError(400, 'Bad route');
