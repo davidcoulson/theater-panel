@@ -57,7 +57,7 @@ export function Games() {
         <${H2} title="Steam library"><span class="aside">${steam?.games?.length ? `${steam.games.length} games · recently played first` : ''}</span><//>
         ${!steam ? html`<div class="empty">Loading…</div>`
           : !steam.configured ? html`<div class="empty" style="flex-direction:column;gap:8px">Add STEAM_API_KEY and STEAM_ID to the panel's settings to show your library here.</div>`
-          : html`<div class="steam-grid">${steam.games.slice(0, 60).map((s) => html`<button type="button" class="poster-btn" onClick=${() => launch(s)} aria-label=${`Launch ${s.name}`}>
+          : html`<div class="steam-grid">${steam.games.slice(0, 60).map((s) => html`<button type="button" class="poster-btn" key=${s.appid} onClick=${() => launch(s)} aria-label=${`Launch ${s.name}`}>
               <${Poster} src=${s.poster} title=${s.name} />
               <span class="t ellipsis">${s.name}</span><span class="y">${s.hours ? `${s.hours} h played` : 'Not played'}</span></button>`)}</div>`}
       </section>

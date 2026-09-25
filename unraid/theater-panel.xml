@@ -58,7 +58,10 @@
   <Config Name="Steam ID" Target="STEAM_ID" Default="" Mode="" Description="64-bit SteamID." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Seerr user id" Target="SEERR_USER_ID" Default="" Mode="" Description="Make requests as this Seerr user instead of the API key's owner." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Seerr region" Target="SEERR_REGION" Default="US" Mode="" Description="Region for streaming-service lookups." Type="Variable" Display="advanced" Required="false" Mask="false">US</Config>
-  <Config Name="Panel key" Target="PANEL_KEY" Default="" Mode="" Description="Optional shared key; clients open the panel once with ?key=... and keep a cookie." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Panel key" Target="PANEL_KEY" Default="" Mode="" Description="Shared key; clients open the panel once with ?key=... and keep a cookie. Empty makes one on first run (shown on /admin)." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <!-- Through the k3s Traefik ingress every request arrives from a k3s node, so the node range (10.2.x) has to be
+       trusted here or clients on a trusted network look like the proxy. The default is the panel's own (Docker's networks). -->
+  <Config Name="Trusted proxies" Target="TRUSTED_PROXIES" Default="127.0.0.1,::1,172.16.0.0/12" Mode="" Description="Proxies whose X-Forwarded-For is believed, comma-separated CIDRs. Add the k3s nodes (e.g. 10.2.3.0/24) when ht-kiosk comes through the k3s ingress." Type="Variable" Display="advanced" Required="false" Mask="false">127.0.0.1,::1,172.16.0.0/12</Config>
   <Config Name="Quality badges" Target="SHOW_QUALITY_BADGES" Default="true" Mode="" Description="4K / HDR / Dolby Vision labels on posters." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
   <Config Name="Network badges" Target="SHOW_NETWORK_BADGES" Default="false" Mode="" Description="Streaming network labels on posters." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
   <Config Name="Image cache size (MB)" Target="IMAGE_CACHE_MB" Default="512" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">512</Config>

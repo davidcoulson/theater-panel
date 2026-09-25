@@ -12,7 +12,7 @@
 //                                            arbitrary hosts on the LAN.
 
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { mkdir, readFile, writeFile, readdir, stat, unlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, stat, unlink, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from './config.mjs';
 
@@ -22,6 +22,7 @@ import { config } from './config.mjs';
 const secret = createHash('sha256').update(process.env.IMAGE_SECRET || config.imageSecret || randomBytes(32).toString('hex')).digest();
 const dir = join(config.cacheDir, 'img');
 let writesSincePrune = 0;
+let writeSeq = 0;
 
 export async function initImageCache() {
   await mkdir(dir, { recursive: true });
@@ -82,17 +83,33 @@ export async function serveImage(req, res) {
     const up = await fetch(r.upstream, { signal: AbortSignal.timeout(15000) });
     if (!up.ok) { res.writeHead(up.status === 404 ? 404 : 502).end(); return; }
     const body = Buffer.from(await up.arrayBuffer());
-    send(res, body, up.headers.get('content-type'));
-    await writeFile(file, body);
-    if (++writesSincePrune > 200) { writesSincePrune = 0; prune().catch(() => {}); }
+    // The type comes from the bytes both now and on later hits from disk, so the same image
+    // never changes type between the first view and the cached one.
+    send(res, body);
+    await store(file, body);
   } catch (e) {
-    res.writeHead(502).end();
+    if (!res.headersSent) res.writeHead(502).end();
   }
 }
 
-function send(res, body, type) {
+// Written under a temporary name and renamed into place, so a request arriving mid-write reads
+// either nothing (and fetches for itself) or the whole file, never a truncated poster that the
+// browser would then keep for a year.
+async function store(file, body) {
+  const tmp = `${file}.${process.pid}.${++writeSeq}.tmp`;
+  try {
+    await writeFile(tmp, body);
+    await rename(tmp, file);
+  } catch (e) {
+    unlink(tmp).catch(() => {});
+    return console.warn('[img] cache write failed:', e.message);
+  }
+  if (++writesSincePrune > 200) { writesSincePrune = 0; prune().catch(() => {}); }
+}
+
+function send(res, body) {
   res.writeHead(200, {
-    'content-type': type || sniff(body),
+    'content-type': sniff(body),
     'content-length': body.length,
     // Posters, backdrops and logos are effectively permanent, and each URL carries its own
     // identifiers, so the panel's browser can keep them for a year and never re-ask.
@@ -103,6 +120,7 @@ function send(res, body, type) {
 function sniff(b) {
   if (b[0] === 0x89 && b[1] === 0x50) return 'image/png';
   if (b[0] === 0x52 && b[1] === 0x49) return 'image/webp';
+  if (b[0] === 0x47 && b[1] === 0x49) return 'image/gif';
   return 'image/jpeg';
 }
 

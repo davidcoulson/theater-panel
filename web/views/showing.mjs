@@ -32,13 +32,17 @@ export function Showing() {
   if (!items.length) return html`<main class="showing"><div class="sh-clock">${now.hm}<small>${now.ampm}</small></div>
     <div class="sh-empty">Nothing to show yet</div></main>`;
 
-  const it = items[i % items.length];
+  const cur = i % items.length;
+  const it = items[cur];
   const board = it.kind === 'board';
   // Creature feature: at Halloween the lobby board turns into a drive-in B-movie card, green
   // and flickering, with the titles announced the way a 1958 double bill would have been.
   const creature = currentAccent()?.id === 'halloween';
+  // Only three backdrops are in the DOM: the one fading out, the one on, and the next one
+  // preloading. Kept in list order so the nodes never move and a running fade is not cut.
+  const near = new Set([(cur + items.length - 1) % items.length, cur, (cur + 1) % items.length]);
   return html`<main class=${`showing ${creature ? 'creature' : ''}`}>
-    ${items.map((m, k) => { const art = m.art || m.items?.find((x) => x.art)?.art; return html`<div class=${`sh-art ${k === i % items.length ? 'on' : ''}`} key=${m.id}
+    ${items.map((m, k) => { if (!near.has(k)) return null; const art = m.art || m.items?.find((x) => x.art)?.art; return html`<div class=${`sh-art ${k === cur ? 'on' : ''}`} key=${m.id}
       style=${art ? `background-image:url('${art}')` : ''}></div>`; })}
     <div class="sh-veil"></div>
     <div class="sh-clock">${streams.length > 0 && html`<span class="t">${streams.length} stream${streams.length === 1 ? '' : 's'}</span><span class="dot-sep" aria-hidden="true"></span>`}${now.hm}<small>${now.ampm}</small></div>
@@ -54,7 +58,7 @@ export function Showing() {
         ${it.badges?.length ? html`<div class="sh-badges">${it.badges.map((b) => html`<span class="qb big">${b}</span>`)}</div>` : null}
       </div>
     </div>`}
-    <div class="sh-dots">${items.map((m, k) => html`<i class=${k === i % items.length ? 'on' : ''}></i>`)}</div>
+    <div class="sh-dots">${items.map((m, k) => html`<i class=${k === cur ? 'on' : ''}></i>`)}</div>
     <div class="sh-hint"><${Icon} name="film" size=${18} color="#8C7866" />Touch to wake</div>
   </main>`;
 }

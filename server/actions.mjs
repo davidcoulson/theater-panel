@@ -7,6 +7,7 @@ import * as accents from './accents.mjs';
 import * as plex from './plex.mjs';
 import { extImage } from './images.mjs';
 import * as games from './games.mjs';
+import { httpError } from './admin.mjs';
 
 const SCENES = ['pre_show', 'movie_time', 'intermission', 'lights_up', 'all_off'];
 // When the room's speaker is not there, a sound goes to the wall panel instead (it plays it
@@ -54,6 +55,9 @@ export async function runAction(ha, body) {
       }
       // Store the chosen tracks on the Plex part first, then hand over to HA, which wakes the
       // projector, opens Plex on the Apple TV, starts playback and runs Movie time.
+      // Both ids become path segments on the Plex server, so only plain numbers are accepted.
+      if (!/^\d+$/.test(String(body.ratingKey))) throw httpError(400, 'Bad ratingKey');
+      if (body.partId != null && !/^\d+$/.test(String(body.partId))) throw httpError(400, 'Bad partId');
       if (body.partId && (body.audioStreamID != null || body.subtitleStreamID != null)) {
         await plex.setStreams(body.partId, body).catch((err) => console.warn('[plex] setStreams', err.message));
       }
@@ -179,7 +183,7 @@ export async function runAction(ha, body) {
     case 'game_pc_power': return games.pcPower(ha, body.on !== false);
     case 'game_launch': return games.launchSteamGame(ha, body.appid);
 
-    default: throw new Error('Unknown action');
+    default: throw httpError(400, 'Unknown action');
   }
 }
 

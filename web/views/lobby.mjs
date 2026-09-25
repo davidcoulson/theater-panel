@@ -412,7 +412,7 @@ function JustAdded() {
   return html`<section class="card">
     <${H2} title="Just added"><button type="button" class="link" onClick=${() => go('watch', { lib: 'library' })}>Browse library</button><//>
     <div class="shelf">
-      ${list.map((m) => html`<button type="button" class="poster-btn" style="width:130px" onClick=${() => go('watch', { item: m.id })} aria-label=${m.showTitle || m.title}>
+      ${list.map((m) => html`<button type="button" class="poster-btn" key=${m.id} style="width:130px" onClick=${() => go('watch', { item: m.id })} aria-label=${m.showTitle || m.title}>
         <div class="framed"><${Poster} src=${m.poster} title=${m.showTitle || m.title} /></div>
       </button>`)}
     </div>

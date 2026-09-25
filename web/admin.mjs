@@ -346,9 +346,13 @@ function LibraryPicker({ value, base, onChange }) {
 
 function AppsEditor({ value, onChange }) {
   const rows = (value || '').split(',').map((p) => p.split('=').map((x) => x.trim())).filter((r) => r[0] || r[1]);
-  const put = (rs) => onChange(rs.filter((r) => r[0] && r[1]).map((r) => (r[2] ? `${r[0]}=${r[1]}=${r[2]}` : `${r[0]}=${r[1]}`)).join(','));
+  const sent = useRef(value);
+  const put = (rs) => { sent.current = rs.filter((r) => r[0] && r[1]).map((r) => (r[2] ? `${r[0]}=${r[1]}=${r[2]}` : `${r[0]}=${r[1]}`)).join(','); onChange(sent.current); };
   const [draft, setDraft] = useState(rows);
-  useEffect(() => setDraft(rows), [value]);
+  // Only take rows from `value` when it changed elsewhere (a reset, a reload). put() drops
+  // half-edited rows, so rebuilding the draft from our own echo would delete a row the moment
+  // its package field is cleared to retype it.
+  useEffect(() => { if (value !== sent.current) setDraft(rows); }, [value]);
   const edit = (i, k, v) => { const n = draft.map((r) => [...r]); n[i][k] = v; setDraft(n); put(n); };
   const move = (i, d) => { const n = [...draft]; [n[i], n[i + d]] = [n[i + d], n[i]]; setDraft(n); put(n); };
   return html`<table class="grid"><thead><tr><th>Name</th><th>Android package</th><th>Icon</th><th></th></tr></thead><tbody>

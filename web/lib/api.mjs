@@ -63,54 +63,78 @@ let onNavigate = null;
 let bootBuild = null;
 export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
-  // Open the live stream before anything else so it gets a connection ahead of the posters.
-  const es = new EventSource('/api/events');
-  get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
   const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {}, intermission: s.intermission || {} })).catch(() => {});
   loadSettings();
-  es.addEventListener('hello', (e) => {
-    const d = JSON.parse(e.data);
-    // The server is a different build from the one this page came from (a deploy restarted it
-    // and the live connection found its way back): the app reloads itself at the next quiet
-    // moment rather than running yesterday's page against today's server.
-    if (d.build) {
-      bootBuild ??= d.build;
-      if (d.build !== bootBuild) set({ stale: d.build });
-    }
-    set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [] });
-  });
-  es.addEventListener('states', (e) => {
-    const changed = JSON.parse(e.data);
-    const states = { ...state.states };
-    for (const [id, s] of Object.entries(changed)) { if (s) states[id] = s; else delete states[id]; }
-    set({ states });
-  });
-  es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
-  es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data), sessionsAt: Date.now() }));
-  // Everything playing on the Plex server, behind the "N streams" pill.
-  es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
-  // Saved on the admin page: pick up the new entities, apps and display options.
-  es.addEventListener('settings', loadSettings);
-  // The sleep timer, armed from Showtime and counted down by the server.
-  es.addEventListener('sleep', (e) => {
-    const d = JSON.parse(e.data);
-    set({ sleep: d.mode ? d : null });
-    if (d.fired) toast(`Room off ${d.fired}`);
-  });
-  // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
-  es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
-  // A sound the room's speaker could not take (it is asleep): the wall panel plays it.
-  es.addEventListener('sound', (e) => set({ sound: { ...JSON.parse(e.data), at: Date.now() } }));
-  // A film just finished: the panel asks how it was.
-  es.addEventListener('rate', (e) => set({ rate: JSON.parse(e.data) }));
-  // Movie night: the shortlist and the running tally.
-  es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
-  // Home Assistant (or anything with access to the panel's API) can move the panel to a route.
-  es.addEventListener('navigate', (e) => { const d = JSON.parse(e.data); onNavigate?.(d.route); });
-  // EventSource reconnects by itself; only call it offline if that has not worked after 8 s.
-  let offlineTimer;
-  es.onerror = () => { clearTimeout(offlineTimer); offlineTimer = setTimeout(() => { if (es.readyState !== 1) set({ connected: false }); }, 8000); };
-  es.onopen = () => { clearTimeout(offlineTimer); set({ connected: true }); };
+  get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
+  // EventSource only retries by itself on a dropped connection. A non-200 answer (502/503 while
+  // the container restarts, 401 once the tp_key cookie lapses) closes it for good, so on CLOSED
+  // we open a fresh one with backoff; the panel runs unattended and must not stay "offline"
+  // until someone reloads it. If nothing has worked for 10 minutes, reload the whole page.
+  let es, offlineTimer, retryTimer, retryMs = 1000, downSince = null;
+  const RELOAD_AFTER_MS = 10 * 60 * 1000;
+  const connect = () => {
+    // Open the live stream before anything else so it gets a connection ahead of the posters.
+    es = new EventSource('/api/events');
+    es.addEventListener('hello', (e) => {
+      const d = JSON.parse(e.data);
+      // The server is a different build from the one this page came from (a deploy restarted it
+      // and the live connection found its way back): the app reloads itself at the next quiet
+      // moment rather than running yesterday's page against today's server.
+      if (d.build) {
+        bootBuild ??= d.build;
+        if (d.build !== bootBuild) set({ stale: d.build });
+      }
+      set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [] });
+    });
+    es.addEventListener('states', (e) => {
+      const changed = JSON.parse(e.data);
+      const states = { ...state.states };
+      for (const [id, s] of Object.entries(changed)) { if (s) states[id] = s; else delete states[id]; }
+      set({ states });
+    });
+    es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
+    es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data), sessionsAt: Date.now() }));
+    // Everything playing on the Plex server, behind the "N streams" pill.
+    es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
+    // Saved on the admin page: pick up the new entities, apps and display options.
+    es.addEventListener('settings', loadSettings);
+    // The sleep timer, armed from Showtime and counted down by the server.
+    es.addEventListener('sleep', (e) => {
+      const d = JSON.parse(e.data);
+      set({ sleep: d.mode ? d : null });
+      if (d.fired) toast(`Room off ${d.fired}`);
+    });
+    // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
+    es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
+    // A sound the room's speaker could not take (it is asleep): the wall panel plays it.
+    es.addEventListener('sound', (e) => set({ sound: { ...JSON.parse(e.data), at: Date.now() } }));
+    // A film just finished: the panel asks how it was.
+    es.addEventListener('rate', (e) => set({ rate: JSON.parse(e.data) }));
+    // Movie night: the shortlist and the running tally.
+    es.addEventListener('vote', (e) => set({ vote: JSON.parse(e.data) }));
+    // Home Assistant (or anything with access to the panel's API) can move the panel to a route.
+    es.addEventListener('navigate', (e) => { const d = JSON.parse(e.data); onNavigate?.(d.route); });
+    // EventSource reconnects by itself; only call it offline if that has not worked after 8 s.
+    es.onerror = () => {
+      downSince = downSince || Date.now();
+      if (Date.now() - downSince > RELOAD_AFTER_MS) { location.reload(); return; }
+      clearTimeout(offlineTimer);
+      offlineTimer = setTimeout(() => { if (es.readyState !== EventSource.OPEN) set({ connected: false }); }, 8000);
+      if (es.readyState !== EventSource.CLOSED) return;
+      es.close();
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(connect, retryMs);
+      retryMs = Math.min(retryMs * 2, 30000);
+    };
+    es.onopen = () => {
+      clearTimeout(offlineTimer);
+      // Settings saved while the stream was down were announced to nobody: fetch them now.
+      if (downSince) loadSettings();
+      downSince = null; retryMs = 1000;
+      set({ connected: true });
+    };
+  };
+  connect();
 }
 
 export const useEntity = (id) => useStore((s) => (id ? s.states[id] : undefined));

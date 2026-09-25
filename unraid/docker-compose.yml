@@ -1,6 +1,11 @@
 # Theater panel on Unraid (Compose Manager). Settings come from this stack's .env
 # (Compose Manager: "Edit Stack" > "ENV File"); see unraid/stack.env.example.
 #
+# This is the variant for a Traefik that runs in Docker on the same Unraid box and reaches the
+# panel over its own Docker network (TRAEFIK_NETWORK). If ht-kiosk is routed by the k3s Traefik
+# ingress instead (unraid/k3s-ht-kiosk.yaml points at the Unraid host on port 8787), use the
+# Docker template unraid/theater-panel.xml (plain bridge network); do not run both.
+#
 # Before the first start, on the Unraid terminal:
 #   mkdir -p /mnt/user/appdata/theater-panel/config /mnt/user/appdata/theater-panel/data
 #   chown -R 99:100 /mnt/user/appdata/theater-panel
@@ -20,13 +25,16 @@ services:
       - /mnt/user/appdata/theater-panel/data:/data
       - /mnt/user/appdata/theater-panel/config:/app/config:ro
     networks:
+      # The bridge keeps port 8787 reachable on the host: on a macvlan network alone, ports:
+      # publishes nothing.
+      default: {}
       traefik:
         # Only for a macvlan/ipvlan network (containers with their own 10.2.6.x address,
         # like Seerr and Traefik). Delete this line if Traefik's network is a plain bridge.
-        ipv4_address: ${PANEL_IP}
+        ipv4_address: ${PANEL_IP:?set PANEL_IP in the stack's ENV file, or delete the ipv4_address line for a bridge network}
     labels:
       traefik.enable: "true"
-      traefik.docker.network: ${TRAEFIK_NETWORK}
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
       traefik.http.routers.theater-panel.rule: Host(`${PANEL_HOST:-ht-kiosk.coulson.io}`)
       traefik.http.routers.theater-panel.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
       traefik.http.routers.theater-panel.tls: "true"
@@ -38,4 +46,4 @@ services:
 networks:
   traefik:
     external: true
-    name: ${TRAEFIK_NETWORK}
+    name: ${TRAEFIK_NETWORK:-traefik}
