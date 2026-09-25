@@ -222,8 +222,12 @@ What it exposes:
 - **Actions:** `esphome.theater_panel_play` (`rating_key`, `part_id`, `preroll`),
   `esphome.theater_panel_navigate` (`route`), `esphome.theater_panel_voice` (`intent`, `query`)
   and `esphome.theater_panel_scene` (`name`). `ha/theater.yaml` uses these; there are no
-  `rest_command`s or REST sensors any more, so nothing on the HA side needs the panel key. An
-  action returns nothing, so the voice intents wait for the **Voice answer** sensor and speak it.
+  `rest_command`s or REST sensors any more, so nothing on the HA side needs the panel key. HA
+  wants every argument of an ESPHome action, blank or not. An action returns nothing, so the
+  voice intents wait for the **Voice answer** sensor and speak it (the speech template reads
+  the sensor: it cannot see the script's own variables).
+- For the update entity's Install button to reach HA, tick **Allow the device to perform Home
+  Assistant actions** on the device's ESPHome entry (Configure).
 - **Event:** `mystery_box_pick` fires when a pick goes up on the panels.
 
 ## Home Assistant setup
