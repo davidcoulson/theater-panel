@@ -85,20 +85,25 @@ export const forget = () => { seedCache = { at: 0, key: '', list: null }; rowCac
 // round trips to Plex.
 export const warm = () => seeds(8).then(() => rows()).catch((e) => console.warn('[taste] warm:', e.message));
 
-// The Mystery box: an unwatched film from the last ten years rated 7 or better, weighted towards
-// the genres the house has been watching, so it is a surprise but not a random one. Returns the
-// pick and the reason, and plays nothing by itself - the panel counts down first so it can be
-// waved off.
-export const MYSTERY_FILTERS = ['unwatched', 'recent', 'rated'];
-
+// The Mystery box: an unwatched film inside the admin page's limits (by default the last ten
+// years, rated 7 or better), weighted towards the genres the house has been watching, so it is a
+// surprise but not a random one. Returns the pick and the reason, and plays nothing by itself -
+// the panel counts down first so it can be waved off.
 export async function mystery({ filters = [], exclude = [] } = {}) {
+  const rules = config.mystery;
   const [pool, list] = await Promise.all([
-    plex.listLibrary(plex.MERGED, { filters: [...new Set([...MYSTERY_FILTERS, ...filters])], sort: 'random', size: 150 }),
+    plex.listLibrary(plex.MERGED, { filters: [...new Set(['unwatched', 'recent', 'rated', ...filters])], sort: 'random', size: 200 }),
     seeds(8).catch(() => []),
   ]);
   const skip = new Set(exclude.map(String));
-  const items = pool.items.filter((i) => !skip.has(String(i.id)));
-  if (!items.length) throw new Error(`Nothing unwatched from ${plex.RECENT_FROM()} on rated ${plex.RATED_MIN}+ matches that`);
+  const items = pool.items.filter((i) => !skip.has(String(i.id)))
+    .filter((i) => !rules.maxMinutes || !i.duration || i.duration <= rules.maxMinutes * 60000)
+    .filter((i) => !(i.genres || []).some((g) => rules.excludeGenres.includes(g.toLowerCase())));
+  if (!items.length) {
+    const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
+      rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : ''].filter(Boolean).join(', ');
+    throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
+  }
 
   // Genre weights: what has been watched most recently counts most, a loved film counts double,
   // and the genres of anything rated two stars or under count against.
