@@ -62,8 +62,9 @@ the request screen.
 watching, and starts it. Out of the box it looks at the last ten years, rated 7 or better, from a
 mainstream studio, carrying a rating, added at least two days ago and never panned by the house;
 the admin page's Display tab sets how far back, the lowest rating, the longest running time,
-genres and libraries it must never pick, the settling time, family night (G and PG only), a 4K or
-HDR showcase, and whether unrated films and small studios are allowed. It says why it chose that
+genres and libraries it must never pick, the settling time, family night (G and PG only), a
+preference for 4K or HDR (or a showcase of nothing else), and whether unrated films and small
+studios are allowed. It says why it chose that
 one, counts down from ten, and takes *Something else* or *Not tonight* for an answer.
 
 ![The Mystery box](docs/img/mystery.jpg)

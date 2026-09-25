@@ -192,8 +192,8 @@ function build(env) {
     settleDays: Math.max(0, Math.min(365, Number(env.MYSTERY_SETTLE_DAYS ?? 2) || 0)),
     // Family night: G and PG (and the TV equivalents) only.
     family: env.MYSTERY_FAMILY === 'true',
-    // 'any', '4k' or 'hdr': a showcase draw.
-    quality: ['4k', 'hdr'].includes(env.MYSTERY_QUALITY) ? env.MYSTERY_QUALITY : 'any',
+    // 'any', 'prefer4k', '4k', 'preferhdr' or 'hdr': prefer doubles a film's odds, only excludes.
+    quality: ['prefer4k', '4k', 'preferhdr', 'hdr'].includes(env.MYSTERY_QUALITY) ? env.MYSTERY_QUALITY : 'any',
     // Plex library names the box never draws from (a kids' or a documentary library).
     excludeLibraries: list(env.MYSTERY_EXCLUDE_LIBRARIES, []).map((l) => l.toLowerCase()),
     // Never a title the house rated two stars or under on the "How was it?" card.

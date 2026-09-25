@@ -115,7 +115,8 @@ const RATED = /^(G|PG|PG-13|R|NC-17|TV-)/i;
 // waved off.
 export async function mystery({ filters = [], exclude = [] } = {}) {
   const rules = config.mystery;
-  const want = ['unwatched', 'recent', 'rated', rules.family ? 'family' : '', rules.quality === 'any' ? '' : rules.quality, ...filters].filter(Boolean);
+  const only = { '4k': '4k', hdr: 'hdr' }[rules.quality] || '';
+  const want = ['unwatched', 'recent', 'rated', rules.family ? 'family' : '', only, ...filters].filter(Boolean);
   // The merged index answers from memory, so the whole shuffled pile is cheap to ask for; the
   // rules below then thin it, and the first few hundred that survive are as random as any.
   const [pool, list] = await Promise.all([
@@ -135,7 +136,7 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     .slice(0, 300);
   if (!items.length) {
     const limits = [rules.years ? `from ${plex.RECENT_FROM()} on` : '', rules.minRating ? `rated ${rules.minRating}+` : '',
-      rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', rules.quality === 'any' ? '' : `in ${rules.quality.toUpperCase()}`,
+      rules.maxMinutes ? `under ${rules.maxMinutes} min` : '', rules.family ? 'family-friendly' : '', only ? `in ${only.toUpperCase()}` : '',
       rules.excludeGenres.length ? `outside ${rules.excludeGenres.join(', ')}` : '', rules.excludeLibraries.length ? `not in ${rules.excludeLibraries.join(', ')}` : '',
       rules.settleDays ? `older than ${rules.settleDays} days here` : '', rules.ratedOnly ? 'with a rating' : '', rules.mainstreamOnly ? 'from a mainstream studio' : ''].filter(Boolean).join(', ');
     throw new Error(`Nothing unwatched${limits ? ` ${limits}` : ''} matches that`);
@@ -148,11 +149,16 @@ export async function mystery({ filters = [], exclude = [] } = {}) {
     for (const g of s.genres || []) weights.set(g, (weights.get(g) || 0) + (list.length - i) * (s.loved ? 2 : 1));
   });
   for (const it of await disliked()) for (const g of it.genres || []) weights.set(g, (weights.get(g) || 0) - 4);
+  // A preferred picture format triples a film's odds in the roll, after the shortlist is drawn
+  // on taste alone: it wins more often than not, and a 1080p film the house would love still
+  // gets its turn (weighting before the cut would fill the shortlist with nothing else).
+  const preferred = (it) => (rules.quality === 'prefer4k' && it.is4k) || (rules.quality === 'preferhdr' && it.quality?.hdr);
   const scored = items.map((it) => {
     const hits = (it.genres || []).filter((g) => (weights.get(g) || 0) > 0);
     const taste = (it.genres || []).reduce((sum, g) => sum + (weights.get(g) || 0), 0);
     return { it, hits, score: Math.max(1, 1 + taste + (it.rating >= 7.5 ? 4 : it.rating >= 6.5 ? 2 : 0)) };
   }).sort((a, b) => b.score - a.score).slice(0, 30);
+  for (const x of scored) if (preferred(x.it)) x.score *= 3;
 
   const total = scored.reduce((s, x) => s + x.score, 0);
   let roll = Math.random() * total;
