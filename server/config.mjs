@@ -107,6 +107,9 @@ function build(env) {
     musicPlayers: list(env.ENTITY_MUSIC_PLAYERS, []),
     // Android Debug Bridge media_player for the projector. Empty until ADB is tested.
     projector: env.ENTITY_PROJECTOR || '',
+    // The projector's light-engine temperatures (the Kiosk Satellite plugin's sensors), for the
+    // line on the Projector card and the running-hot nudge.
+    projectorTemps: list(env.ENTITY_PROJECTOR_TEMPS, []),
     lights: list(env.ENTITY_LIGHTS, [
       'light.media_room_downlights',
       'light.home_theater_accent_lights',
@@ -178,6 +181,8 @@ function build(env) {
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way
   // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
   curtainSeconds: Math.max(0, Math.min(600, Number(env.CURTAIN_SECONDS ?? 90) || 0)),
+  // The projector counts as running hot at or above this laser temperature (°C).
+  projectorHotC: Math.max(0, Math.min(150, Number(env.PROJECTOR_HOT_C ?? 65) || 0)),
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
   // the server's own history. Empty means the whole house.
   historyAccounts: list(env.HISTORY_ACCOUNTS, []),
@@ -284,7 +289,7 @@ export function watchedEntities() {
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
-    ...e.dogSensors,
+    ...e.dogSensors, ...e.projectorTemps,
     'input_select.theater_scene',
   ].filter(Boolean);
 }
