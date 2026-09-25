@@ -146,6 +146,7 @@ function buildIndex() {
         const watched = (m.viewCount || 0) > 0 || !!prev?.watched;
         if (prev && resRank(m) <= prev.rank) { prev.watched = watched; continue; }
         const it = mapItem(m);
+        it.library = lib.title;
         if (it.quality) it.quality.hdr = hdr.has(m.ratingKey);
         const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
         if (tmdb) it.tmdb = Number(tmdb.slice(7));

@@ -59,10 +59,11 @@ plex.tv watchlist that is already in the library plays from here; anything not y
 the request screen.
 
 **The Mystery box** picks one unwatched film, weighted towards the genres the house has been
-watching, and starts it. Out of the box it looks at the last ten years, rated 7 or better; the
-admin page's Display tab sets how far back, the lowest rating, the longest running time and any
-genres it must never pick. It says why it chose that one, counts down from ten, and takes
-*Something else* or *Not tonight* for an answer.
+watching, and starts it. Out of the box it looks at the last ten years, rated 7 or better, added
+at least two days ago and never panned by the house; the admin page's Display tab sets how far
+back, the lowest rating, the longest running time, genres and libraries it must never pick, the
+settling time, family night (G and PG only) and a 4K or HDR showcase. It says why it chose that
+one, counts down from ten, and takes *Something else* or *Not tonight* for an answer.
 
 ![The Mystery box](docs/img/mystery.jpg)
 
