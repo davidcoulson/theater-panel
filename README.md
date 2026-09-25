@@ -70,7 +70,9 @@ one, counts down from ten, and takes *Something else* or *Not tonight* for an an
 Seven quick taps on the version number at the bottom of the rail open a settings sheet on the
 panel itself with the harmless knobs: the Mystery box rules, theme and holiday accent, badges,
 idle time, the pre-roll and intermission timing. Nothing that connects to anything is there;
-URLs, tokens and entities stay on the admin page.
+URLs, tokens and entities stay on the admin page. Its *Draw ten* button runs the Mystery box
+ten times under the saved rules and lists what came up, so the rules can be audited from the
+wall without starting a film.
 
 ![The Mystery box](docs/img/mystery.jpg)
 

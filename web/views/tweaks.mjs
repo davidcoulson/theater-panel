@@ -13,6 +13,12 @@ export function TweaksSheet({ onClose }) {
   const [data, err] = useLoad(() => get('/api/tweaks'), []);
   const [draft, setDraft] = useState(null);
   const [busy, setBusy] = useState(false);
+  // "Draw ten": the saved rules, run ten times, listed instead of the settings until dismissed.
+  const [preview, setPreview] = useState(null);
+  async function drawTen() {
+    setPreview([]);
+    try { setPreview(await get('/api/mystery/preview?n=10')); } catch (e) { toast(e.message, true); setPreview(null); }
+  }
   const values = draft || Object.fromEntries((data?.fields || []).map((f) => [f.key, f.value]));
   const put = (k, v) => setDraft({ ...values, [k]: v });
   async function save() {
@@ -29,12 +35,25 @@ export function TweaksSheet({ onClose }) {
     </div>
     ${err ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${err.message}</div>`
       : !data ? html`<div class="empty" style="flex-grow:1">Loading…</div>`
+      : preview ? html`<div class="body preview">
+          ${!preview.length ? html`<div class="empty">Drawing ten…</div>` : preview.map((p, i) => html`<div class="pick" key=${p.id}>
+            <span class="n mono">${i + 1}</span>
+            <div class="what"><b>${p.title}</b> <span class="mono">${p.year}</span>
+              <div class="meta mono">${[p.rating ? `${p.rating.toFixed(1)}★` : null, p.minutes ? `${p.minutes} min` : null, p.contentRating, p.res, p.hdr ? 'HDR' : null, p.studio, p.genres.slice(0, 2).join(', ')].filter(Boolean).join(' · ')}</div>
+              <div class="why">${p.why}</div></div>
+          </div>`)}
+        </div>
+        <div class="acts">
+          <button type="button" class="btn big ghost" onClick=${drawTen} disabled=${!preview.length}><${Icon} name="dice" size=${24} color="#F4F0E8" />Again</button>
+          <button type="button" class="btn primary big" style="flex-grow:1" onClick=${() => setPreview(null)}>Back to settings</button>
+        </div>`
       : html`<div class="body">${groups.map((g) => html`<section key=${g}>
           <h3>${TITLES[g] || g}</h3>
           ${data.fields.filter((f) => f.group === g).map((f) => html`<${Row} key=${f.key} f=${f} value=${values[f.key]} libraries=${data.libraries} onChange=${(v) => put(f.key, v)} />`)}
         </section>`)}</div>
         <div class="acts">
           <button type="button" class="btn primary big" style="flex-grow:1" disabled=${busy || !draft} onClick=${save}>Save</button>
+          <button type="button" class="btn big ghost" title="Ten Mystery box draws under the saved rules" onClick=${drawTen}><${Icon} name="dice" size=${24} color="#F4F0E8" />Draw ten</button>
           <button type="button" class="btn big ghost" onClick=${onClose}>Cancel</button>
         </div>`}
   </div>`;

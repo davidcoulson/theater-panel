@@ -260,6 +260,8 @@ get(/^\/api\/taste$/, async () => (config.plex.url ? { rows: await taste.rows({ 
 
 // The Mystery box: one unwatched film, weighted towards what the house has been watching. The
 // panel counts down and then plays it, so this only picks.
+// The settings sheet's audit: ten draws under the saved rules, nothing started.
+get(/^\/api\/mystery\/preview$/, (m, q) => taste.preview({ n: Math.min(20, Math.max(1, Number(q.get('n')) || 10)), filters: (q.get('filters') || '').split(',').filter(Boolean) }));
 get(/^\/api\/mystery$/, (m, q) => taste.mystery({
   filters: (q.get('filters') || '').split(',').filter(Boolean),
   exclude: (q.get('not') || '').split(',').filter(Boolean).slice(0, 20),
