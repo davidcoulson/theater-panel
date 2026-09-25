@@ -101,6 +101,9 @@ export async function runAction(ha, body) {
     }
 
     case 'transport': {
+      // Films in Plezy play on the projector's own Android, where the Apple TV cannot pause
+      // them: whichever player actually has something going gets the button.
+      if (transportTarget(ha) === 'projector') return projectorKey(ha, body);
       const target = { entity_id: e.appleTv };
       const map = { play_pause: 'media_play_pause', play: 'media_play', pause: 'media_pause', stop: 'media_stop', vol_up: 'volume_up', vol_down: 'volume_down' };
       if (map[body.cmd]) return ha.callService('media_player', map[body.cmd], {}, { target });
@@ -178,6 +181,32 @@ export async function runAction(ha, body) {
 
     default: throw new Error('Unknown action');
   }
+}
+
+// Which player the Showtime buttons should drive: the Apple TV while it is actually playing or
+// paused on something, otherwise the projector (Plezy or the Plex app on its own Android).
+const ACTIVE = ['playing', 'paused', 'buffering'];
+export function transportTarget(ha) {
+  const e = config.entities;
+  if (ACTIVE.includes(ha.states[e.appleTv]?.state)) return 'appletv';
+  const proj = ha.states[e.projector]?.state;
+  if (e.projector && proj && !['unavailable', 'unknown', 'off'].includes(proj)) return 'projector';
+  return 'appletv';
+}
+
+// The projector's buttons, as Android key presses over ADB. Play and pause are the separate
+// keys rather than the toggle wherever the panel knows which it wants, so a missed state can't
+// flip the film the wrong way. Skips are the media fast-forward / rewind keys; how far they jump
+// is up to the app playing.
+const KEYS = {
+  play_pause: 85, play: 126, pause: 127, stop: 86,
+  vol_up: 24, vol_down: 25, mute: 164,
+};
+function projectorKey(ha, body) {
+  let code = KEYS[body.cmd];
+  if (body.cmd === 'seek_rel') code = Number(body.seconds) < 0 ? 89 : 90;
+  if (!code) throw new Error('Unknown transport command');
+  return ha.callService('androidtv', 'adb_command', { command: `input keyevent ${code}` }, { target: { entity_id: config.entities.projector } });
 }
 
 // HA reports media_position as of media_position_updated_at; add the time since then when playing.

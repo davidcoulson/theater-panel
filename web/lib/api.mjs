@@ -86,7 +86,7 @@ export async function startLive({ navigate } = {}) {
     set({ states });
   });
   es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
-  es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data) }));
+  es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data), sessionsAt: Date.now() }));
   // Everything playing on the Plex server, behind the "N streams" pill.
   es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
   // Saved on the admin page: pick up the new entities, apps and display options.
@@ -114,6 +114,16 @@ export async function startLive({ navigate } = {}) {
 }
 
 export const useEntity = (id) => useStore((s) => (id ? s.states[id] : undefined));
+
+// What the theater is playing, whichever box plays it. Films in Plezy run on the projector's own
+// Android, where the Apple TV sees nothing, so the theater's Plex session (PLEX_PLAYER_NAME) comes
+// first and the Apple TV is the fallback. Returns 'playing', 'paused', 'buffering', or the Apple
+// TV's own state ('idle', 'off', ...) when no film is running.
+export function playbackState(s = state) {
+  const session = s.sessions?.[0];
+  if (session?.state) return session.state;
+  return s.states[s.entities?.appleTv]?.state;
+}
 
 // Load data once per key; returns [data, error, reload].
 export function useLoad(fn, deps) {

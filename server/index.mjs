@@ -374,7 +374,13 @@ post(/^\/api\/navigate$/, (m, q, body) => {
   return { ok: true, panels: clients.size };
 });
 
-post(/^\/api\/action$/, async (m, q, body) => { await runAction(ha, body); return { ok: true }; });
+post(/^\/api\/action$/, async (m, q, body) => {
+  const r = await runAction(ha, body);
+  // A film is on its way (after the pre-roll, and the projector waking): look for its Plex
+  // session sooner than the idle 30 s poll would, so Showtime comes up with the film.
+  if (body.action === 'play') for (const s of [8, 20, 35, 50]) setTimeout(pollSessions, s * 1000).unref?.();
+  return { ok: true, ...(r && typeof r === 'object' && 'preroll' in r ? { preroll: r.preroll } : {}) };
+});
 
 // The panel runs inside Home Assistant's Webpage dashboard, so it must be frameable by HA
 // (and nothing else): its own origin plus FRAME_ANCESTORS (e.g. https://home-iot.coulson.io).
