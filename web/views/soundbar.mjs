@@ -41,16 +41,12 @@ export function SoundSheet({ onClose }) {
   const sound = (body, note) => act({ action: 'soundbar', ...body }).then((r) => { if (r && note) toast(note); });
   const on = (e) => e?.state === 'on';
   const lateNight = on(night) && on(pure);
-  const slider = (id, value, min, max, step, label, onSet) => {
-    const v = pending[id] ?? value;
-    return html`<label class="band" key=${id}>
-      <span class="v mono">${v == null ? '–' : `${v > 0 ? '+' : ''}${v}`}</span>
-      <input class="range vert" type="range" min=${min} max=${max} step=${step} value=${v ?? 0} disabled=${value == null}
-        onInput=${(e) => setPending({ ...pending, [id]: Number(e.target.value) })}
-        onChange=${(e) => { const n = Number(e.target.value); setPending((p) => { const q = { ...p }; delete q[id]; return q; }); onSet(n); }} />
-      <span class="l">${label}</span>
-    </label>`;
-  };
+  const bandNumbers = sb.bands.map((id) => useNumber(id));
+  const customNumbers = sb.custom.map((id) => useNumber(id));
+  const points = [
+    ...bandNumbers.map((n, i) => ({ id: sb.bands[i], label: BANDS[i], value: n.value, min: n.min, max: n.max, step: n.step, group: 0, onSet: (v) => sound({ cmd: 'band', index: i, value: v }) })),
+    ...customNumbers.map((n, i) => ({ id: sb.custom[i], label: CUSTOM[i], value: n.value, min: n.min, max: n.max, step: n.step, group: 1, onSet: (v) => sound({ cmd: 'custom', index: i, value: v }) })),
+  ];
   const rears = (sb.rears || []).map((r) => ({ ...r, battery: states[r.battery], charging: states[r.charging], docked: states[r.docked] }));
   const anyReported = Object.values(states).some((e) => e?.entity_id?.includes(sb.prefix));
 
@@ -90,12 +86,8 @@ export function SoundSheet({ onClose }) {
       <section>
         <div class="lbl">Equaliser</div>
         ${preset?.attributes?.options?.length > 0 && html`<div class="chips">${preset.attributes.options.map((o) => html`<button type="button" class="filter" aria-pressed=${preset.state === o ? 'true' : 'false'} onClick=${() => sound({ cmd: 'preset', option: o })}>${o}</button>`)}</div>`}
-        <div class="bands">
-          ${sb.bands.map((id, i) => { const n = useNumber(id); return slider(id, n.value, n.min, n.max, n.step, BANDS[i], (v) => sound({ cmd: 'band', index: i, value: v })); })}
-          <div class="gap"></div>
-          ${sb.custom.map((id, i) => { const n = useNumber(id); return slider(id, n.value, n.min, n.max, n.step, CUSTOM[i], (v) => sound({ cmd: 'custom', index: i, value: v })); })}
-        </div>
-        <p class="hint">Seven bands on the left are the graphic EQ; the three on the right are the bar's Custom preset.</p>
+        <${Eq} points=${points} pending=${pending} setPending=${setPending} />
+        <p class="hint">Drag a dot, or tap where it should be. Seven bands on the left are the graphic EQ; the three on the right are the bar's Custom preset.</p>
       </section>
 
       <section class="rears-cal">
@@ -119,4 +111,51 @@ export function SoundSheet({ onClose }) {
       </section>
     </div>
   </div>`;
+}
+
+
+// The equaliser as a graph rather than a rack of faders: a dot per band on a faint guide, a
+// baseline at 0 dB, the value above and the band below, drawn in one SVG. Dragging a dot moves
+// it along its guide; a tap anywhere on a column puts the dot there. The bar hears about it on
+// release, not on every pixel.
+const EQ_W = 1000, EQ_H = 190, EQ_TOP = 32, EQ_BOTTOM = 150;
+function Eq({ points, pending, setPending }) {
+  const [drag, setDrag] = useState(null);       // { id, min, max, step }
+  const groups = points.filter((p) => p.group === 0).length;
+  const gapAfter = groups - 1;
+  const cols = points.length + 1;                // one column of air between the groups
+  const xOf = (i) => 40 + ((i > gapAfter ? i + 1 : i) + 0.5) * ((EQ_W - 80) / cols);
+  const yOf = (p, v) => EQ_BOTTOM - ((v - p.min) / (p.max - p.min || 1)) * (EQ_BOTTOM - EQ_TOP);
+  const valueAt = (p, y) => { const raw = p.min + ((EQ_BOTTOM - y) / (EQ_BOTTOM - EQ_TOP)) * (p.max - p.min); const step = p.step || 1; return Math.max(p.min, Math.min(p.max, Math.round(raw / step) * step)); };
+  const local = (e) => { const r = e.currentTarget.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * EQ_W, y: ((e.clientY - r.top) / r.height) * EQ_H }; };
+  const nearest = (x) => points.map((p, i) => ({ p, d: Math.abs(xOf(i) - x) })).sort((a, b) => a.d - b.d)[0]?.p;
+  const down = (e) => {
+    const { x, y } = local(e);
+    const p = nearest(x);
+    if (!p || p.value == null) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag(p);
+    setPending({ ...pending, [p.id]: valueAt(p, y) });
+  };
+  const move = (e) => { if (!drag) return; const { y } = local(e); setPending((q) => ({ ...q, [drag.id]: valueAt(drag, y) })); };
+  const up = () => {
+    if (!drag) return;
+    const v = pending[drag.id];
+    setPending((q) => { const r = { ...q }; delete r[drag.id]; return r; });
+    if (v != null && v !== drag.value) drag.onSet(v);
+    setDrag(null);
+  };
+  const zeroY = (p) => yOf(p, 0);
+  return html`<svg class="eq" viewBox=${`0 0 ${EQ_W} ${EQ_H}`} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}>
+    ${points.map((p, i) => { const x = xOf(i); const v = pending[p.id] ?? p.value; const known = v != null; const y = known ? yOf(p, v) : zeroY(p);
+      return html`<g key=${p.id} class=${known ? '' : 'off'}>
+        <line class="guide" x1=${x} y1=${EQ_TOP} x2=${x} y2=${EQ_BOTTOM} />
+        <text class="v" x=${x} y=${18} text-anchor="middle">${known ? (v > 0 ? `+${v}` : `${v}`) : '–'}</text>
+        <line class="tick" x1=${x - 6} y1=${zeroY(p)} x2=${x + 6} y2=${zeroY(p)} />
+        <circle class=${`dot ${drag?.id === p.id ? 'on' : ''}`} cx=${x} cy=${y} r=${drag?.id === p.id ? 11 : 9} />
+        <text class="l" x=${x} y=${EQ_H - 8} text-anchor="middle">${p.label}</text>
+      </g>`; })}
+    <line class="base" x1=${40} y1=${zeroY(points[0] || { min: -6, max: 6 })} x2=${EQ_W - 40} y2=${zeroY(points[0] || { min: -6, max: 6 })} />
+    <text class="unit" x=${EQ_W - 8} y=${18} text-anchor="end">dB</text>
+  </svg>`;
 }
