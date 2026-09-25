@@ -236,7 +236,7 @@ get(/^\/api\/state$/, () => ({
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   projectorHotC: config.projectorHotC,
-  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds },
+  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));
 
@@ -541,7 +541,7 @@ const inlineHashes = await (async () => {
 // intermission march itself when the room's speaker is asleep (server/actions.mjs).
 function soundOrigins() {
   const out = new Set();
-  for (const url of [config.preroll.url, config.preroll.spookyUrl, config.intermission.url]) {
+  for (const url of [config.preroll.url, config.preroll.spookyUrl, config.intermission.url, config.thxUrl]) {
     try { const u = new URL(url); if (/^https?:$/.test(u.protocol)) out.add(u.origin); } catch {}
   }
   return [...out].join(' ');

@@ -28,6 +28,14 @@ export function SoundSheet({ onClose }) {
   const [pending, setPending] = useState({});          // sliders being dragged: id -> value
   const [calibrating, setCalibrating] = useState(0);
   useEffect(() => { if (!calibrating) return; const t = setTimeout(() => setCalibrating((n) => n - 1), 1000); return () => clearTimeout(t); }, [calibrating]);
+  // THX: five seconds to sit down, then the Deep Note on the theater speaker.
+  const [thx, setThx] = useState(0);
+  useEffect(() => {
+    if (!thx) return;
+    if (thx === 1) { act({ action: 'thx' }).then((r) => { if (r) toast('The audience is listening'); }); setThx(0); return; }
+    const t = setTimeout(() => setThx((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [thx]);
   if (!sb) return null;
 
   const sound = (body, note) => act({ action: 'soundbar', ...body }).then((r) => { if (r && note) toast(note); });
@@ -96,6 +104,12 @@ export function SoundSheet({ onClose }) {
           <div class="chips">${rears.map((r) => html`<span class=${`filter ${known(r.docked) && r.docked.state === 'off' ? 'warn' : ''}`} key=${r.channel}>
             ${r.channel[0].toUpperCase() + r.channel.slice(1)} · ${known(r.battery) ? `${Math.round(Number(r.battery.state))}%` : '–'}${known(r.charging) && r.charging.state === 'on' ? ' · charging' : ''}${known(r.docked) ? (r.docked.state === 'on' ? ' · docked' : ' · off its dock') : ''}</span>`)}</div>
         </div>
+        ${knobs.thx && html`<div>
+          <div class="lbl">THX</div>
+          ${thx > 0
+            ? html`<div class="cal"><b class="mono">${thx}</b><span>Sit down.</span></div>`
+            : html`<button type="button" class="btn ghost" style="height:52px" onClick=${() => setThx(6)}><${Icon} name="spk" size=${20} color="#F4F0E8" />Deep Note</button>`}
+        </div>`}
         <div>
           <div class="lbl">Calibration</div>
           ${calibrating > 0

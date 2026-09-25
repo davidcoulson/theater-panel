@@ -115,6 +115,16 @@ export async function runAction(ha, body) {
 
     case 'soundbar': return soundbar(ha, body);
 
+    // The Deep Note: on the theater speaker when it is up, on the panel itself otherwise, the
+    // same way the pre-roll and the march travel. The panel counts down before asking.
+    case 'thx': {
+      if (!config.thxUrl) throw new Error('No THX sound on the settings page');
+      const speaker = e.musicPlayers[0] || e.musicPlayer;
+      if (up(ha, speaker)) return script(ha, 'snipe', { speaker, url: config.thxUrl });
+      if (panelPath(config.thxUrl)) { toPanels({ url: panelPath(config.thxUrl) }); return { panel: true }; }
+      throw new Error('The theater speaker is not up');
+    }
+
     case 'transport': {
       // Volume and mute go to the soundbar once there is one: it is the thing making the sound.
       if (e.soundbar && ['vol_up', 'vol_down', 'mute'].includes(body.cmd)) return soundbar(ha, { cmd: body.cmd, on: body.muted });
