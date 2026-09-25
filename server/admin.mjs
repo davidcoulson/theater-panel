@@ -155,7 +155,7 @@ export async function view() {
   const values = {};
   for (const f of FIELDS) {
     const own = saved[f.key]; const base = env[f.key];
-    values[f.key] = f.type === 'secret'
+    values[f.key] = f.type === 'secret' || f.type === 'plexlogin'
       ? { saved: Boolean(own), container: Boolean(base) }
       : { saved: own ?? '', container: base ?? '' };
   }
