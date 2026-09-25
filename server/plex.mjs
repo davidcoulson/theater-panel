@@ -124,7 +124,8 @@ function buildIndex() {
     const rows = new Map();
     for (const lib of movies) {
       const [mc, hdr] = await Promise.all([
-        plex(`/library/sections/${lib.id}/all`, { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }),
+        // includeGuids: the TMDB id rides along, so a Trakt list can be matched to what is owned.
+        plex(`/library/sections/${lib.id}/all`, { includeGuids: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '50000' }),
         hdrKeys(lib.id).catch(() => new Set()),
       ]);
       for (const m of mc.Metadata || []) {
@@ -134,6 +135,8 @@ function buildIndex() {
         if (prev && resRank(m) <= prev.rank) { prev.watched = watched; continue; }
         const it = mapItem(m);
         if (it.quality) it.quality.hdr = hdr.has(m.ratingKey);
+        const tmdb = (m.Guid || []).map((g) => g.id).find((id) => id.startsWith('tmdb://'));
+        if (tmdb) it.tmdb = Number(tmdb.slice(7));
         rows.set(k, { it, rank: resRank(m), watched, titleSort: (m.titleSort || m.title || '').toLowerCase(), released: m.originallyAvailableAt || '' });
       }
     }
@@ -153,6 +156,14 @@ async function movieIndex() {
 }
 // Warm the index at startup so the first visit to Watch is quick.
 export const warmMovies = () => movieIndex().catch((e) => console.warn('[plex] movie index:', e.message));
+// The owned films among a list of TMDB ids, in the list's order (a Trakt list, matched to the
+// library). Each film once, as its best copy.
+export async function byTmdb(ids) {
+  const rows = await movieIndex();
+  const have = new Map();
+  for (const r of rows) if (r.it.tmdb && !have.has(r.it.tmdb)) have.set(r.it.tmdb, r.it);
+  return ids.map((id) => have.get(Number(id))).filter(Boolean);
+}
 // After playback: refresh in the background so watched state catches up.
 export const staleMovies = () => { indexAt = 0; };
 

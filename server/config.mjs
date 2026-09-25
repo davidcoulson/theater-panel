@@ -154,6 +154,16 @@ function build(env) {
     // Only when the pre-roll is the panel's own sound, so a custom URL is left alone.
     spookyUrl: env.PREROLL_SPOOKY_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'preroll-spooky.mp3') : ''),
   },
+  // Trakt, for the holiday shelves: a public list per season, read with just a client ID (no
+  // sign-in - the panel never touches anyone's Trakt account). Blank = no Trakt; the shelves fall
+  // back to Kometa's collections and TMDB's tags.
+  trakt: {
+    clientId: env.TRAKT_CLIENT_ID || '',
+    lists: {
+      halloween: env.TRAKT_LIST_HALLOWEEN || 'hdlists/the-top-100-halloween-movies-of-all-time',
+      christmas: env.TRAKT_LIST_CHRISTMAS || 'hdlists/christmas-movies',
+    },
+  },
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way
   // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
   curtainSeconds: Math.max(0, Math.min(600, Number(env.CURTAIN_SECONDS ?? 90) || 0)),

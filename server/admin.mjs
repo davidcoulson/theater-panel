@@ -28,6 +28,9 @@ export const FIELDS = [
   { group: 'Seerr', key: 'SEERR_USER_ID', label: 'Request as user id', type: 'text' },
   { group: 'Seerr', key: 'SEERR_REGION', label: 'Streaming region', type: 'text', placeholder: 'US' },
 
+  { group: 'Trakt', key: 'TRAKT_CLIENT_ID', label: 'Client ID', type: 'secret', help: 'From an app at developer.trakt.tv. Only public lists are read, so no sign-in and no secret is needed. Blank: the holiday shelves come from Kometa\'s collections and TMDB\'s tags instead.' },
+  { group: 'Trakt', key: 'TRAKT_LIST_HALLOWEEN', label: 'Halloween list', type: 'text', placeholder: 'hdlists/the-top-100-halloween-movies-of-all-time', help: 'user/list-slug from the list\'s address on trakt.tv. Only films you own are shown, in the list\'s order.' },
+  { group: 'Trakt', key: 'TRAKT_LIST_CHRISTMAS', label: 'Christmas list', type: 'text', placeholder: 'hdlists/christmas-movies' },
   { group: 'Entities', key: 'ENTITY_PROJECTOR', label: 'Projector (ADB media player)', type: 'entity', domain: 'media_player' },
   { group: 'Entities', key: 'ENTITY_APPLE_TV', label: 'Apple TV', type: 'entity', domain: 'media_player' },
   { group: 'Entities', key: 'ENTITY_APPLE_TV_REMOTE', label: 'Apple TV remote', type: 'entity', domain: 'remote' },
@@ -249,7 +252,7 @@ export async function test(service, values = {}) {
   const v = { ...effectiveVars() };
   for (const [k, val] of Object.entries(values)) if (typeof val === 'string' && val.trim()) v[k] = val.trim();
   const t = AbortSignal.timeout(8000);
-  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'] }[service];
+  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'], trakt: ['TRAKT_CLIENT_ID'] }[service];
   if (!need) throw httpError(400, 'Unknown service');
   const gone = need.filter((k) => !v[k]);
   if (gone.length) return { ok: false, detail: `${gone.join(' and ')} not set` };
@@ -268,6 +271,15 @@ export async function test(service, values = {}) {
     if (service === 'seerr') {
       const r = await fetch(`${v.SEERR_URL.replace(/\/$/, '')}/api/v1/settings/main`, { headers: { 'X-Api-Key': v.SEERR_API_KEY || '' }, signal: t });
       return r.ok ? { ok: true, detail: (await r.json()).applicationTitle || 'Connected' } : { ok: false, detail: `HTTP ${r.status}` };
+    }
+    if (service === 'trakt') {
+      // Read the Christmas list's first page: proves the client ID and that the list exists.
+      const slug = String(v.TRAKT_LIST_CHRISTMAS || 'hdlists/christmas-movies').replace(/^\/+|\/+$/g, '');
+      const r = await fetch(`https://api.trakt.tv/users/${slug.replace('/lists/', '/').replace('/', '/lists/')}/items/movies?page=1&limit=5`,
+        { headers: { 'trakt-api-version': '2', 'trakt-api-key': v.TRAKT_CLIENT_ID }, signal: t });
+      if (!r.ok) return { ok: false, detail: r.status === 403 ? 'Trakt refused the client ID' : r.status === 404 ? 'That list was not found' : `HTTP ${r.status}` };
+      const total = r.headers.get('x-pagination-item-count');
+      return { ok: true, detail: `Christmas list: ${total || 'some'} films` };
     }
   } catch (e) { return { ok: false, detail: e.message }; }
   throw httpError(400, 'Unknown service');
