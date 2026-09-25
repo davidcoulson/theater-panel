@@ -455,6 +455,16 @@ const inlineHashes = await (async () => {
   return [...out].join(' ');
 })();
 
+// The origins of the configured sounds, for media-src: the panel plays the pre-roll and the
+// intermission march itself when the room's speaker is asleep (server/actions.mjs).
+function soundOrigins() {
+  const out = new Set();
+  for (const url of [config.preroll.url, config.preroll.spookyUrl, config.intermission.url]) {
+    try { const u = new URL(url); if (/^https?:$/.test(u.protocol)) out.add(u.origin); } catch {}
+  }
+  return [...out].join(' ');
+}
+
 const frameAncestors = (path) => (path.startsWith('/admin') || path.startsWith('/api/admin') ? "'none'" : ["'self'", ...config.frameAncestors].join(' '));
 
 // Admin API. Everything but sign-in needs the admin cookie; changes must be JSON (with the
@@ -492,9 +502,11 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://panel');
   const path = url.pathname;
   // Tight by default: the panel loads only its own files, and nothing may be sniffed as a type
-  // it is not. Images come from our own proxy, so 'self' covers them too.
+  // it is not. Images come from our own proxy, so 'self' covers them too. Sounds may also come
+  // from wherever the settings page points the pre-roll and the march (Home Assistant's www
+  // folder, say): those origins, and only those, join media-src.
   res.setHeader('Content-Security-Policy',
-    `default-src 'self'; script-src 'self' ${inlineHashes}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors ${frameAncestors(path)}`);
+    `default-src 'self'; script-src 'self' ${inlineHashes}; img-src 'self' data:; media-src 'self' ${soundOrigins()}; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors ${frameAncestors(path)}`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   try {
