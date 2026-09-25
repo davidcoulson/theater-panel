@@ -807,6 +807,7 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .sound .volume .dial { flex-grow: 1; display: flex; align-items: center; gap: 18px; }
 .sound .volume .dial input { flex-grow: 1; }
 .sound .volume .dial .n { font-family: var(--disp); font-size: 54px; line-height: 1; width: 110px; text-align: right; }
+.sound .volume .dial .n.off { font-size: 22px; color: #8C7866; }
 .sound .eq { width: 100%; height: auto; aspect-ratio: 1000 / 190; display: block; touch-action: none; user-select: none; }
 .sound .eq .guide { stroke: rgba(255,255,255,.14); stroke-width: 2; }
 .sound .eq .base { stroke: rgba(255,255,255,.28); stroke-width: 2; }
