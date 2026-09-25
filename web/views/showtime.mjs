@@ -75,9 +75,9 @@ export function Showtime() {
       </div>
       <div style="flex-grow:1;display:flex;gap:28px;min-height:0">
         <div style="width:220px;display:flex;flex-direction:column;gap:20px">
-          <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume up" onClick=${() => t('vol_up')}><${Icon} name="volp" size=${48} w=${1.8} /></button>
+          <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume up" disabled=${sb && Number(sbVolume?.state) >= 100} onClick=${() => t('vol_up')}><${Icon} name="volp" size=${48} w=${1.8} /></button>
           <button type="button" class="dbtn" style="height:110px" aria-label="Mute" aria-pressed=${muted ? 'true' : 'false'} onClick=${() => { setMuted(!muted); t('mute', { muted: !muted }); }}><${Icon} name="mute" size=${40} w=${1.8} /><span class="s">${muted ? 'Unmute' : 'Mute'}</span></button>
-          <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume down" onClick=${() => t('vol_down')}><${Icon} name="volm" size=${48} w=${1.8} /></button>
+          <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume down" disabled=${sb && sbVolume && Number(sbVolume.state) <= 0} onClick=${() => t('vol_down')}><${Icon} name="volm" size=${48} w=${1.8} /></button>
           ${sb && html`<div class="sb-level" title="Soundbar volume"><i style=${`width:${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? Number(sbVolume.state) : 0}%`}></i><span class="mono">${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? sbVolume.state : '–'}</span></div>
           <button type="button" class="dbtn" style="height:90px" aria-pressed=${lateNight ? 'true' : 'false'} onClick=${() => act({ action: 'soundbar', cmd: 'late_night', on: !lateNight })}><${Icon} name="moon" size=${32} w=${1.8} /><span class="s">Late night</span></button>`}
         </div>

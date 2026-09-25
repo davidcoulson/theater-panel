@@ -822,3 +822,4 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .sound .rears-cal > div { flex: 1; }
 .sound .cal { display: flex; align-items: center; gap: 16px; font-size: 17px; }
 .sound .cal b { font-family: var(--disp); font-size: 44px; line-height: 1; color: var(--gold); }
+.sound .volume .dbtn:disabled, .showtime .dbtn:disabled { opacity: .35; }
