@@ -53,6 +53,11 @@ signed in.
 
 ![You'll love this](docs/img/foryou.jpg)
 
+**On your watchlist** sits above it once a Plex account is signed in (Connections > Plex
+account; a plex.tv sign-in with the panel never seeing the password). Anything on the account's
+plex.tv watchlist that is already in the library plays from here; anything not yet in it goes to
+the request screen.
+
 **The Mystery box** picks one unwatched film, weighted towards the genres the house has been
 watching, and starts it. It says why it chose that one, counts down from ten, and takes
 *Something else* or *Not tonight* for an answer.
@@ -60,7 +65,9 @@ watching, and starts it. It says why it chose that one, counts down from ten, an
 ![The Mystery box](docs/img/mystery.jpg)
 
 **Movie night** (`#/pick`) puts a shortlist on the panel and a QR on screen; everyone votes from
-their phones at `/vote` and the tally comes back live.
+their phones at `/vote` and the tally comes back live. In October and at Christmas the
+shortlist comes from that season's shelf ("Three from Halloween Scares"), with a chip to go back
+to the whole library.
 
 **Surprise me.** "Hey Jarvis, surprise me" (or *pick something*, *what should we watch*) makes the
 server choose, opens the box on every panel in the room and reads the title back. The sentences
@@ -72,6 +79,11 @@ and the longest sitting. Plays are exact; hours are an estimate, because history
 something was watched, not for how long.
 
 ![Year in review](docs/img/year.jpg)
+
+Once a year the review comes to your phone: on the date under Display > Year in review (the
+26th of December unless changed) the panel sends a one-paragraph summary of the year - hours,
+the top title, the longest sitting - to the Home Assistant `notify` targets listed there.
+*Send it now* on that page tries it out.
 
 Set **Whose taste to follow** on the settings page (Plex > account names) to keep the
 recommendations out of the kids' anime; blank follows the whole house.
@@ -109,8 +121,10 @@ else's film. The parade dresses for the season, too.
 
 **How was it?** When a film runs to the end, the panel asks on the way out: five stars, and
 everyone on the sofa can tap. The card keeps the tally and Plex is told the *average*, so one
-person's five doesn't stand for the room, and the rating feeds back into what gets recommended.
-Skip takes no for an answer, and the card goes by itself after twenty minutes.
+person's five doesn't stand for the room. The stars feed back: films the house rated four or
+five lead the "You'll love this" rows and count double in the Mystery box, and the genres of
+what it rated two or under are marked down. Skip takes no for an answer, and the card goes by
+itself after twenty minutes.
 
 ![How was it?](docs/img/rate.jpg)
 

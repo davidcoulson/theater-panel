@@ -5,6 +5,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Poster, Header, H2 } from '../lib/ui.mjs';
 import { get, post, useStore, toast, runtime, endsAt } from '../lib/api.mjs';
 import { play } from './lobby.mjs';
+import { route } from '../app.mjs';
 
 const FILTERS = [
   { key: 'short', label: 'Under 2 hours' },
@@ -17,19 +18,21 @@ export function Pick() {
   const [filters, setFilters] = useState([]);
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [source, setSource] = useState(null);      // the season shelf the shortlist came from
+  const [season, setSeason] = useState(true);      // draw from the season while one is up
   const votes = useStore((s) => s.vote);
   const voteUrl = `${location.origin}/vote`;
 
   async function shuffle() {
     setBusy(true);
     try {
-      const r = await get(`/api/pick?n=3&filters=${filters.join(',')}`);
-      setItems(r.items);
+      const r = await get(`/api/pick?n=3&filters=${filters.join(',')}${season ? (route.params.season ? `&season=${encodeURIComponent(route.params.season)}` : '') : '&season=0'}`);
+      setItems(r.items); setSource(r.source || null);
       if (votes) await post('/api/vote/start', { items: r.items.map(({ id, title, year, poster }) => ({ id, title, year, poster })) });
     } catch (e) { toast(e.message, true); }
     setBusy(false);
   }
-  useEffect(() => { shuffle(); }, [filters.join(',')]);
+  useEffect(() => { shuffle(); }, [filters.join(','), season]);
 
   const startVote = async () => {
     try { await post('/api/vote/start', { items: (items || []).map(({ id, title, year, poster }) => ({ id, title, year, poster })) }); }
@@ -51,7 +54,9 @@ export function Pick() {
   const leader = votes?.voters ? Object.entries(votes.tally).sort((a, b) => b[1] - a[1])[0] : null;
 
   return html`<main class="view">
-    <${Header} title="Movie night" kicker="Three from the unwatched pile">
+    <${Header} title="Movie night" kicker=${source ? `Three from ${source}` : 'Three from the unwatched pile'}>
+      ${(source || !season) && html`<button type="button" class="chip" aria-pressed=${season ? 'true' : 'false'} onClick=${() => setSeason(!season)}>
+        ${season && html`<${Icon} name="check" size=${18} />`}${source || 'The season'}</button>`}
       ${FILTERS.map((f) => html`<button type="button" class="chip" aria-pressed=${filters.includes(f.key) ? 'true' : 'false'} onClick=${() => toggle(f.key)}>
         ${filters.includes(f.key) && html`<${Icon} name="check" size=${18} />`}${f.label}</button>`)}
       <button type="button" class="chip" disabled=${busy} onClick=${shuffle}><${Icon} name="dice" size=${20} />${busy ? 'Picking…' : 'Shuffle'}</button>

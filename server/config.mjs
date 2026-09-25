@@ -79,6 +79,9 @@ function build(env) {
     token: env.PLEX_TOKEN || '',
     // Library section titles shown as tabs, in order. Empty = every movie and show library.
     libraries: list(env.PLEX_LIBRARIES, []),
+    // A plex.tv account token, for the watchlist (it lives on plex.tv, not on the server; the
+    // server token above cannot read it). Made by the sign-in button on the settings page.
+    accountToken: env.PLEX_ACCOUNT_TOKEN || '',
   },
   seerr: {
     url: (env.SEERR_URL || '').replace(/\/$/, ''),
@@ -165,6 +168,12 @@ function build(env) {
       halloween: env.TMDB_LIST_HALLOWEEN || '7061968',
       christmas: env.TMDB_LIST_CHRISTMAS || '5915',
     },
+  },
+  // The December "Wrapped": on this day (MM-DD) the year's numbers go to these Home Assistant
+  // notify entities (phones, the kitchen display). Empty = nobody.
+  wrapped: {
+    date: /^\d{2}-\d{2}$/.test(env.WRAPPED_DATE || '') ? env.WRAPPED_DATE : '12-26',
+    notify: list(env.WRAPPED_NOTIFY, []),
   },
   // The slow curtain: when a film ends the house lights come up over this many seconds, the way
   // a cinema's do (0 turns it off). The HA script only acts if the room is still set for a movie.
