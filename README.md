@@ -284,9 +284,11 @@ assembles it; `web/basement.html` holds the original mockups.
 
 - **Projector.** Power on works through the Apple TV (HDMI-CEC); off, input, apps and picture
   mode go over ADB (`ENTITY_PROJECTOR`). The picture can also go dark without the projector going
-  off (`script.theater_projector_light_off` / `_on`): the Aurora Pro's light engine takes a serial
-  `AT+LightSource=Off`, reached through the vendor's `projector-test` tool on its Android, and the
-  OS stays awake, so it comes back in a second instead of a 25 s warm-up. Not on the panel yet.
+  off (`script.theater_projector_light_off` / `_on`), the way its own power menu's "Screen off"
+  does it: two flags (`cur.appo.light.enabled`, `cur.prj.screenOff`) so the eye-protection sensor
+  and sleep logic leave it alone, then the vendor's `projector-test` tool sends the light engine
+  its serial `AT+LightSource=Off`. Laser and fans stop, the OS stays awake, and it comes back in
+  a second instead of a 25 s warm-up. Not on the panel yet.
 - **Games hardware.** The HDMI switcher's serial commands, the projector input names and the
   Windows VM's HA entities are placeholders in `games.example.json` until they are known, so the
   gaming PC's stats page is still demo data.

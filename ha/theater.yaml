@@ -442,10 +442,13 @@ script:
   # standby, so ADB cannot turn it on). Off, input, apps and picture mode go over ADB
   # (media_player.theater_projector, Android Debug Bridge integration).
   #
-  # The picture can also go dark without the projector going off: the Aurora Pro's Appotronics
-  # light engine takes a serial "AT+LightSource=Off", and the vendor's test tool on the
-  # projector's Android calls it. Android stays awake, so ADB, CEC and the apps keep working and
-  # the light comes back in a second - no 25 s warm-up. Pre-show and Movie time turn it back on.
+  # The picture can also go dark without the projector going off, the way its own power menu's
+  # "Screen off" does it: flag the light as deliberately off (cur.appo.light.enabled and
+  # cur.prj.screenOff, which keep the eye-protection sensor and the sleep logic from re-lighting
+  # it or standing the projector by), then the vendor's test tool sends the light engine its serial
+  # "AT+LightSource=Off". The laser and fans stop, Android stays awake, so ADB, CEC and the apps
+  # keep working and the light comes back in a second - no 25 s warm-up. Any remote key, Pre-show
+  # and Movie time turn it back on.
 
   theater_projector_power_on:
     alias: "Theater: projector on"
@@ -477,7 +480,7 @@ script:
         value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
       - action: androidtv.adb_command
         target: { entity_id: "{{ projector }}" }
-        data: { command: "/vendor/bin/hw/projector-test setLightSourceOnOff false" }
+        data: { command: "setprop cur.appo.light.enabled false; /vendor/bin/hw/projector-test setLightSourceOnOff false; setprop cur.prj.screenOff true" }
 
   theater_projector_light_on:
     alias: "Theater: projector picture on"
@@ -489,7 +492,7 @@ script:
         value_template: "{{ projector and states(projector) not in ['unavailable', 'unknown', 'off'] }}"
       - action: androidtv.adb_command
         target: { entity_id: "{{ projector }}" }
-        data: { command: "/vendor/bin/hw/projector-test setLightSourceOnOff true" }
+        data: { command: "setprop cur.appo.light.enabled true; /vendor/bin/hw/projector-test setLightSourceOnOff true; setprop cur.prj.screenOff false" }
 
   # Inputs are Android TV inputs on the Aurora Pro's MediaTek build (verified over ADB):
   # HDMI 1 = HW5 (Apple TV, CEC), HDMI 2 = HW6, HDMI 3 = HW7, HDMI 4 = HW8. The projector's
