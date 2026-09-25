@@ -701,6 +701,12 @@ automation:
       - condition: state
         entity_id: media_player.home_theater
         state: ["off", "standby", "unavailable"]
+      # A plugin install or a Kiosk Satellite restart also drops every entity to unavailable; only
+      # a real boot brings the projector's network up within the last few minutes.
+      - condition: template
+        value_template: >-
+          {{ states('sensor.aurora_pro_projector_network_uptime') | as_datetime is not none
+             and (now() - states('sensor.aurora_pro_projector_network_uptime') | as_datetime).total_seconds() < 600 }}
     actions:
       - action: script.theater_projector_light_off
 
