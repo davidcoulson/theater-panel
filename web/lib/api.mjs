@@ -51,6 +51,9 @@ export const setTheater = (theater) => set({ theater });
 export const celebrate = () => set({ celebrateAt: Date.now() });
 // The spoken pick has been seen; the next "surprise me" is a fresh one.
 export const clearMystery = () => set({ mystery: null });
+// The panel's own settings sheet, opened by seven taps on the version number in the rail.
+export const openTweaks = () => set({ tweaks: true });
+export const closeTweaks = () => set({ tweaks: false });
 
 let toastTimer;
 export function toast(text, err = false) {

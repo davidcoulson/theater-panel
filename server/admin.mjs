@@ -187,6 +187,28 @@ export async function view() {
   };
 }
 
+// The panel's own settings sheet (seven taps on the version number in the rail): the harmless
+// knobs only - the Mystery box rules, the look, the pre-roll timing - and nothing that connects
+// to anything: no URLs, tokens, entities or networks. Values are the effective ones: the saved
+// value, else the container's, else the field's default.
+const TWEAK_KEYS = new Set([
+  ...FIELDS.filter((f) => f.group === 'Mystery box').map((f) => f.key),
+  'THEME', 'ACCENT', 'ACCENT_INTENSITY', 'BIRTHDAYS', 'ARRIVAL_HOURS', 'IDLE_MINUTES', 'CINEMA_MODE', 'SHOW_QUALITY_BADGES', 'SHOW_NETWORK_BADGES',
+  'PREROLL_ENABLED', 'PREROLL_MOVIES_ONLY', 'PREROLL_SECONDS', 'INTERMISSION_MINUTES', 'WRAPPED_DATE',
+]);
+
+export async function tweaks() {
+  const saved = settings().vars;
+  const fields = FIELDS.filter((f) => TWEAK_KEYS.has(f.key))
+    .map((f) => ({ ...f, value: saved[f.key] ?? process.env[f.key] ?? (f.default == null ? '' : String(f.default)) }));
+  const libraries = fields.some((f) => f.type === 'libraries') ? await plexLibraries().catch(() => []) : [];
+  return { fields, libraries: libraries.filter((l) => l.type === 'movie').map((l) => l.title) };
+}
+
+export function saveTweaks(values = {}) {
+  return save({ values: Object.fromEntries(Object.entries(values).filter(([k]) => TWEAK_KEYS.has(k))) });
+}
+
 // body: { values: { KEY: string | null }, games?: object }. For secrets, '' or a missing key
 // keeps the saved secret and null removes it; for everything else '' falls back to the container.
 export function save(body) {

@@ -67,6 +67,11 @@ preference for 4K or HDR (or a showcase of nothing else), a floor on the content
 whether unrated films and small studios are allowed. It says why it chose that
 one, counts down from ten, and takes *Something else* or *Not tonight* for an answer.
 
+Seven quick taps on the version number at the bottom of the rail open a settings sheet on the
+panel itself with the harmless knobs: the Mystery box rules, theme and holiday accent, badges,
+idle time, the pre-roll and intermission timing. Nothing that connects to anything is there;
+URLs, tokens and entities stay on the admin page.
+
 ![The Mystery box](docs/img/mystery.jpg)
 
 **Movie night** (`#/pick`) puts a shortlist on the panel and a QR on screen; everyone votes from
