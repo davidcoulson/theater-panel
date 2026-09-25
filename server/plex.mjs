@@ -203,9 +203,17 @@ const MERGED_SORTS = {
   released: (a, b) => b.released.localeCompare(a.released),
 };
 
+// The "recent" and "rated" filters: released in the last ten years, and an audience rating of
+// 7 or better (Plex's 0-10 scale; a film with no rating does not qualify).
+export const RECENT_YEARS = 10;
+export const RATED_MIN = 7;
+export const RECENT_FROM = () => new Date().getFullYear() - RECENT_YEARS;
+
 async function listMerged({ filters = [], brand, sort = 'added', start = 0, size = 60 }) {
   let rows = await movieIndex();
   if (filters.includes('unwatched')) rows = rows.filter((r) => !r.watched);
+  if (filters.includes('recent')) rows = rows.filter((r) => (r.it.year || 0) >= RECENT_FROM());
+  if (filters.includes('rated')) rows = rows.filter((r) => (r.it.rating ?? 0) >= RATED_MIN);
   if (filters.includes('short')) rows = rows.filter((r) => r.it.duration && r.it.duration < 7200000);
   if (filters.includes('family')) rows = rows.filter((r) => FAMILY_RATINGS.includes(r.it.contentRating));
   if (filters.includes('4k')) rows = rows.filter((r) => r.it.is4k);
@@ -310,6 +318,8 @@ export async function listLibrary(sectionId, { filters = [], genre, brand, sort 
     'X-Plex-Container-Size': String(size),
   };
   if (filters.includes('unwatched')) p.unwatched = '1';
+  if (filters.includes('recent')) p['year>>='] = String(RECENT_FROM());
+  if (filters.includes('rated')) p['audienceRating>>='] = String(RATED_MIN);
   if (filters.includes('short')) p['duration<<'] = '7200000';
   if (filters.includes('family')) p.contentRating = FAMILY_RATINGS.join(',');
   if (filters.includes('4k')) p.resolution = '4k';

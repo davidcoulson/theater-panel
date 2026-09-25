@@ -58,9 +58,9 @@ account; a plex.tv sign-in with the panel never seeing the password). Anything o
 plex.tv watchlist that is already in the library plays from here; anything not yet in it goes to
 the request screen.
 
-**The Mystery box** picks one unwatched film, weighted towards the genres the house has been
-watching, and starts it. It says why it chose that one, counts down from ten, and takes
-*Something else* or *Not tonight* for an answer.
+**The Mystery box** picks one unwatched film from the last ten years rated 7 or better,
+weighted towards the genres the house has been watching, and starts it. It says why it chose
+that one, counts down from ten, and takes *Something else* or *Not tonight* for an answer.
 
 ![The Mystery box](docs/img/mystery.jpg)
 
