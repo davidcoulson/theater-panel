@@ -690,9 +690,46 @@ automation:
           - condition: trigger
             id: asleep
         then:
+          # Only when the projector is showing the Apple TV's input: Projectivy or an app opened
+          # on the projector itself keeps its picture.
+          - condition: template
+            value_template: >-
+              {{ state_attr('media_player.theater_projector', 'app_id') in [none, 'com.mediatek.wwtv.tvcenter'] }}
           - action: script.theater_projector_light_off
         else:
           - action: script.theater_projector_light_on
+          # Woken while Projectivy was standing in for it: back to the Apple TV's input.
+          - if:
+              - condition: template
+                value_template: "{{ state_attr('media_player.theater_projector', 'app_id') == 'com.spocky.projengmenu' }}"
+            then:
+              - action: select.select_option
+                target: { entity_id: select.home_theater_aurora_pro_projector_nexigo_aurora_pro_input }
+                data: { option: HDMI 1 }
+
+  # The picture turned on with the Apple TV asleep (the remote, the panel, a restart) would only
+  # show the projector's "No signal" page: open Projectivy, the projector's launcher, instead.
+  # The Apple TV waking takes the picture back to HDMI 1 (above).
+  - id: theater_projector_home_without_source
+    alias: "Theater: projector shows Projectivy when the Apple TV sleeps"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture
+        from: "off"
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: media_player.home_theater
+        state: "off"
+      - condition: template
+        value_template: "{{ state_attr('media_player.theater_projector', 'app_id') in [none, 'com.mediatek.wwtv.tvcenter'] }}"
+    actions:
+      - delay: "00:00:02"
+      - action: androidtv.adb_command
+        target: { entity_id: media_player.theater_projector }
+        data:
+          command: "am start -n com.spocky.projengmenu/.ui.home.MainActivity"
 
   # A cold boot lights the laser with the boot animation and leaves it on. The projector cannot
   # be told to boot dark, but the plugin's switch coming back is the moment to decide: with no
