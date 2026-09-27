@@ -669,43 +669,10 @@ automation:
             A newer panel image is on GHCR ({{ trigger.event.data.image | default('ghcr.io/davidcoulson/theater-panel:latest') }}).
             On Unraid: /usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container theater-panel
 
-  # The projector stays on the network around the clock (the plugin sets it to ignore CEC standby
-  # and never to shut down on no signal), so the picture follows the Apple TV instead: dark while
-  # it sleeps, back the moment it wakes. No 25 s boot, no CEC dance.
-  - id: theater_projector_follows_apple_tv
-    alias: "Theater: projector picture follows the Apple TV"
-    mode: restart
-    triggers:
-      - trigger: state
-        entity_id: media_player.home_theater
-        to: "off"
-        for: "00:00:30"
-        id: asleep
-      - trigger: state
-        entity_id: media_player.home_theater
-        from: "off"
-        id: awake
-    actions:
-      - if:
-          - condition: trigger
-            id: asleep
-        then:
-          # Only when the projector is showing the Apple TV's input: Projectivy or an app opened
-          # on the projector itself keeps its picture.
-          - condition: template
-            value_template: >-
-              {{ state_attr('media_player.theater_projector', 'app_id') in [none, 'com.mediatek.wwtv.tvcenter'] }}
-          - action: script.theater_projector_light_off
-        else:
-          - action: script.theater_projector_light_on
-          # Woken while Projectivy was standing in for it: back to the Apple TV's input.
-          - if:
-              - condition: template
-                value_template: "{{ state_attr('media_player.theater_projector', 'app_id') == 'com.spocky.projengmenu' }}"
-            then:
-              - action: select.select_option
-                target: { entity_id: select.home_theater_aurora_pro_projector_nexigo_aurora_pro_input }
-                data: { option: HDMI 1 }
+  # The picture follows the Apple TV on the projector itself now: the NexiGo plugin (0.3+) reads
+  # the projector's HDMI-CEC history and turns the picture on at the Apple TV's Image View On and
+  # off at its Standby (or a power report going to standby). HA's Apple TV entity flapped between
+  # off and on while the Apple TV stayed asleep (2026-09-27), and the old automation here followed it.
 
   # The picture turned on with the Apple TV asleep (the remote, the panel, a restart) would only
   # show the projector's "No signal" page: open Projectivy, the projector's launcher, instead.
