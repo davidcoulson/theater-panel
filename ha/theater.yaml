@@ -212,12 +212,40 @@ script:
         example: https://ht-kiosk.coulson.io/assets/intermission.mp3
     sequence:
       - condition: template
-        value_template: "{{ speaker is defined and speaker and url is defined and url }}"
+        # A real boolean: "speaker and url" renders the URL itself, which HA reads as false.
+        value_template: "{{ (speaker is defined and speaker | length > 0) and (url is defined and url | length > 0) }}"
       - action: media_player.play_media
         target: { entity_id: "{{ speaker }}" }
         data:
           media_content_id: "{{ url }}"
           media_content_type: music
+      # Casting to the JBL moves it off the film's input. Once the clip ends, put it back on the one
+      # the projector is showing: HDMI (the Apple TV plugged into the bar) or TV (the projector's
+      # own apps, over eARC). Decided from the projector, not the bar, since a clip that restarts
+      # this script finds the bar already on Cast.
+      - if:
+          - condition: template
+            value_template: "{{ speaker == 'media_player.jbl_bar_1300mk2' }}"
+        then:
+          - variables:
+              back_to: >-
+                {{ 'button.jbl_bar_1300mk2_hdmi'
+                   if states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing').startswith('HDMI')
+                   else 'button.jbl_bar_1300mk2_tv' }}
+          - wait_for_trigger:
+              - trigger: state
+                entity_id: media_player.jbl_bar_1300mk2
+                to: playing
+            timeout: "00:00:20"
+            continue_on_timeout: true
+          - wait_for_trigger:
+              - trigger: state
+                entity_id: media_player.jbl_bar_1300mk2
+                from: playing
+            timeout: "00:15:00"
+            continue_on_timeout: true
+          - action: button.press
+            target: { entity_id: "{{ back_to }}" }
 
   # The slow curtain: when the film ends, the house lights come up the way a cinema's do, over a
   # minute and a half, instead of snapping on. The panel calls this when playback stops (see
@@ -271,13 +299,13 @@ script:
         data: { brightness_pct: 3, rgb_color: [255, 110, 35], transition: 8 }
       - action: light.turn_off
         target: { entity_id: light.home_theater_wled }
-      - condition: template
-        value_template: "{{ speaker is defined and speaker and url is defined and url }}"
-      - action: media_player.play_media
-        target: { entity_id: "{{ speaker }}" }
+      # The swell goes through theater_snipe, which also puts a soundbar back on the film's input.
+      - action: script.turn_on
+        target: { entity_id: script.theater_snipe }
         data:
-          media_content_id: "{{ url }}"
-          media_content_type: music
+          variables:
+            speaker: "{{ speaker | default('') }}"
+            url: "{{ url | default('') }}"
 
   theater_lights_intermission:
     alias: "Theater: lights for intermission"
