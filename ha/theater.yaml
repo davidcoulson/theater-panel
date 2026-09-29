@@ -123,6 +123,32 @@ script:
             data: { command: "input keyevent 127" }
             continue_on_error: true
 
+  # The JBL bar's own volume and mute, for remotes that can run a script but not press a button
+  # (the Astrion's TV card). The bar steps by its own increment, the same as its remote.
+  theater_bar_volume_up:
+    alias: "Theater: soundbar volume up"
+    icon: mdi:volume-plus
+    mode: queued
+    sequence:
+      - action: button.press
+        target: { entity_id: button.jbl_bar_1300mk2_increase_volume }
+
+  theater_bar_volume_down:
+    alias: "Theater: soundbar volume down"
+    icon: mdi:volume-minus
+    mode: queued
+    sequence:
+      - action: button.press
+        target: { entity_id: button.jbl_bar_1300mk2_lower_volume }
+
+  theater_bar_mute:
+    alias: "Theater: soundbar mute"
+    icon: mdi:volume-mute
+    mode: single
+    sequence:
+      - action: button.press
+        target: { entity_id: button.jbl_bar_1300mk2_mute }
+
   theater_lights_up:
     alias: "Theater: Lights up"
     icon: mdi:weather-sunny
