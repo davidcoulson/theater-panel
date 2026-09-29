@@ -291,24 +291,26 @@ function build(env) {
   return c;
 }
 
-// The soundbar's entities from its name stem, as jbl_integration names them: "JBL Bar 1300X"
-// becomes the stem jbl_bar_1300x, and its rears are their own devices under it.
+// The soundbar's entities from its name stem, as jbl_integration 1.6 names them: "JBL BAR 1300MK2"
+// becomes the stem jbl_bar_1300mk2 (checked against a real bar, 2026-09-29). Its buttons ship
+// disabled; the panel needs mute, volume, bass, rear, atmos, moment and calibration enabled.
 export function soundbarIds(prefix, rears = ['left', 'right']) {
   const p = String(prefix || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!p) return null;
   return {
     prefix: p,
     volume: `number.${p}_volume`, power: `switch.${p}_power`,
-    night: `switch.${p}_night_mode`, pureVoice: `switch.${p}_purevoice`, smart: `switch.${p}_smart_mode`,
+    night: `switch.${p}_nightmode`, pureVoice: `switch.${p}_pure_voice`, smart: `switch.${p}_smart_mode`,
+    format: `sensor.${p}_audio_format`,
     preset: `select.${p}_eq_preset`,
     bands: ['125hz', '250hz', '500hz', '1000hz', '2000hz', '4000hz', '8000hz'].map((b) => `number.${p}_${b}`),
     custom: ['eq_1_low', 'eq_2_mid', 'eq_3_high'].map((b) => `number.${p}_${b}`),
     buttons: { mute: `button.${p}_mute`, volumeUp: `button.${p}_increase_volume`, volumeDown: `button.${p}_lower_volume`, bass: `button.${p}_bass`, rear: `button.${p}_rear`, atmos: `button.${p}_atmos`, calibration: `button.${p}_calibration`, moment: `button.${p}_moment`, playPause: `button.${p}_play_pause` },
-    rears: rears.map((ch) => { const c = ch.trim().toLowerCase(); return { channel: c, battery: `sensor.${p}_rear_speaker_${c}_battery`, charging: `binary_sensor.${p}_rear_speaker_${c}_charging`, docked: `binary_sensor.${p}_rear_speaker_${c}_docked` }; }),
+    rears: rears.map((ch) => { const c = ch.trim().toLowerCase(); return { channel: c, battery: `sensor.${p}_${c}_battery`, charging: `binary_sensor.${p}_${c}_charging`, docked: `binary_sensor.${p}_${c}_docked`, online: `binary_sensor.${p}_${c}_online` }; }),
   };
 }
 
-export const soundbarEntities = (sb) => !sb ? [] : [sb.volume, sb.power, sb.night, sb.pureVoice, sb.smart, sb.preset, ...sb.bands, ...sb.custom, ...sb.rears.flatMap((r) => [r.battery, r.charging, r.docked])];
+export const soundbarEntities = (sb) => !sb ? [] : [sb.volume, sb.power, sb.night, sb.pureVoice, sb.smart, sb.preset, sb.format, ...sb.bands, ...sb.custom, ...sb.rears.flatMap((r) => [r.battery, r.charging, r.docked, r.online])];
 
 export const config = build(effectiveVars());
 

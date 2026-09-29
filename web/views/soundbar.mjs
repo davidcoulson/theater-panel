@@ -45,14 +45,16 @@ export function SoundSheet({ onClose }) {
   const customNumbers = sb.custom.map((id) => useNumber(id));
   const points = [
     ...bandNumbers.map((n, i) => ({ id: sb.bands[i], label: BANDS[i], value: n.value, min: n.min, max: n.max, step: n.step, group: 0, onSet: (v) => sound({ cmd: 'band', index: i, value: v }) })),
-    ...customNumbers.map((n, i) => ({ id: sb.custom[i], label: CUSTOM[i], value: n.value, min: n.min, max: n.max, step: n.step, group: 1, onSet: (v) => sound({ cmd: 'custom', index: i, value: v }) })),
+    // The custom three-band EQ only on bars that have it (the 1300MK2 on jbl_integration 1.6 does not).
+    ...customNumbers.map((n, i) => ({ id: sb.custom[i], label: CUSTOM[i], value: n.value, min: n.min, max: n.max, step: n.step, group: 1, onSet: (v) => sound({ cmd: 'custom', index: i, value: v }) })).filter((pt, i) => customNumbers[i].e),
   ];
-  const rears = (sb.rears || []).map((r) => ({ ...r, battery: states[r.battery], charging: states[r.charging], docked: states[r.docked] }));
-  const anyReported = Object.values(states).some((e) => e?.entity_id?.includes(sb.prefix));
+  const rears = (sb.rears || []).map((r) => ({ ...r, battery: states[r.battery], charging: states[r.charging], docked: states[r.docked], online: states[r.online] }));
+  const format = sb.format ? states[sb.format] : null;
+  const anyReported = Object.keys(states).some((id) => id.includes(sb.prefix) && known(states[id]));
 
   return html`<div class="mystery-sheet sound" role="dialog" aria-label="Sound">
     <div class="h">
-      <div><div class="eyebrow">${anyReported ? (on(power) ? 'On' : 'Standing by') : 'Waiting for the bar'}</div><div class="t">Sound</div></div>
+      <div><div class="eyebrow">${anyReported ? (on(power) ? (known(format) ? `On · ${format.state}` : 'On') : 'Standing by') : 'Waiting for the bar'}</div><div class="t">Sound</div></div>
       <button type="button" class="icon-btn" style="width:46px;height:46px;background:rgba(0,0,0,.25)" aria-label="Close" onClick=${onClose}><${Icon} name="x" color="#F4F0E8" /></button>
     </div>
     ${!anyReported && html`<p class="hint">Home Assistant has not reported the soundbar yet. Once the JBL integration is set up and the name on the settings page matches, everything here comes alive.</p>`}
@@ -87,14 +89,14 @@ export function SoundSheet({ onClose }) {
         <div class="lbl">Equaliser</div>
         ${preset?.attributes?.options?.length > 0 && html`<div class="chips">${preset.attributes.options.map((o) => html`<button type="button" class="filter" aria-pressed=${preset.state === o ? 'true' : 'false'} onClick=${() => sound({ cmd: 'preset', option: o })}>${o}</button>`)}</div>`}
         <${Eq} points=${points} pending=${pending} setPending=${setPending} />
-        <p class="hint">Drag a dot, or tap where it should be. Seven bands on the left are the graphic EQ; the three on the right are the bar's Custom preset.</p>
+        <p class="hint">Drag a dot, or tap where it should be.${points.some((pt) => pt.group === 1) ? " Seven bands on the left are the graphic EQ; the three on the right are the bar's Custom preset." : ''}</p>
       </section>
 
       <section class="rears-cal">
         <div>
           <div class="lbl">Rear speakers</div>
           <div class="chips">${rears.map((r) => html`<span class=${`filter ${known(r.docked) && r.docked.state === 'off' ? 'warn' : ''}`} key=${r.channel}>
-            ${r.channel[0].toUpperCase() + r.channel.slice(1)} · ${known(r.battery) ? `${Math.round(Number(r.battery.state))}%` : '–'}${known(r.charging) && r.charging.state === 'on' ? ' · charging' : ''}${known(r.docked) ? (r.docked.state === 'on' ? ' · docked' : ' · off its dock') : ''}</span>`)}</div>
+            ${r.channel[0].toUpperCase() + r.channel.slice(1)} · ${known(r.battery) ? `${Math.round(Number(r.battery.state))}%` : '–'}${known(r.charging) && r.charging.state === 'on' ? ' · charging' : ''}${known(r.docked) ? (r.docked.state === 'on' ? ' · docked' : ' · off its dock') : ''}${known(r.online) && r.online.state === 'off' ? ' · offline' : ''}</span>`)}</div>
         </div>
         ${knobs.thx && html`<div>
           <div class="lbl">THX</div>
@@ -123,10 +125,13 @@ function Eq({ points, pending, setPending }) {
   const [drag, setDrag] = useState(null);       // { id, min, max, step }
   const groups = points.filter((p) => p.group === 0).length;
   const gapAfter = groups - 1;
-  const cols = points.length + 1;                // one column of air between the groups
+  const cols = points.length + (groups < points.length ? 1 : 0);   // one column of air between the groups, when there are two
   const xOf = (i) => 40 + ((i > gapAfter ? i + 1 : i) + 0.5) * ((EQ_W - 80) / cols);
-  const yOf = (p, v) => EQ_BOTTOM - ((v - p.min) / (p.max - p.min || 1)) * (EQ_BOTTOM - EQ_TOP);
-  const valueAt = (p, y) => { const raw = p.min + ((EQ_BOTTOM - y) / (EQ_BOTTOM - EQ_TOP)) * (p.max - p.min); const step = p.step || 1; return Math.max(p.min, Math.min(p.max, Math.round(raw / step) * step)); };
+  // One symmetric scale for every band, wide enough for any value the bar reports (a 1300MK2 read
+  // +7 on a band it says runs -6..+6), with headroom so a dot at the top clears its label.
+  const span = Math.max(1, ...points.flatMap((p) => [Math.abs(p.min), Math.abs(p.max), Math.abs(pending[p.id] ?? p.value ?? 0)])) * 1.15;
+  const yOf = (p, v) => EQ_BOTTOM - ((v + span) / (2 * span)) * (EQ_BOTTOM - EQ_TOP);
+  const valueAt = (p, y) => { const raw = -span + ((EQ_BOTTOM - y) / (EQ_BOTTOM - EQ_TOP)) * 2 * span; const step = p.step || 1; return Math.max(p.min, Math.min(p.max, Math.round(raw / step) * step)); };
   const local = (e) => { const r = e.currentTarget.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * EQ_W, y: ((e.clientY - r.top) / r.height) * EQ_H }; };
   const nearest = (x) => points.map((p, i) => ({ p, d: Math.abs(xOf(i) - x) })).sort((a, b) => a.d - b.d)[0]?.p;
   const down = (e) => {
