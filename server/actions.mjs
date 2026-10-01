@@ -37,7 +37,7 @@ export async function runAction(ha, body) {
       }
       // The break gets its jingle: the panel shows the snack bar, the room hears the march.
       if (body.name === 'intermission' && config.intermission.url && body.quiet !== true) {
-        const speaker = e.musicPlayers[0] || e.musicPlayer;
+        const speaker = e.roomSpeaker;
         if (up(ha, speaker)) {
           script(ha, 'snipe', { speaker, url: config.intermission.url })
             .catch((err) => console.warn('[intermission] no march:', err.message));
@@ -54,7 +54,7 @@ export async function runAction(ha, body) {
       if (!body.noPreroll && wantsPreroll(body)) {
         // The theater's speaker is the Apple TV over AirPlay, which is asleep whenever a film
         // plays on the projector. Then the lights still go down and the panel plays the swell.
-        const speaker = e.musicPlayers[0] || e.musicPlayer;
+        const speaker = e.roomSpeaker;
         const url = prerollUrl();
         const onSpeaker = up(ha, speaker);
         await script(ha, 'preroll', { speaker, url: onSpeaker ? url : '' });
@@ -119,7 +119,7 @@ export async function runAction(ha, body) {
     // same way the pre-roll and the march travel. The panel counts down before asking.
     case 'thx': {
       if (!config.thxUrl) throw new Error('No THX sound on the settings page');
-      const speaker = e.musicPlayers[0] || e.musicPlayer;
+      const speaker = e.roomSpeaker;
       if (up(ha, speaker)) return script(ha, 'snipe', { speaker, url: config.thxUrl });
       if (panelPath(config.thxUrl)) { toPanels({ url: panelPath(config.thxUrl) }); return { panel: true }; }
       throw new Error('The theater speaker is not up');
@@ -314,9 +314,36 @@ async function maEntryId(ha) {
   return maEntry;
 }
 
+// Where an item comes from, from its URI: "apple_music://track/1" (an instance suffix,
+// "plex--acuAeiV2://", dropped), or "library" for the merged library.
+function providerOf(uri) {
+  return String(uri || '').split('://')[0].split('--')[0] || 'library';
+}
+
+const PROVIDER_NAMES = {
+  library: 'Library', apple_music: 'Apple Music', soundcloud: 'SoundCloud', spotify: 'Spotify', tidal: 'Tidal',
+  qobuz: 'Qobuz', deezer: 'Deezer', ytmusic: 'YouTube Music', plex: 'Plex', jellyfin: 'Jellyfin', subsonic: 'Subsonic',
+  tunein: 'TuneIn', radiobrowser: 'Radio Browser', filesystem_local: 'Files', filesystem_smb: 'Files', audible: 'Audible',
+};
+const providerName = (id) => PROVIDER_NAMES[id] || id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// The providers search results have come from. HA's actions do not list Music Assistant's
+// providers, so a first search for something common finds them.
+const knownProviders = new Set();
+function providerList() {
+  return [...knownProviders].sort((a, b) => (a === 'library' ? -1 : b === 'library' ? 1 : providerName(a).localeCompare(providerName(b))))
+    .map((id) => ({ id, name: providerName(id) }));
+}
+
+export async function musicProviders(ha) {
+  if (knownProviders.size < 2) await musicSearch(ha, 'love').catch(() => null);
+  return providerList();
+}
+
 function mapMusic(i) {
   return {
     uri: i.uri,
+    provider: providerOf(i.uri),
     type: i.media_type,
     name: i.name,
     artist: (i.artists || []).map((a) => a.name).join(', ') || i.owner || undefined,
@@ -336,12 +363,18 @@ export async function musicLibrary(ha, { type = 'album', order = 'timestamp_adde
   return (res?.items || []).map(mapMusic);
 }
 
-export async function musicSearch(ha, query) {
+// Music Assistant shares the limit out over every provider (12 gives two or three each), so a
+// search narrowed to one provider asks for more and keeps only that provider's results.
+export async function musicSearch(ha, query, provider = '') {
   const res = await ha.callService('music_assistant', 'search', {
-    config_entry_id: await maEntryId(ha), name: String(query), limit: 12,
+    config_entry_id: await maEntryId(ha), name: String(query), limit: provider ? 50 : 12,
   }, { returnResponse: true });
   const out = {};
-  for (const k of ['artists', 'albums', 'tracks', 'playlists', 'radio']) out[k] = (res?.[k] || []).map(mapMusic);
+  for (const k of ['artists', 'albums', 'tracks', 'playlists', 'radio']) {
+    const items = (res?.[k] || []).map(mapMusic);
+    for (const m of items) knownProviders.add(m.provider);
+    out[k] = items.filter((m) => !provider || m.provider === provider).map((m) => ({ ...m, providerName: providerName(m.provider) }));
+  }
   return out;
 }
 

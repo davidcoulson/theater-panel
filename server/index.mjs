@@ -18,7 +18,7 @@ import * as sleep from './sleep.mjs';
 import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
-import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue } from './actions.mjs';
+import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue, musicProviders } from './actions.mjs';
 import { gameEntities, gamesState, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
@@ -490,7 +490,8 @@ get(/^\/api\/seerr\/arrivals$/, () => (config.seerr.url ? seerr.arrivals(config.
 post(/^\/api\/seerr\/request$/, (m, q, body) => seerr.request(body));
 
 get(/^\/api\/music\/library$/, (m, q) => musicLibrary(ha, { type: q.get('type') || 'album', order: q.get('order') || 'timestamp_added_desc', limit: Math.min(Number(q.get('limit') || 24), 60) }));
-get(/^\/api\/music\/search$/, (m, q) => musicSearch(ha, q.get('q') || ''));
+get(/^\/api\/music\/search$/, (m, q) => musicSearch(ha, q.get('q') || '', q.get('provider') || ''));
+get(/^\/api\/music\/providers$/, () => musicProviders(ha));
 get(/^\/api\/music\/queue$/, (m, q) => musicQueue(ha, q.get('entity_id')));
 
 get(/^\/api\/games$/, () => gamesState());
