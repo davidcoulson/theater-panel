@@ -235,7 +235,6 @@ get(/^\/api\/state$/, () => ({
   sleep: sleep.get(),
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
-  projectorHotC: config.projectorHotC,
   soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
 }));

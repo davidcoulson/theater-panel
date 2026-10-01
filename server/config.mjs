@@ -115,9 +115,6 @@ function build(env) {
     // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
     // from the device name, so one stem on the settings page finds them all.
     soundbar: soundbarIds(env.SOUNDBAR_PREFIX || '', list(env.SOUNDBAR_REARS, ['left', 'right'])),
-    // The projector's light-engine temperatures (the Kiosk Satellite plugin's sensors), for the
-    // line on the Projector card and the running-hot nudge.
-    projectorTemps: list(env.ENTITY_PROJECTOR_TEMPS, []),
     lights: list(env.ENTITY_LIGHTS, [
       'light.media_room_downlights',
       'light.home_theater_accent_lights',
@@ -195,8 +192,6 @@ function build(env) {
   soundbarStep: Math.max(1, Math.min(20, Number(env.SOUNDBAR_STEP ?? 2) || 2)),
   soundbarMovieSmart: env.SOUNDBAR_MOVIE_SMART !== 'false',
   soundbarCalibrationSeconds: Math.max(10, Math.min(300, Number(env.SOUNDBAR_CALIBRATION_SECONDS ?? 45) || 45)),
-  // The projector counts as running hot at or above this laser temperature (°C).
-  projectorHotC: Math.max(0, Math.min(150, Number(env.PROJECTOR_HOT_C ?? 65) || 0)),
   // Whose taste drives "You'll love this" and the Mystery box: Plex account names (or ids) from
   // the server's own history. Empty means the whole house.
   historyAccounts: list(env.HISTORY_ACCOUNTS, []),
@@ -325,7 +320,7 @@ export function watchedEntities() {
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
-    ...e.dogSensors, ...e.projectorTemps, ...soundbarEntities(e.soundbar),
+    ...e.dogSensors, ...soundbarEntities(e.soundbar),
     'input_select.theater_scene',
   ].filter(Boolean);
 }
