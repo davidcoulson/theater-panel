@@ -72,8 +72,6 @@ export const FIELDS = [
   { group: 'Soundbar', key: 'SOUNDBAR_MOVIE_SMART', label: 'Movie time turns Smart mode on and Night mode off', type: 'bool', default: true },
   { group: 'Soundbar', key: 'THX_URL', label: 'THX sound URL', type: 'text', placeholder: 'https://home-iot.coulson.io/local/theater/thx.mp3', help: 'The Deep Note, played on the theater speaker after a five-second countdown from the Sound sheet. Blank hides the button.' },
   { group: 'Soundbar', key: 'SOUNDBAR_CALIBRATION_SECONDS', label: 'Calibration takes about (seconds)', type: 'text', placeholder: '45', help: 'How long the panel asks the room to keep quiet after Calibrate.' },
-  { group: 'Entities', key: 'ENTITY_PROJECTOR_TEMPS', label: 'Projector temperatures', type: 'list', domain: 'sensor', help: "The projector plugin's temperature sensors (red laser first): a line on the Projector card, and a nudge to take a break when the laser runs hot." },
-  { group: 'Entities', key: 'PROJECTOR_HOT_C', label: 'Projector runs hot at (°C)', type: 'text', placeholder: '65' },
   { group: 'Entities', key: 'ENTITY_OCCUPANCY', label: 'Occupancy', type: 'entity', domain: 'binary_sensor' },
   { group: 'Entities', key: 'ENTITY_DOG_SENSORS', label: 'Dog at the door (binary sensors)', type: 'list', domain: 'binary_sensor', help: 'Any of these turning on puts a card on the panel with a camera snapshot - the deck camera\'s barking and animal detections. Blank turns it off.' },
   { group: 'Entities', key: 'ENTITY_DOG_CAMERA', label: 'Dog camera', type: 'entity', domain: 'camera', help: 'The snapshot on that card.' },
