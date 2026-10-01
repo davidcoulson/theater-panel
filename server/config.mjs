@@ -103,8 +103,13 @@ function build(env) {
     // The projector's own Plex client, as HA's Plex integration names it.
     projectorPlexPlayer: env.ENTITY_PROJECTOR_PLEX_PLAYER || '',
     musicPlayer: env.ENTITY_MUSIC_PLAYER || 'media_player.home_theater_2',
-    // Music Assistant players offered under "Play on"; the first is the theater's own.
+    // Music Assistant players offered under "Play on"; the first is the theater's own. They must
+    // be Music Assistant's own entities: its play and search actions refuse any other player.
     musicPlayers: list(env.ENTITY_MUSIC_PLAYERS, []),
+    // Where the room's sounds go (the intermission march, the pre-roll swell, THX): any media
+    // player that plays a URL, e.g. the soundbar's own Cast entity, which the theater_snipe
+    // script switches back to the film's input afterwards. Blank: the first music player.
+    roomSpeaker: env.ENTITY_ROOM_SPEAKER || '',
     // Android Debug Bridge media_player for the projector. Empty until ADB is tested.
     projector: env.ENTITY_PROJECTOR || '',
     // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
@@ -288,6 +293,7 @@ function build(env) {
   adminPassword: process.env.ADMIN_PASSWORD || '',
   };
   if (!c.entities.musicPlayers.length) c.entities.musicPlayers = [c.entities.musicPlayer];
+  if (!c.entities.roomSpeaker) c.entities.roomSpeaker = c.entities.musicPlayers[0];
   return c;
 }
 
@@ -317,7 +323,7 @@ export const config = build(effectiveVars());
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.projector,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...e.projectorTemps, ...soundbarEntities(e.soundbar),
     'input_select.theater_scene',

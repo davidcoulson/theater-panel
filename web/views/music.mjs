@@ -16,27 +16,36 @@ export function Music() {
   const [player, setPlayer] = useState(players[0]);
   const [tab, setTab] = useState('album');
   const [query, setQuery] = useState('');
+  // Where to look: everything Music Assistant has, its library, or one provider (Apple Music,
+  // SoundCloud...). A provider is searched; only the library can be browsed without a search.
+  const [source, setSource] = useState('');
+  const [providers] = useLoad(() => get('/api/music/providers').catch(() => []), []);
+  const sources = [{ value: '', label: 'All' }, ...(providers || []).map((p) => ({ value: p.id, label: p.name }))];
+  const sourceName = (providers || []).find((p) => p.id === source)?.name;
+  const browsing = !source || source === 'library';
   const q = useDebounced(query.trim(), 450);
-  const [lib, err] = useLoad(() => (q ? get(`/api/music/search?q=${encodeURIComponent(q)}`).then((r) => [...r.albums, ...r.playlists, ...r.artists, ...r.tracks].slice(0, 18))
-    : get(`/api/music/library?type=${tab}&limit=18`)), [tab, q]);
+  const [lib, err] = useLoad(() => (q ? get(`/api/music/search?q=${encodeURIComponent(q)}${source ? `&provider=${encodeURIComponent(source)}` : ''}`).then((r) => [...r.albums, ...r.playlists, ...r.artists, ...r.tracks, ...r.radio].slice(0, source ? 36 : 18))
+    : browsing ? get(`/api/music/library?type=${tab}&limit=18`) : Promise.resolve(null)), [tab, q, source]);
   const id = player || players[0];
 
   return html`<main class="view">
     <${Header} title="Music" kicker="Music Assistant">
       <label class="search" style="width:420px"><${Icon} name="search" color="var(--muted)" /><span class="sr">Search music</span>
-        <input type="search" placeholder="Search Music Assistant" value=${query} onInput=${(e) => setQuery(e.target.value)} /></label>
+        <input type="search" placeholder=${`Search ${sourceName || 'everything'}`} value=${query} onInput=${(e) => setQuery(e.target.value)} /></label>
     <//>
     <div class="music-body">
       <${NowPlaying} id=${id} />
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:20px">
-        <div style="width:640px"><${Seg} options=${TABS} value=${q ? null : tab} onChange=${(v) => { setQuery(''); setTab(v); }} /></div>
+        ${sources.length > 1 && html`<div style="max-width:100%;overflow-x:auto"><${Seg} options=${sources} value=${source} onChange=${(v) => setSource(v)} /></div>`}
+        ${browsing && html`<div style="width:640px"><${Seg} options=${TABS} value=${q ? null : tab} onChange=${(v) => { setQuery(''); setTab(v); }} /></div>`}
         <div class="album-grid scroll" style="max-height:560px;padding:4px">
           ${err ? html`<div class="empty" style="grid-column:1/-1">${err.message}</div>`
+            : !q && !browsing ? html`<div class="empty" style="grid-column:1/-1">Search ${sourceName} for an artist, album, song or playlist</div>`
             : !lib ? html`<div class="empty" style="grid-column:1/-1">Loading…</div>`
-            : !lib.length ? html`<div class="empty" style="grid-column:1/-1">Nothing here</div>`
+            : !lib.length ? html`<div class="empty" style="grid-column:1/-1">${q ? `Nothing for “${q}”${sourceName ? ` on ${sourceName}` : ''}` : 'Nothing here'}</div>`
             : lib.map((m) => html`<button type="button" class="album" key=${m.uri} aria-label=${`Play ${m.name}`} onClick=${() => act({ action: 'music', cmd: 'play_media', uri: m.uri, media_type: m.type, entity_id: id })}>
                 ${m.image ? html`<img src=${m.image} alt="" loading="lazy" onError=${(e) => { e.target.style.visibility = 'hidden'; }} />` : html`<div class="ph"></div>`}
-                <span class="t ellipsis">${m.name}</span><span class="a ellipsis">${m.artist || m.type}</span></button>`)}
+                <span class="t ellipsis">${m.name}</span><span class="a ellipsis">${[m.artist || m.type, !source && q && m.providerName].filter(Boolean).join(' · ')}</span></button>`)}
         </div>
         <div style="flex-grow:1;display:flex;gap:22px;min-height:0">
           <${UpNext} id=${id} />
