@@ -92,17 +92,19 @@ export function recordStats(ha) {
 
 // A virtual machine can't see its processor's real clock (Windows reports the nominal speed), but
 // the host can. When the PC is a VM on the machine this server runs on, pc.hostCpus lists the host
-// CPUs its cores are pinned to, and this gives their average clock in MHz from /proc/cpuinfo.
+// CPUs its cores are pinned to, in the VM's core order, and this gives each one's clock and their
+// average, in MHz, from /proc/cpuinfo.
 export async function hostClock() {
   const cpus = (await loadGames().catch(() => null))?.pc?.hostCpus;
-  if (!cpus?.length) return { mhz: null };
+  if (!cpus?.length) return { mhz: null, cores: [] };
   const text = await readFile('/proc/cpuinfo', 'utf8').catch(() => '');
-  const mhz = [];
+  const byCpu = new Map();
   for (const block of text.split(/\n\s*\n/)) {
     const cpu = /^processor\s*:\s*(\d+)/m.exec(block), speed = /^cpu MHz\s*:\s*([\d.]+)/m.exec(block);
-    if (cpu && speed && cpus.includes(Number(cpu[1]))) mhz.push(Number(speed[1]));
+    if (cpu && speed) byCpu.set(Number(cpu[1]), Math.round(Number(speed[1])));
   }
-  return { mhz: mhz.length ? Math.round(mhz.reduce((a, b) => a + b, 0) / mhz.length) : null };
+  const cores = cpus.map((n) => byCpu.get(n) ?? null), known = cores.filter((v) => v != null);
+  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores };
 }
 
 export async function gamesState() {

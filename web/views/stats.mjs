@@ -164,16 +164,17 @@ function Fuel({ id, label, value, max, children }) {
 }
 
 // One LED meter per core, green to amber to red, with a peak segment that hangs and falls. The
-// bottom segment stays lit, so an idle PC reads as idle and not as broken.
+// bottom segment stays lit, so an idle PC reads as idle and not as broken. Under each meter is the
+// core's clock in GHz when the host reports it, or else its number.
 const SEGS = 10;
-function CoreMeters({ loads }) {
+function CoreMeters({ loads, clocks = [] }) {
   const lit = loads.map((l) => Math.max(1, Math.round(clamp(l / 100) * SEGS)));
   const peaks = usePeaks(lit, SEGS);
   return html`<div class="vu">${loads.map((_, i) => html`<div class="col">
     <div class="segs">${Array.from({ length: SEGS }, (_, k) => {
       const zone = k >= SEGS * 0.85 ? 'r' : k >= SEGS * 0.65 ? 'a' : 'g';
       return html`<i class=${`${zone} ${k < lit[i] || k === peaks[i] - 1 ? 'on' : ''}`}></i>`;
-    })}</div><span>${i + 1}</span></div>`)}</div>`;
+    })}</div><span>${clocks[i] > 0 ? (clocks[i] / 1000).toFixed(1) : i + 1}</span></div>`)}</div>`;
 }
 
 // A row of lamps with its reading. With nothing lit the first lamp glows dimly, as a pilot light.
@@ -224,15 +225,16 @@ export function Stats() {
   }, [g, demo]);
 
   // A VM's real processor clock, from the host the server runs on (see hostClock in games.mjs).
-  const [hostMhz, setHostMhz] = useState(null);
+  const [host, setHost] = useState(null);
   useEffect(() => {
     if (demo || !g?.pc?.hostClock) return undefined;
-    const read = () => get('/api/games/clock').then((c) => setHostMhz(c?.mhz ?? null)).catch(() => {});
+    const read = () => get('/api/games/clock').then((c) => setHost(c || null)).catch(() => {});
     read();
     const t = setInterval(read, 5000);
     return () => clearInterval(t);
   }, [g, demo]);
-  const cpuClock = s.cpuClock || hostMhz;
+  const cpuClock = s.cpuClock || host?.mhz;
+  const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
 
   // Swipe right for Games.
   const down = (e) => { swipe.current = { x: e.clientX, y: e.clientY }; };
@@ -274,7 +276,7 @@ export function Stats() {
         ${has(s.gpuPower) && html`<h3>Power</h3><${PowerBar} value=${s.gpuPower} />`}
       </section>
     </div>
-    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>peak hold</small></h3><${CoreMeters} loads=${s.cores} /></section>`}
+    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>${coreClocks.length ? 'load, with each core\'s clock in GHz' : 'peak hold'}</small></h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
     ${hour && html`<section class="tile strip"><h3>The last hour <small>one frame a minute · brighter is busier</small></h3><${FilmStrip} hour=${hour} /></section>`}`}
   </main>`;
 }
