@@ -327,7 +327,7 @@ export function Stats() {
       ${has(s.gpuLoad) && html`<section class="tile big"><h3>GPU</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
         ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
       ${has(s.cpuLoad) && html`<section class="tile big"><h3>CPU</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
-        ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${r0(cpuClock)} MHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
+        ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
         ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3>Memory</h3><div class="fuels">
           ${has(s.ramUsed) && html`<${Fuel} id="m" label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}
