@@ -20,13 +20,14 @@ function useStats(stats, demo) {
   // Only the mapped entities' raw states: the whole map is a new object on every HA update.
   const ids = Object.values(stats || {}).flat().filter((id) => typeof id === 'string');
   const states = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.state])));
+  const units = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.attributes?.unit_of_measurement])));
   const [hist, setHist] = useState({});
   const latest = useRef({});
 
   const num = (role) => {
     const id = stats?.[role];
     const v = id && Number(states[id]);
-    return Number.isFinite(v) ? v : null;
+    return Number.isFinite(v) ? inPanelUnits(role, v, units[id]) : null;
   };
   const vals = demo ? demoValues() : {
     fps: num('fps'), fpsLow: num('fpsLow'),
@@ -62,6 +63,19 @@ function useStats(stats, demo) {
   }, [demo]);
 
   return { ...vals, hist };
+}
+
+// LibreHardwareMonitor reports memory in MB and network in KB/s, HASS.Agent temperatures in the
+// house's unit; the panels show GB, Mb/s and °C.
+const NET = { 'B/s': 8 / 1e6, 'KB/s': 8 * 1024 / 1e6, 'kB/s': 8 / 1e3, 'MB/s': 8 * 1024 * 1024 / 1e6, 'GB/s': 8 * 1024 ** 3 / 1e6,
+  'bit/s': 1e-6, 'kbit/s': 1e-3, 'Mbit/s': 1, 'Gbit/s': 1e3 };
+function inPanelUnits(role, v, unit) {
+  if (role === 'ramUsed' || role === 'ramTotal' || role === 'vramUsed' || role === 'vramTotal') {
+    return unit === 'MB' || unit === 'MiB' ? v / 1024 : unit === 'KB' || unit === 'kB' ? v / 1024 ** 2 : unit === 'TB' ? v * 1024 : v;
+  }
+  if (role === 'netDown' || role === 'netUp') return NET[unit] ? v * NET[unit] : v;
+  if ((role === 'gpuTemp' || role === 'cpuTemp') && unit === '°F') return (v - 32) * 5 / 9;
+  return v;
 }
 
 // HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
