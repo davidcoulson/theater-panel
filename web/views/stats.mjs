@@ -1,5 +1,5 @@
 // Gaming PC stats, dressed as the projection booth's instruments: brass needle dials for GPU and
-// CPU load, fuel gauges for memory, LED meters for the cores and the network, and the last hour as
+// CPU load, fuel gauges for memory, lamps for the network and GPU draw, LED meters for the cores, and the last hour as
 // a film strip. The page's accent warms from amber to red as the GPU works harder. Numbers come
 // from the PC's Home Assistant sensors (LibreHardwareMonitor's integration or HASS.Agent), mapped
 // to roles in games.json (pc.stats); the hour is recorded by the server. Swipe right for Games.
@@ -163,10 +163,11 @@ function Fuel({ id, label, value, max, children }) {
   </figure>`;
 }
 
-// One LED meter per core, green to amber to red, with a peak segment that hangs and falls.
+// One LED meter per core, green to amber to red, with a peak segment that hangs and falls. The
+// bottom segment stays lit, so an idle PC reads as idle and not as broken.
 const SEGS = 10;
 function CoreMeters({ loads }) {
-  const lit = loads.map((l) => Math.round(clamp(l / 100) * SEGS));
+  const lit = loads.map((l) => Math.max(1, Math.round(clamp(l / 100) * SEGS)));
   const peaks = usePeaks(lit, SEGS);
   return html`<div class="vu">${loads.map((_, i) => html`<div class="col">
     <div class="segs">${Array.from({ length: SEGS }, (_, k) => {
@@ -175,21 +176,25 @@ function CoreMeters({ loads }) {
     })}</div><span>${i + 1}</span></div>`)}</div>`;
 }
 
-// Network as a row of lamps. A square-root scale to 1 Gb/s, so a stream's few megabits still show.
-const NET_LAMPS = 18;
-function NetBar({ label, value }) {
-  const lit = value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * NET_LAMPS)) : 0;
-  return html`<div class="net"><span>${label}</span>
-    <div class="lamps">${Array.from({ length: NET_LAMPS }, (_, k) => html`<i class=${k < lit ? 'on' : ''}></i>`)}</div>
-    <b>${value >= 10 ? r0(value) : value.toFixed(1)}<small> Mb/s</small></b></div>`;
-}
+// A row of lamps with its reading. With nothing lit the first lamp glows dimly, as a pilot light.
+const LAMPS = 18;
+const LampBar = ({ label, lit, children }) => html`<div class="net"><span>${label}</span>
+  <div class="lamps">${Array.from({ length: LAMPS }, (_, k) => html`<i class=${k < lit ? 'on' : k === 0 ? 'pilot' : ''}></i>`)}</div>
+  <b>${children}</b></div>`;
+// Network on a square-root scale to 1 Gb/s, so a stream's few megabits still show.
+const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * LAMPS)) : 0}>
+  ${value < 1 ? html`${Math.round(value * 1000)}<small> kb/s</small>` : html`${value >= 10 ? r0(value) : value.toFixed(1)}<small> Mb/s</small>`}<//>`;
+// GPU power draw against the most the card pulls.
+const GPU_WATTS = 450;
+const PowerBar = ({ value }) => html`<${LampBar} label="GPU" lit=${Math.round(clamp(value / GPU_WATTS) * LAMPS)}>${r0(value)}<small> W</small><//>`;
 
-// The last hour as a film strip: one frame a minute, brighter is busier, red is flat out.
+// The last hour as a film strip: one frame a minute, brighter is busier, red is flat out; an idle
+// minute is a faint amber and a minute with no reading (the PC was off) stays dark.
 function frameStyle(v) {
   if (v == null) return '';
   const f = clamp(v / 100);
-  const col = f > 0.9 ? `rgb(232,${Math.round(96 - 30 * f)},40)` : `rgb(${Math.round(60 + 170 * f)},${Math.round(36 + 130 * f)},${Math.round(20 + 60 * f)})`;
-  return `background:${col};opacity:${(0.25 + 0.75 * f).toFixed(2)}`;
+  const col = f > 0.9 ? `rgb(232,${Math.round(96 - 30 * f)},40)` : `rgb(${Math.round(104 + 126 * f)},${Math.round(66 + 100 * f)},${Math.round(30 + 50 * f)})`;
+  return `background:${col};opacity:${(0.5 + 0.5 * f).toFixed(2)}`;
 }
 function FilmStrip({ hour }) {
   const frames = [...Array(Math.max(0, 60 - hour.length)).fill(null), ...hour.slice(-60)];
@@ -236,6 +241,7 @@ export function Stats() {
 
   return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
     <${Header} title=${g?.pc?.name || 'Gaming PC'} kicker=${demo ? 'Demo numbers · set pc.stats in games.json' : null}>
+      ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${s.fpsLow >= 1 ? html`<small>1% low ${r0(s.fpsLow)}</small>` : ''}</span>`}
       ${heat >= 0.75 && html`<span class="chip dark-chip hot"><span class="dot"></span>Running hot</span>`}
       <span class="chip dark-chip"><span class=${`dot ${s.game ? 'on' : ''}`}></span>${s.game || 'Idle'}</span>
       <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
@@ -254,7 +260,7 @@ export function Stats() {
         ${(has(s.netDown) || has(s.netUp)) && html`<h3>Network</h3>
           ${has(s.netDown) && html`<${NetBar} label="Down" value=${s.netDown} />`}
           ${has(s.netUp) && html`<${NetBar} label="Up" value=${s.netUp} />`}`}
-        ${has(s.fps) && html`<h3>Frames</h3><div class="fps"><b>${r0(s.fps)}</b><span>fps${has(s.fpsLow) ? ` · 1% low ${r0(s.fpsLow)}` : ''}</span></div>`}
+        ${has(s.gpuPower) && html`<h3>Power</h3><${PowerBar} value=${s.gpuPower} />`}
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>peak hold</small></h3><${CoreMeters} loads=${s.cores} /></section>`}
