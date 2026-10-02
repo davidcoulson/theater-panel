@@ -123,6 +123,8 @@ export async function gamesState() {
       stats: g.pc.stats || null,
       hour: g.pc.stats ? [...hour] : null,
       hostClock: Boolean(g.pc.hostCpus?.length),
+      // What to call the parts on the Stats page; without these it reads the models from the sensors' names.
+      gpuName: g.pc.gpuName || null, cpuName: g.pc.cpuName || null,
     } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
