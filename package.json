@@ -18,7 +18,7 @@
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@mdi/js": "^7.4.47",
-    "esphome-device": "^0.1.0",
+    "esphome-device": "^0.2.1",
     "htm": "^3.1.1",
     "preact": "^10.26.0",
     "qrcode": "^1.5.4"
