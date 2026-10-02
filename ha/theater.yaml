@@ -936,3 +936,90 @@ automation:
               - action: input_select.select_option
                 target: { entity_id: input_select.theater_scene }
                 data: { option: Lights up }
+
+  # ---------- the gaming PC (the Windows 11 VM on Unraid) ----------
+  # Its sensors come from LibreHardwareMonitor and HASS.Agent inside the VM, and from the theater
+  # panel (Gaming PC: the VM's state, Game: what Steam says is running).
+
+  - id: theater_pc_gpu_hot
+    alias: "Theater: gaming PC GPU running hot"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_core_temperature
+        above: 77   # °C, 170 °F: well above anything seen in play (the card is watercooled)
+        for: "00:02:00"
+    actions:
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Gaming PC running hot"
+          message: >-
+            The 4090 has been over 170 °F for two minutes
+            ({{ (states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_core_temperature') | float * 9 / 5 + 32) | round }} °F
+            at {{ states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_core_load') }}% load). Check the loop.
+      - delay: "00:30:00"
+
+  - id: theater_pc_vram_full
+    alias: "Theater: gaming PC VRAM nearly full"
+    mode: single
+    triggers:
+      - trigger: template
+        value_template: >-
+          {% set u = states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_memory_used_data') | float(0) %}
+          {% set t = states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_memory_total_data') | float(0) %}
+          {{ t > 0 and u / t > 0.92 }}
+        for: "00:02:00"
+    actions:
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Gaming PC VRAM nearly full"
+          message: >-
+            {{ (states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_memory_used_data') | float / 1024) | round(1) }} GB of
+            {{ (states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_memory_total_data') | float / 1024) | round }} GB in use
+            {% if states('sensor.home_theater_theater_panel_game') not in ['', 'unknown', 'unavailable'] %}by {{ states('sensor.home_theater_theater_panel_game') }}{% endif %}.
+            Texture settings may be a notch too high.
+      - delay: "00:30:00"
+
+  - id: theater_pc_low_fps
+    alias: "Theater: gaming PC frame rate has dropped"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.unraid_win11_fps
+        below: 60
+        above: 0
+        for: "00:02:00"
+    conditions:
+      - condition: template
+        value_template: "{{ states('sensor.home_theater_theater_panel_game') not in ['', 'unknown', 'unavailable'] }}"
+    actions:
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Frame rate has dropped"
+          message: >-
+            {{ states('sensor.home_theater_theater_panel_game') }} has been under 60 fps for two minutes
+            ({{ states('sensor.unraid_win11_fps') }} fps, GPU {{ states('sensor.unraid_win11_nvidia_geforce_rtx_4090_gpu_core_load') }}%,
+            CPU {{ states('sensor.unraid_win11_amd_ryzen_threadripper_pro_5995wx_64_cores_cpu_total_load') }}%).
+      - delay: "00:30:00"
+
+  # The VM says it is running (Unraid's word, through the panel) but nothing has been heard from
+  # inside it for three minutes: Windows has hung, or its network has gone.
+  - id: theater_pc_dropped_off
+    alias: "Theater: gaming PC dropped off the network"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.unraid_win11_amd_ryzen_threadripper_pro_5995wx_64_cores_cpu_total_load
+        to: "unavailable"
+        for: "00:03:00"
+    conditions:
+      - condition: state
+        entity_id: sensor.home_theater_theater_panel_gaming_pc
+        state: "running"
+    actions:
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Gaming PC not answering"
+          message: >-
+            Unraid says the Windows VM is running, but nothing has been heard from inside it for
+            three minutes. It may have hung; the panel's power menu can restart it.
