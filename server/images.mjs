@@ -11,7 +11,7 @@
 //                                            signed so the proxy cannot be used to reach
 //                                            arbitrary hosts on the LAN.
 
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir, stat, unlink, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from './config.mjs';
@@ -64,7 +64,9 @@ function resolve(url) {
   }
   if (u.pathname === '/img/ext') {
     const target = u.searchParams.get('u');
-    if (!target || u.searchParams.get('s') !== sign(target)) return null;
+    // Only URLs this server signed itself: the proxy cannot be pointed at an arbitrary host.
+    const given = Buffer.from(u.searchParams.get('s') || ''); const want = Buffer.from(target ? sign(target) : '');
+    if (!target || given.length !== want.length || !timingSafeEqual(given, want)) return null;
     return { upstream: target };
   }
   return null;

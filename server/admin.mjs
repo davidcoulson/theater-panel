@@ -5,7 +5,7 @@
 // Protected by ADMIN_PASSWORD (environment only). Sign-in sets a signed, HttpOnly, SameSite=Strict
 // cookie; secrets are write-only (the page is told whether one is set, never its value).
 
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { config, settings, saveSettings, effectiveVars } from './config.mjs';
 import { loadGames, loadGamesFile, STAT_ROLES } from './games.mjs';
 import * as plex from './plex.mjs';
@@ -133,7 +133,17 @@ function checkUrl(key, s) {
 const COOKIE = 'tp_admin';
 const DAY = 86400e3;
 // Signing key: derived from the admin password, so changing the password signs everyone out.
-const key = () => createHmac('sha256', 'theater-panel-admin').update(config.adminPassword).digest();
+// scrypt, salted with the server's own random secret (IMAGE_SECRET, made on first run): a session
+// cookie that leaks cannot be used to guess the password offline, which a plain HMAC of the
+// password allowed at hash speed. Cached per password; scrypt is deliberately slow.
+let keyFor = { password: null, key: null };
+const key = () => {
+  if (keyFor.password !== config.adminPassword) {
+    const salt = `theater-panel-admin:${config.imageSecret || 'no-image-secret'}`;
+    keyFor = { password: config.adminPassword, key: scryptSync(config.adminPassword, salt, 32, { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }) };
+  }
+  return keyFor.key;
+};
 const sign = (v) => createHmac('sha256', key()).update(v).digest('base64url');
 
 export function isAdmin(req) {

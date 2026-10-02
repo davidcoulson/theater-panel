@@ -650,7 +650,7 @@ const server = createServer(async (req, res) => {
     if (ic) {
       const svg = await icons.iconSvg(ha, ic[1], ic[2]);
       if (!svg) { res.writeHead(404, { 'cache-control': 'max-age=300' }).end(); return; }
-      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'x-content-type-options': 'nosniff' });
+      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=31536000, immutable', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff' });
       res.end(svg);
       return;
     }
