@@ -1,7 +1,7 @@
 // Gaming PC stats, dressed as the projection booth's instruments: brass needle dials for GPU and
 // CPU load, fuel gauges for memory, lamps for the network and GPU draw, LED meters for the cores,
-// and the last hour as a film strip. The page's accent warms from amber to red as the GPU works
-// harder, and steam rises behind the instruments. Numbers come from the PC's Home Assistant
+// and the last hour as a film strip. The page's accent warms from amber to red as the GPU heats
+// up, and steam rises behind the instruments. Numbers come from the PC's Home Assistant
 // sensors (LibreHardwareMonitor's integration or HASS.Agent), mapped to roles in games.json
 // (pc.stats); the hour is recorded by the server. Swipe right for Games.
 // #/stats?demo=1 fills it with made-up numbers to see the layout.
@@ -219,8 +219,8 @@ function FilmStrip({ samples }) {
 }
 
 // Steam behind the instruments once the PC is working: a few dozen soft puffs that rise, swell and
-// fade, drawn on a small canvas stretched over the page so they cost almost nothing. The harder
-// the PC works, the more of them, the faster they rise and the thicker they are. Off when cool.
+// fade, drawn on a small canvas stretched over the page so they cost almost nothing. The hotter
+// the PC runs, the more of them, the faster they rise and the thicker they are. Off when cool.
 const STEAM_W = 240, STEAM_H = 135;
 let puff = null;   // the soft round sprite, made once
 function puffSprite() {
@@ -265,8 +265,10 @@ function Steam({ heat }) {
 
 // ---------- the page ----------
 
-// How hard the PC is working: 0 up to half GPU load, rising to 1 at 90% and over.
-const heatOf = (s) => clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40);
+// How hot the PC is running, 0 to 1: the GPU's temperature from 120 °F to 170 °F (it climbs and
+// cools slowly, so the steam builds and lingers like the real thing). Without a temperature
+// sensor, load from 50% to 90% stands in.
+const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 120) / 50) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
 const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(' ')})`;
 
 export function Stats() {
