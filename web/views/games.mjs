@@ -88,8 +88,10 @@ function Stat({ s }) {
   const n = Number(st?.state);
   const ok = st && Number.isFinite(n);
   const unit = st?.attributes?.unit_of_measurement || '';
-  const value = !ok ? (st?.state || '—') : s.kind === 'percent' ? `${Math.round(n)}%` : s.kind === 'temp' ? `${Math.round(n)}°` : `${n >= 100 ? Math.round(n) : Math.round(n * 10) / 10}`;
-  const hot = s.kind === 'temp' && ok && n >= 80;
+  // Temperatures show in °F whatever the sensor reports; hot is 80 °C.
+  const celsius = unit === '°F' ? (n - 32) * 5 / 9 : n;
+  const value = !ok ? (st?.state || '—') : s.kind === 'percent' ? `${Math.round(n)}%` : s.kind === 'temp' ? `${Math.round(celsius * 9 / 5 + 32)}°F` : `${n >= 100 ? Math.round(n) : Math.round(n * 10) / 10}`;
+  const hot = s.kind === 'temp' && ok && celsius >= 80;
   return html`<div class="stat">
     <div class="l">${s.label}</div>
     <div class=${`v ${hot ? 'hot' : ''}`}>${value}${s.kind === 'value' && ok && html`<small>${unit}</small>`}</div>

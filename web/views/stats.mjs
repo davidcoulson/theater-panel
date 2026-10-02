@@ -12,6 +12,8 @@ const HIST = 90;           // samples kept per metric (5 s each ≈ 7 minutes)
 const SAMPLE = 5000;
 const r0 = (v) => (Number.isFinite(v) ? Math.round(v) : null);
 const heat = (t) => (t >= 85 ? 'var(--hot)' : t >= 75 ? 'var(--warm)' : 'var(--cool)');
+// Temperatures are kept in °C (the heat colours and the 100 °C bars) and shown in °F.
+const degF = (c) => (Number.isFinite(c) ? `${Math.round(c * 9 / 5 + 32)}°F` : '—');
 
 // ---------- values ----------
 
@@ -66,7 +68,7 @@ function useStats(stats, demo) {
 }
 
 // LibreHardwareMonitor reports memory in MB and network in KB/s, HASS.Agent temperatures in the
-// house's unit; the panels show GB, Mb/s and °C.
+// house's unit; the panels work in GB, Mb/s and °C (temperatures are shown in °F).
 const NET = { 'B/s': 8 / 1e6, 'KB/s': 8 * 1024 / 1e6, 'kB/s': 8 / 1e3, 'MB/s': 8 * 1024 * 1024 / 1e6, 'GB/s': 8 * 1024 ** 3 / 1e6,
   'bit/s': 1e-6, 'kbit/s': 1e-3, 'Mbit/s': 1, 'Gbit/s': 1e3 };
 function inPanelUnits(role, v, unit) {
@@ -127,13 +129,13 @@ function panels(s) {
     hist: s.hist.fps, max: 180, big: true,
   });
   if (has(s.gpuLoad) || has(s.gpuTemp)) out.push({
-    id: 'gpu', title: 'GPU', value: has(s.gpuLoad) ? `${r0(s.gpuLoad)}%` : `${r0(s.gpuTemp)}°`,
-    sub: [has(s.gpuTemp) && `${r0(s.gpuTemp)}°`, has(s.gpuClock) && `${r0(s.gpuClock)} MHz`, has(s.gpuPower) && `${r0(s.gpuPower)} W`].filter(Boolean).join(' · '),
+    id: 'gpu', title: 'GPU', value: has(s.gpuLoad) ? `${r0(s.gpuLoad)}%` : `${degF(s.gpuTemp)}`,
+    sub: [has(s.gpuTemp) && `${degF(s.gpuTemp)}`, has(s.gpuClock) && `${r0(s.gpuClock)} MHz`, has(s.gpuPower) && `${r0(s.gpuPower)} W`].filter(Boolean).join(' · '),
     hist: s.hist.gpuLoad || s.hist.gpuTemp, max: 100, color: has(s.gpuTemp) ? heat(s.gpuTemp) : undefined, big: true,
   });
   if (has(s.cpuLoad) || has(s.cpuTemp)) out.push({
-    id: 'cpu', title: 'CPU', value: has(s.cpuLoad) ? `${r0(s.cpuLoad)}%` : `${r0(s.cpuTemp)}°`,
-    sub: [has(s.cpuTemp) && `${r0(s.cpuTemp)}°`, has(s.cpuClock) && `${r0(s.cpuClock)} MHz`, s.cores.length && `${s.cores.length} cores`].filter(Boolean).join(' · '),
+    id: 'cpu', title: 'CPU', value: has(s.cpuLoad) ? `${r0(s.cpuLoad)}%` : `${degF(s.cpuTemp)}`,
+    sub: [has(s.cpuTemp) && `${degF(s.cpuTemp)}`, has(s.cpuClock) && `${r0(s.cpuClock)} MHz`, s.cores.length && `${s.cores.length} cores`].filter(Boolean).join(' · '),
     hist: s.hist.cpuLoad || s.hist.cpuTemp, max: 100, color: has(s.cpuTemp) ? heat(s.cpuTemp) : undefined,
     body: s.cores.length ? html`<${Cores} loads=${s.cores} />` : null,
   });
@@ -152,11 +154,11 @@ function panels(s) {
     hist: s.hist.netDown,
   });
   if (has(s.gpuFan) || has(s.gpuTemp) || has(s.cpuTemp)) out.push({
-    id: 'cooling', title: 'Cooling', value: has(s.gpuFan) ? `${r0(s.gpuFan)}%` : `${r0(s.gpuTemp ?? s.cpuTemp)}°`,
+    id: 'cooling', title: 'Cooling', value: has(s.gpuFan) ? `${r0(s.gpuFan)}%` : `${degF(s.gpuTemp ?? s.cpuTemp)}`,
     sub: has(s.gpuFan) ? 'GPU fans' : 'temperatures',
     body: html`<div class="stack">
-      ${has(s.cpuTemp) && html`<${Bar} label="CPU" value=${s.cpuTemp} max=${100} text=${`${r0(s.cpuTemp)}°`} color=${heat(s.cpuTemp)} />`}
-      ${has(s.gpuTemp) && html`<${Bar} label="GPU" value=${s.gpuTemp} max=${100} text=${`${r0(s.gpuTemp)}°`} color=${heat(s.gpuTemp)} />`}
+      ${has(s.cpuTemp) && html`<${Bar} label="CPU" value=${s.cpuTemp} max=${100} text=${`${degF(s.cpuTemp)}`} color=${heat(s.cpuTemp)} />`}
+      ${has(s.gpuTemp) && html`<${Bar} label="GPU" value=${s.gpuTemp} max=${100} text=${`${degF(s.gpuTemp)}`} color=${heat(s.gpuTemp)} />`}
     </div>`,
   });
   return out;
