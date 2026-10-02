@@ -1,5 +1,5 @@
-// Gaming PC stats, dressed as the projection booth's instruments: brass needle dials for GPU and
-// CPU load, fuel gauges for memory, lamps for the network and GPU draw, LED meters for the cores,
+// Gaming PC stats as a bank of instruments: glowing needle dials for GPU and CPU load, each with
+// its last minute drawn inside, fuel gauges for memory, lamps for the network and GPU draw, LED meters for the cores,
 // and the last hour as a film strip. The page's accent warms from amber to red as the GPU heats
 // up, and steam rises behind the instruments. Numbers come from the PC's Home Assistant
 // sensors (LibreHardwareMonitor's integration or HASS.Agent), mapped to roles in games.json
@@ -86,14 +86,16 @@ function demoValues() {
 
 const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
 
-// The highest value seen in the last minute, for the dials' red marker.
-function usePeak(value, ms = 60000) {
-  const seen = useRef([]);
-  if (value != null) {
-    const now = Date.now();
-    seen.current = [...seen.current.filter((p) => now - p.t < ms), { t: now, v: value }];
-  }
-  return seen.current.length ? Math.max(...seen.current.map((p) => p.v)) : null;
+// The last minute of a value, sampled every 1.5 s, for a dial's history line and range band.
+const TRAIL = 40;
+function useTrail(value) {
+  const [trail, setTrail] = useState([]);
+  const now = useRef(value); now.current = value;
+  useEffect(() => {
+    const t = setInterval(() => { if (now.current != null) setTrail((h) => [...h, now.current].slice(-TRAIL)); }, 1500);
+    return () => clearInterval(t);
+  }, []);
+  return trail;
 }
 
 // Peak-hold for the core meters: a peak jumps up with its meter and falls a segment at a time.
@@ -112,64 +114,68 @@ function usePeaks(lit, segs) {
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const pt = (cx, cy, r, deg) => { const a = deg * Math.PI / 180; return [cx + r * Math.sin(a), cy - r * Math.cos(a)]; };
 const arc = (cx, cy, r, a0, a1) => { const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
-const INK = '#2A1911', RED = '#A5321E';
+const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PALE = '#F4ECE0';
 
-// A needle dial, 0-100 with the red zone from 85: brass bezel, cream face, the reading in a window
-// and a dot at the last minute's peak. Drawn on a 400 grid; the needle turns with a CSS transition.
-const SWEEP = 125, DIAL_RED = 85;
+// A load dial, 0-100, on a dark face. A glowing band fills round the rim to the reading, amber
+// turning red; the ticks it has passed light up; a faint inner band marks the last minute's range.
+// Under the hub are the reading, the part's temperature and the last minute as a line. The needle and the band move with
+// CSS transitions. Drawn on a 400 grid.
+const SWEEP = 135, DIAL_RED = 85;
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
-function Dial({ id, value, peak, label = 'Load' }) {
-  const c = 200, R = 194, f = 172;
-  const face = useMemo(() => Array.from({ length: 51 }, (_, i) => {
-    const v = i * 2, major = i % 5 === 0, a = dialAngle(v), col = v >= DIAL_RED ? RED : INK;
-    const [x0, y0] = pt(c, c, f * 0.93, a), [x1, y1] = pt(c, c, f * (major ? 0.80 : 0.87), a), [tx, ty] = pt(c, c, f * 0.68, a);
-    return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${col} stroke-width=${major ? 3.6 : 1.6} stroke-linecap="round" />
-      ${major && html`<text x=${tx} y=${ty} class="num" fill=${col}>${v}</text>`}`;
-  }), []);
+function Dial({ id, value, temp, trail = [], label = 'Load' }) {
+  const c = 200, rim = 182;
+  const v = clamp(value / 100) * 100;
+  const full = arc(c, c, rim, -SWEEP, SWEEP);
+  const lo = trail.length ? Math.min(...trail, v) : v, hi = trail.length ? Math.max(...trail, v) : v;
+  // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
+  const mid = (lo + hi) / 2, span = Math.max(12, hi - lo);
+  const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (TRAIL - 1)) * 152).toFixed(1)} ${(c + 146 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
   return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
-      <radialGradient id=${`bz${id}`} cx="35%" cy="28%" r="85%"><stop offset="0" stop-color="#F3D9A0" /><stop offset=".35" stop-color="#B88A45" /><stop offset=".7" stop-color="#6E4B1E" /><stop offset="1" stop-color="#3B2710" /></radialGradient>
-      <radialGradient id=${`fc${id}`} cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#F6EEDC" /><stop offset=".75" stop-color="#E6D8BC" /><stop offset="1" stop-color="#C9B892" /></radialGradient>
-      <radialGradient id=${`gl${id}`} cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#fff" stop-opacity=".34" /><stop offset=".55" stop-color="#fff" stop-opacity="0" /></radialGradient>
+      <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
+      <linearGradient id=${`hot${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color=${AMBER} /><stop offset=".6" stop-color="#E8792E" /><stop offset="1" stop-color=${RED} /></linearGradient>
     </defs>
-    <circle cx=${c} cy=${c} r=${R} fill=${`url(#bz${id})`} stroke="#1a110a" stroke-width="2" />
-    <circle cx=${c} cy=${c} r=${f} fill=${`url(#fc${id})`} stroke=${INK} stroke-width="2" />
-    <path d=${arc(c, c, f * 0.955, dialAngle(DIAL_RED), dialAngle(100))} stroke=${RED} stroke-width="9" fill="none" opacity=".9" />
-    ${face}
-    <text x=${c} y=${c - f * 0.30} class="lbl">${label}</text>
-    <rect x=${c - 60} y=${c + 62} width="120" height="50" rx="6" fill="#17100B" stroke="#6E4B1E" stroke-width="2" />
-    <text x=${c} y=${c + 89} class="val">${r0(value)}<tspan class="unit"> %</tspan></text>
-    ${peak != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(peak)}deg)`}><circle cx=${c} cy=${c - f * 0.96} r="4.5" fill=${RED} /></g>`}
+    <circle cx=${c} cy=${c} r="194" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="2" />
+    <path d=${full} stroke=${TRACK} stroke-width="11" fill="none" stroke-linecap="round" />
+    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="26" fill="none" stroke-linecap="round" />
+      <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="11" fill="none" stroke-linecap="round" />`}
+    ${hi - lo >= 1 && html`<path d=${arc(c, c, 146, dialAngle(lo), dialAngle(hi))} stroke=${AMBER} stroke-opacity=".26" stroke-width="14" fill="none" />`}
+    ${Array.from({ length: 51 }, (_, i) => {
+      const t = i * 2, major = i % 5 === 0, a = dialAngle(t), col = t > v ? DIM : t >= DIAL_RED ? RED : AMBER;
+      const [x0, y0] = pt(c, c, 170, a), [x1, y1] = pt(c, c, major ? 154 : 162, a), [tx, ty] = pt(c, c, 131, a);
+      return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${col} stroke-width=${major ? 2.8 : 1.4} stroke-linecap="round" />
+        ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill=${t >= DIAL_RED ? '#E0674A' : '#9C8672'}>${t}</text>`}`;
+    })}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
-      <line x1=${c + 4} y1=${c + f * 0.16 + 6} x2=${c + 4} y2=${c - f * 0.84 + 6} stroke="#000" stroke-opacity=".25" stroke-width="8" stroke-linecap="round" />
-      <line x1=${c} y1=${c + f * 0.16} x2=${c} y2=${c - f * 0.84} stroke="#B3261B" stroke-width="5.2" stroke-linecap="round" />
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 150} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
-    <circle cx=${c} cy=${c} r="20" fill=${`url(#bz${id})`} stroke="#1a110a" stroke-width="1.5" />
-    <circle cx=${c} cy=${c} r=${f} fill=${`url(#gl${id})`} />
+    <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${AMBER} stroke-width="2.6" />
+    <text x=${c} y=${c + 64} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
+    ${temp != null && html`<text x=${c} y=${c + 112} class="temp" fill=${temp >= 80 ? '#E0674A' : '#E8A06A'}>${degF(temp)}</text>`}
+    <line x1=${c - 76} y1=${c + 162} x2=${c + 76} y2=${c + 162} stroke=${TRACK} stroke-width="1.5" />
+    ${line && html`<path d=${line} stroke=${AMBER} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
   </svg>`;
 }
 
-// A fuel gauge, empty to full with the last eighth in red; the reading sits under it.
-function Fuel({ id, label, value, max, children }) {
-  const w = 260, h = 161, cx = w / 2, cy = h * 0.92, r = w * 0.44, ang = (f) => -75 + 150 * clamp(f);
-  const [ex, ey] = pt(cx, cy, r * 0.66, ang(0)), [fx, fy] = pt(cx, cy, r * 0.66, ang(1));
+// A fuel gauge in the same dress: a band that fills from empty to full, red over the last eighth,
+// with a slim needle; the reading sits under it.
+function Fuel({ label, value, max, children }) {
+  const w = 260, h = 150, cx = w / 2, cy = 134, r = 92, HALF = 75;
+  const f = max > 0 ? clamp(value / max) : 0, ang = (x) => -HALF + 2 * HALF * x;
+  const full = arc(cx, cy, r, -HALF, HALF), col = f >= 0.875 ? RED : AMBER;
+  const [ex, ey] = pt(cx, cy, r - 30, ang(0)), [fx, fy] = pt(cx, cy, r - 30, ang(1));
   return html`<figure class="fuel">
     <svg viewBox=${`0 0 ${w} ${h}`} aria-hidden="true">
-      <defs>
-        <linearGradient id=${`ff${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6EEDC" /><stop offset="1" stop-color="#D9C9A6" /></linearGradient>
-        <linearGradient id=${`fb${id}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3D9A0" /><stop offset=".5" stop-color="#8A6430" /><stop offset="1" stop-color="#3B2710" /></linearGradient>
-      </defs>
-      <rect x="3" y="3" width=${w - 6} height=${h - 6} rx="18" fill=${`url(#ff${id})`} stroke=${`url(#fb${id})`} stroke-width="6" />
-      <path d=${arc(cx, cy, r, ang(0.875), ang(1))} stroke=${RED} stroke-width="7" fill="none" />
-      ${Array.from({ length: 9 }, (_, i) => {
-        const a = ang(i / 8), [x0, y0] = pt(cx, cy, r * 0.97, a), [x1, y1] = pt(cx, cy, r * (i % 2 ? 0.90 : 0.84), a);
-        return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${i >= 7 ? RED : INK} stroke-width=${i % 2 ? 2 : 4} stroke-linecap="round" />`;
-      })}
-      <text x=${ex} y=${ey} class="num" fill=${INK}>E</text><text x=${fx} y=${fy} class="num" fill=${RED}>F</text>
-      <text x=${cx} y="27" class="lbl">${label}</text>
-      ${max > 0 && html`<g class="turn needle" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(value / max)}deg)`}>
-        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r * 0.86} stroke="#B3261B" stroke-width="5" stroke-linecap="round" /></g>`}
-      <circle cx=${cx} cy=${cy} r="11" fill="#3B2710" stroke="#B88A45" stroke-width="2" />
+      <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
+      <path d=${full} stroke=${TRACK} stroke-width="10" fill="none" stroke-linecap="round" />
+      <path d=${arc(cx, cy, r, ang(0.875), ang(1))} stroke=${RED} stroke-opacity=".35" stroke-width="10" fill="none" stroke-linecap="round" />
+      ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />
+        <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="10" fill="none" stroke-linecap="round" />`}
+      <text x=${ex} y=${ey} class="num" fill="#9C8672">E</text><text x=${fx} y=${fy} class="num" fill="#E0674A">F</text>
+      <text x=${cx} y="26" class="lbl">${label}</text>
+      ${max > 0 && html`<g class="turn needle" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}>
+        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${PALE} stroke-width="3.2" stroke-linecap="round" /></g>`}
+      <circle cx=${cx} cy=${cy} r="8" fill="#17100B" stroke=${AMBER} stroke-width="2.4" />
     </svg>
     <figcaption>${children}</figcaption>
   </figure>`;
@@ -306,7 +312,7 @@ export function Stats() {
     const t = setInterval(read, 5000);
     return () => clearInterval(t);
   }, [g, demo]);
-  const cpuClock = s.cpuClock || host?.mhz;
+  const cpuClock = s.cpuClock || host?.mhz, cpuTemp = s.cpuTemp > 0 ? s.cpuTemp : demo ? s.cpuTemp : host?.temp;
   const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
 
   // Swipe right for Games.
@@ -319,7 +325,7 @@ export function Stats() {
   const has = (v) => v != null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
-  const gpuPeak = usePeak(s.gpuLoad), cpuPeak = usePeak(s.cpuLoad);
+  const gpuTrail = useTrail(s.gpuLoad), cpuTrail = useTrail(s.cpuLoad);
   const heat = heatOf(s);
   const ramTotal = s.ramTotal ?? (has(s.ramUsed) && s.ramLoad > 0 ? s.ramUsed / (s.ramLoad / 100) : null);
   const busiest = s.cores.length ? Math.max(...s.cores) : null;
@@ -339,14 +345,14 @@ export function Stats() {
     </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
-        ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
-      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
-        ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} temp=${s.gpuTemp} trail=${gpuTrail} />
+        ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
+      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} temp=${cpuTemp} trail=${cpuTrail} />
+        ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
         ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3 class="lead">Memory</h3><div class="fuels">
-          ${has(s.ramUsed) && html`<${Fuel} id="m" label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}
-          ${has(s.vramUsed) && html`<${Fuel} id="v" label="VRAM" value=${s.vramUsed} max=${s.vramTotal}>${s.vramUsed.toFixed(1)}<small> ${s.vramTotal ? `/ ${r0(s.vramTotal)} ` : ''}GB</small><//>`}
+          ${has(s.ramUsed) && html`<${Fuel} label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}
+          ${has(s.vramUsed) && html`<${Fuel} label="VRAM" value=${s.vramUsed} max=${s.vramTotal}>${s.vramUsed.toFixed(1)}<small> ${s.vramTotal ? `/ ${r0(s.vramTotal)} ` : ''}GB</small><//>`}
         </div>`}
         ${(has(s.netDown) || has(s.netUp)) && html`<h3>Network</h3>
           ${has(s.netDown) && html`<${NetBar} label="Down" value=${s.netDown} />`}
