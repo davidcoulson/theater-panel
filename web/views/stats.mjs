@@ -257,6 +257,73 @@ function Flames({ heat }) {
   return html`<canvas class="flames" ref=${ref} width=${FIRE_W} height=${FIRE_H} style=${`opacity:${lit ? Math.min(1, 0.4 + heat * 0.6).toFixed(2) : 0}`} aria-hidden="true"></canvas>`;
 }
 
+// Other ways to show the heat, to compare on the wall: #/stats?heat=embers|steam|metal (fire is
+// the default), or tap the title to step through them. Embers and steam are a few dozen particles on a small canvas, stretched over the
+// page like the fire; metal has no layer at all - the stylesheet makes the bezels and tile edges
+// glow like heated iron.
+const HEAT_KINDS = ['fire', 'embers', 'steam', 'metal'];
+const DRIFT = {
+  embers: { w: 480, h: 270, every: 40, count: (l) => 14 + 150 * l },
+  steam: { w: 240, h: 135, every: 50, count: (l) => 8 + 46 * l },
+};
+let puff = null;   // steam's soft round sprite, made once
+function puffSprite() {
+  if (puff) return puff;
+  puff = document.createElement('canvas'); puff.width = puff.height = 64;
+  const c = puff.getContext('2d'), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(236,228,218,.55)'); g.addColorStop(0.5, 'rgba(226,216,204,.2)'); g.addColorStop(1, 'rgba(220,210,200,0)');
+  c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+  return puff;
+}
+function Drift({ heat, kind }) {
+  const ref = useRef(null);
+  const level = useRef(heat); level.current = heat;
+  const lit = heat > 0.12;
+  const d = DRIFT[kind];
+  useEffect(() => {
+    if (!lit) return undefined;
+    const ctx = ref.current.getContext('2d');
+    const bits = [];
+    const sprite = kind === 'steam' ? puffSprite() : null;
+    let started = false;
+    const t = setInterval(() => {
+      const l = level.current, want = d.count(l);
+      // The first frame starts with the air already full, each bit part-way through its rise.
+      for (let n = 0, most = started ? 4 : want; n < most && bits.length < want; n++) {
+        const b = kind === 'steam'
+          ? { x: Math.random() * d.w, y: d.h + 12, vy: -(0.5 + Math.random() * 0.8) * (0.7 + 0.8 * l), r: 10 + Math.random() * 16, age: 0, life: 130 + Math.random() * 130, seed: Math.random() * 9 }
+          : { x: Math.random() * d.w, y: d.h + 2, vy: -(0.5 + Math.random() * 1.7) * (0.6 + l), r: 1 + Math.random() * 1.4, age: 0, life: 70 + Math.random() * 110, seed: Math.random() * 9 };
+        if (!started) { b.age = Math.floor(Math.random() * b.life * 0.8); b.y += b.vy * b.age; if (kind === 'steam') b.r += 0.07 * b.age; }
+        bits.push(b);
+      }
+      started = true;
+      ctx.clearRect(0, 0, d.w, d.h);
+      for (let i = bits.length - 1; i >= 0; i--) {
+        const b = bits[i];
+        b.age++; b.y += b.vy; b.x += Math.sin(b.age * 0.05 + b.seed) * (kind === 'steam' ? 0.25 : 0.45);
+        if (b.age > b.life || b.y < -30) { bits.splice(i, 1); continue; }
+        const fade = 1 - b.age / b.life;
+        if (kind === 'steam') {
+          b.r += 0.07;
+          ctx.globalAlpha = 0.75 * fade * Math.min(1, b.age / 25);
+          ctx.drawImage(sprite, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+        } else {
+          const flicker = 0.65 + 0.35 * Math.sin(b.age * 0.6 + b.seed * 7);
+          ctx.globalAlpha = 0.22 * fade * flicker;
+          ctx.fillStyle = '#FF7A1E';
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 3, 0, 6.3); ctx.fill();
+          ctx.globalAlpha = fade * flicker;
+          ctx.fillStyle = fade > 0.6 ? '#FFE3A0' : fade > 0.3 ? '#FF9A32' : '#D8431C';
+          ctx.fillRect(b.x - b.r / 2, b.y - b.r / 2, b.r, b.r);
+        }
+      }
+    }, d.every);
+    return () => clearInterval(t);
+  }, [lit, kind]);
+  return html`<canvas class=${`flames ${kind}`} ref=${ref} width=${d.w} height=${d.h} style=${`opacity:${lit ? 1 : 0}`} aria-hidden="true"></canvas>`;
+}
+const HeatLayer = ({ heat, kind }) => (kind === 'metal' ? null : kind === 'fire' ? html`<${Flames} heat=${heat} />` : html`<${Drift} key=${kind} heat=${heat} kind=${kind} />`);
+
 // ---------- the page ----------
 
 // How hard the PC is working, 0 (idle) to 1 (flat out): GPU load, or its temperature if hotter.
@@ -304,12 +371,16 @@ export function Stats() {
   const busiest = s.cores.length ? Math.max(...s.cores) : null;
   const any = has(s.gpuLoad) || has(s.cpuLoad) || has(s.ramUsed) || has(s.vramUsed) || has(s.netDown) || has(s.netUp) || s.cores.length;
   const readout = (list) => html`<div class="sub">${list.filter(Boolean).map(([k, v]) => html`<div><b>${v}</b><span>${k}</span></div>`)}</div>`;
-  const style = `--heat:${heat.toFixed(2)};--acc:${mix([184, 118, 58], [224, 88, 43], heat)};--edge:${mix([42, 28, 18], [90, 36, 20], heat)}`;
+  const glow = heat < 0.5 ? mix([150, 28, 8], [255, 118, 28], heat * 2) : mix([255, 118, 28], [255, 186, 96], (heat - 0.5) * 2);
+  const style = `--glow:${glow};--heat:${heat.toFixed(2)};--acc:${mix([184, 118, 58], [224, 88, 43], heat)};--edge:${mix([42, 28, 18], [90, 36, 20], heat)}`;
 
-  return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
-    <${Flames} heat=${heat} />
+  const kind = HEAT_KINDS.includes(route.params.heat) ? route.params.heat : 'fire';
+  // Tapping the title steps through the heat styles, to compare them on the wall.
+  const nextKind = () => go('stats', { ...route.params, heat: HEAT_KINDS[(HEAT_KINDS.indexOf(kind) + 1) % HEAT_KINDS.length] });
+  return html`<main class=${`view stats-view dark heat-${kind}`} style=${style} onPointerDown=${down} onPointerUp=${up}>
+    <${HeatLayer} heat=${heat} kind=${kind} />
     <header class="top">
-      <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
+      <div><h1 onClick=${nextKind}>${g?.pc?.name || 'Gaming PC'}</h1>
         <div class=${`playing ${s.game ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${s.game || 'Idle'}</div></div>
       <div class="right">
       ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${s.fpsLow >= 1 ? html`<small>1% low ${r0(s.fpsLow)}</small>` : ''}</span>`}
