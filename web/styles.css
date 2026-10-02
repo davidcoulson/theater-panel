@@ -458,7 +458,8 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
   box-shadow: 0 0 34px rgb(224 88 43 / calc(var(--heat) * .34)), inset 0 1px 0 rgba(255,255,255,.04); }
 .stats-view h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
 .stats-view h3.lead { font-size: 24px; letter-spacing: 4px; line-height: 1; margin-bottom: 8px; }
-.stats-view h3.lead small { display: block; margin: 5px 0 0; font-size: 15px; font-weight: 500; letter-spacing: .5px; text-transform: none; color: #C7B39E; white-space: nowrap; }
+.stats-view h3.lead { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; align-self: stretch; }
+.stats-view h3.lead small { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .5px; text-transform: none; color: #C7B39E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stats-view h3 small { letter-spacing: 1px; text-transform: none; font-weight: 500; color: #8C7660; margin-left: 10px; font-size: 14px; }
 .st-row { display: flex; gap: 18px; }
 .st-row .big { width: 536px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
@@ -468,8 +469,8 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view svg.dial { width: 408px; height: 408px; display: block; }
 .stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
 .stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #9C8672; }
-.stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 34px; text-anchor: middle; dominant-baseline: middle; }
-.stats-view svg .val { font-family: var(--disp); font-weight: 800; font-size: 66px; text-anchor: middle; dominant-baseline: middle; fill: #F4ECE0; }
+.stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 23px; text-anchor: middle; dominant-baseline: middle; }
+.stats-view svg .val { font-family: var(--disp); font-weight: 800; font-size: 80px; text-anchor: middle; dominant-baseline: middle; fill: #F4ECE0; }
 .stats-view svg .val .unit { font-size: 32px; fill: #9C8672; }
 .stats-view svg .turn { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1.6s cubic-bezier(.3, 1.35, .5, 1); }
 .stats-view svg .band { transition: stroke-dasharray 1.6s ease; }
