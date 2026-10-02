@@ -475,6 +475,8 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view svg .turn { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1.6s cubic-bezier(.3, 1.35, .5, 1); }
 .stats-view svg .band { transition: stroke-dasharray 1.6s ease; }
 .stats-view svg .band.glow { opacity: .22; }
+.stats-view svg .halo { animation: st-halo 3.4s ease-in-out infinite; }
+@keyframes st-halo { 50% { stroke-opacity: .6; } }
 .stats-view .sub { display: flex; gap: 28px; margin-top: 6px; }
 .stats-view .sub div { text-align: center; }
 .stats-view .sub b { display: block; font-family: var(--mono); font-weight: 600; font-size: 23px; color: #F4ECE0; white-space: nowrap; }

@@ -112,53 +112,55 @@ function usePeaks(lit, segs) {
 // ---------- drawing ----------
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
+const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(' ')})`;
 const pt = (cx, cy, r, deg) => { const a = deg * Math.PI / 180; return [cx + r * Math.sin(a), cy - r * Math.cos(a)]; };
 const arc = (cx, cy, r, a0, a1) => { const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
 const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PALE = '#F4ECE0';
 
-// A load dial, 0-100, on a dark face. A glowing band fills round to the reading, amber turning
-// red; the ticks it has passed light up; a faint inner band marks the last minute's range. A thin
-// ring outside the band is the part's temperature, from 85 °F to 195 °F, with the figure at the
-// top. Under the hub are the reading and the last minute as a line. The needle, band and ring move
-// with CSS transitions. Drawn on a 400 grid.
-const SWEEP = 135, DIAL_RED = 85, TEMP_FROM = 30, TEMP_TO = 90;   // the ring's range in °C
+// A load dial, 0-100, on a dark face. Load is drawn in cool colours - a glowing teal band fills
+// round to the reading, the ticks it has passed light up, a faint inner band marks the last
+// minute's range - so that heat can have the warm ones: the dial's rim glows like heated iron,
+// dull dark red when warm, through orange, to near white when hot (heat is 0-1). Under the hub
+// are the reading and the last minute as a line. The needle and band move with CSS transitions.
+// Drawn on a 400 grid.
+const SWEEP = 135, DIAL_TOP = 85;
+const TEAL = '#5DBFAE', ICE = '#DDF7F0';
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
-function Dial({ id, value, temp, trail = [], label = 'Load' }) {
-  const c = 200, ring = 192, rim = 175;
+const ironGlow = (h) => (h < 0.5 ? mix([120, 26, 8], [240, 110, 30], h * 2) : mix([240, 110, 30], [255, 224, 160], (h - 0.5) * 2));
+function Dial({ id, value, heat, trail = [], label = 'Load' }) {
+  const c = 200, rim = 175;
   const v = clamp(value / 100) * 100;
-  const full = arc(c, c, rim, -SWEEP, SWEEP), outer = arc(c, c, ring, -SWEEP, SWEEP);
-  const warm = temp != null ? clamp((temp - TEMP_FROM) / (TEMP_TO - TEMP_FROM)) * 100 : 0;
+  const full = arc(c, c, rim, -SWEEP, SWEEP);
   const lo = trail.length ? Math.min(...trail, v) : v, hi = trail.length ? Math.max(...trail, v) : v;
   // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
   const mid = (lo + hi) / 2, span = Math.max(12, hi - lo);
   const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (trail.length - 1)) * 152).toFixed(1)} ${(c + 144 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
-  return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
+  const glow = heat > 0 ? ironGlow(heat) : null;
+  return html`<svg class="dial" viewBox="-10 -10 420 420" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
       <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
-      <linearGradient id=${`hot${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color=${AMBER} /><stop offset=".6" stop-color="#E8792E" /><stop offset="1" stop-color=${RED} /></linearGradient>
-      <linearGradient id=${`deg${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color="#8FB9A0" /><stop offset=".5" stop-color="#E8C27A" /><stop offset="1" stop-color="#E0674A" /></linearGradient>
+      <linearGradient id=${`ld${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color="#3C9C8E" /><stop offset=".6" stop-color="#7FD6C4" /><stop offset="1" stop-color=${ICE} /></linearGradient>
     </defs>
-    <circle cx=${c} cy=${c} r="199" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="1.5" />
-    ${temp != null && html`<path d=${outer} stroke=${TRACK} stroke-width="5" fill="none" stroke-linecap="round" />
-      ${warm >= 0.5 && html`<path class="band" d=${outer} pathLength="100" stroke-dasharray=${`${warm} 100`} stroke=${`url(#deg${id})`} stroke-width="5" fill="none" stroke-linecap="round" />`}
-      <text x=${c} y=${c - 64} class="temp" fill=${temp >= 80 ? '#E0674A' : '#C9A77E'}>${degF(temp)}</text>`}
+    <circle cx=${c} cy=${c} r="196" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="1.5" />
+    ${glow && html`<circle class="halo" cx=${c} cy=${c} r="196" fill="none" stroke=${glow} stroke-width=${14 + heat * 10} opacity=${0.1 + heat * 0.22} />
+      <circle cx=${c} cy=${c} r="196" fill="none" stroke=${glow} stroke-width=${2.5 + heat * 4} opacity=${0.45 + heat * 0.55} />`}
     <path d=${full} stroke=${TRACK} stroke-width="11" fill="none" stroke-linecap="round" />
-    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
-      <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="11" fill="none" stroke-linecap="round" />`}
-    ${hi - lo >= 1 && html`<path d=${arc(c, c, 140, dialAngle(lo), dialAngle(hi))} stroke=${AMBER} stroke-opacity=".26" stroke-width="12" fill="none" />`}
+    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
+      <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="11" fill="none" stroke-linecap="round" />`}
+    ${hi - lo >= 1 && html`<path d=${arc(c, c, 140, dialAngle(lo), dialAngle(hi))} stroke=${TEAL} stroke-opacity=".26" stroke-width="12" fill="none" />`}
     ${Array.from({ length: 51 }, (_, i) => {
-      const t = i * 2, major = i % 5 === 0, a = dialAngle(t), col = t > v ? DIM : t >= DIAL_RED ? RED : AMBER;
+      const t = i * 2, major = i % 5 === 0, a = dialAngle(t), col = t > v ? DIM : t >= DIAL_TOP ? ICE : TEAL;
       const [x0, y0] = pt(c, c, 163, a), [x1, y1] = pt(c, c, major ? 148 : 155, a), [tx, ty] = pt(c, c, 125, a);
       return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${col} stroke-width=${major ? 2.8 : 1.4} stroke-linecap="round" />
-        ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill=${t >= DIAL_RED ? '#E0674A' : '#9C8672'}>${t}</text>`}`;
+        ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill="#9C8672">${t}</text>`}`;
     })}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
       <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
-    <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${AMBER} stroke-width="2.6" />
+    <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${TEAL} stroke-width="2.6" />
     <text x=${c} y=${c + 70} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
     <line x1=${c - 76} y1=${c + 160} x2=${c + 76} y2=${c + 160} stroke=${TRACK} stroke-width="1.5" />
-    ${line && html`<path d=${line} stroke=${AMBER} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
+    ${line && html`<path d=${line} stroke=${TEAL} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
   </svg>`;
 }
 
@@ -290,8 +292,8 @@ function Steam({ heat }) {
 // How hot the PC is running, 0 to 1: the GPU's temperature from 100 °F to 135 °F (it climbs and
 // cools slowly, so the steam builds and lingers like the real thing). Without a temperature
 // sensor, load from 50% to 90% stands in.
+const warmth = (c, fromF, toF) => (c != null ? clamp((c * 9 / 5 + 32 - fromF) / (toF - fromF)) : 0);
 const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 100) / 35) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
-const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(' ')})`;
 
 export function Stats() {
   const [g] = useLoad(() => get('/api/games').catch(() => null), []);
@@ -350,9 +352,9 @@ export function Stats() {
     </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} temp=${s.gpuTemp} trail=${gpuTrail} />
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 100, 135)} trail=${gpuTrail} />
         ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
-      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} temp=${cpuTemp} trail=${cpuTrail} />
+      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
         ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
         ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3 class="lead">Memory</h3><div class="fuels">
