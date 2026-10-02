@@ -113,8 +113,9 @@ export async function hostClock() {
 // Watts are the energy counter's rise between two readings; it is read at most once a second and
 // wraps at its maximum.
 // Docker hides the counter's usual place from containers, so the host folder
-// (/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0) is mapped in as /host/cpu-power.
-const RAPL = ['/host/cpu-power', '/sys/class/powercap/intel-rapl:0'];
+// /sys/devices/virtual/powercap/intel-rapl is mapped in as /host/cpu-power (the package's own
+// folder has a colon in its name, which a volume mapping can't carry).
+const RAPL = ['/host/cpu-power/intel-rapl:0', '/sys/class/powercap/intel-rapl:0'];
 let energy = null;   // { at, uj, watts }
 let rapl;            // the folder that answered
 async function hostCpuWatts() {
