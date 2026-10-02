@@ -301,6 +301,18 @@ export const adminHere = (ha) => {
   if (!adminRoomSensor || !adminRoom) return false;
   return String(ha.states[adminRoomSensor]?.state || '').toLowerCase() === adminRoom.toLowerCase();
 };
+// "Windows desktop": the PC on the projector with the room lit for working, not for a film -
+// start the VM if it is off, the projector to the PC's input, lights up. Only for the admin.
+export async function pcDesktop(ha) {
+  if (!adminHere(ha)) throw Object.assign(new Error('Only when the admin is in the room'), { status: 403 });
+  const g = await loadGames();
+  const src = (g?.sources || []).find((s) => s.via !== 'switcher' && /^(windows|steam|pc|gaming)/i.test(s.id));
+  if (!src) throw new Error('No PC source on the Games page');
+  if (vmConfigured()) { const vm = await vmState(); if (vm?.state === 'shutoff') await vmPower('start'); }
+  await selectSource(ha, src.id);
+  await ha.callService('script', 'turn_on', {}, { target: { entity_id: 'script.theater_lights_bright' } }).catch(() => {});
+  return { ok: true };
+}
 export async function pcPower(ha, op) {
   if ((op === 'reboot' || op === 'forceStop') && !adminHere(ha)) throw Object.assign(new Error('Only when the admin is in the room'), { status: 403 });
   const g = await loadGames();
