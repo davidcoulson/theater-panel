@@ -265,10 +265,10 @@ function Steam({ heat }) {
 
 // ---------- the page ----------
 
-// How hot the PC is running, 0 to 1: the GPU's temperature from 120 °F to 170 °F (it climbs and
+// How hot the PC is running, 0 to 1: the GPU's temperature from 110 °F to 150 °F (it climbs and
 // cools slowly, so the steam builds and lingers like the real thing). Without a temperature
 // sensor, load from 50% to 90% stands in.
-const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 120) / 50) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
+const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 110) / 40) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
 const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(' ')})`;
 
 export function Stats() {
