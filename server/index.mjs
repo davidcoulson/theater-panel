@@ -19,7 +19,7 @@ import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue, musicProviders } from './actions.mjs';
-import { gameEntities, gamesState, recordStats, steamLibrary } from './games.mjs';
+import { gameEntities, gamesState, hostClock, recordStats, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
@@ -495,6 +495,7 @@ get(/^\/api\/music\/providers$/, () => musicProviders(ha));
 get(/^\/api\/music\/queue$/, (m, q) => musicQueue(ha, q.get('entity_id')));
 
 get(/^\/api\/games$/, () => gamesState());
+get(/^\/api\/games\/clock$/, () => hostClock());
 get(/^\/api\/steam\/library$/, () => steamLibrary());
 
 // Move every open panel to a route (#/showtime, #/watch?brand=netflix, #/games...). Kiosk

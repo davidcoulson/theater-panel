@@ -29,7 +29,7 @@ function useStats(stats, demo) {
   };
   const vals = demo ? demoValues() : {
     fps: num('fps'), fpsLow: num('fpsLow'),
-    gpuLoad: num('gpuLoad'), gpuTemp: num('gpuTemp'), gpuClock: num('gpuClock'), gpuPower: num('gpuPower'), gpuFan: num('gpuFan'),
+    gpuLoad: num('gpuLoad'), gpuTemp: num('gpuTemp'), gpuClock: num('gpuClock'), gpuMemClock: num('gpuMemClock'), gpuPower: num('gpuPower'), gpuFan: num('gpuFan'),
     cpuLoad: num('cpuLoad'), cpuTemp: num('cpuTemp'), cpuClock: num('cpuClock'),
     ramUsed: num('ramUsed'), ramTotal: num('ramTotal'), ramLoad: num('ramLoad'), vramUsed: num('vramUsed'), vramTotal: num('vramTotal'),
     netDown: num('netDown'), netUp: num('netUp'),
@@ -63,7 +63,7 @@ function gameName(v) {
 let demoState = null;
 function demoValues() {
   const walk = (v, b, s, lo, hi) => Math.min(hi, Math.max(lo, v + (b - v) * 0.25 + (Math.random() - 0.5) * s));
-  const b = { fps: 118, fpsLow: 92, gpuLoad: 94, gpuTemp: 74, gpuClock: 2610, gpuPower: 318, gpuFan: 62, cpuLoad: 42, cpuTemp: 71, cpuClock: 4900, ramUsed: 21.4, ramTotal: 32, vramUsed: 13.1, vramTotal: 24, netDown: 28, netUp: 3.1 };
+  const b = { fps: 118, fpsLow: 92, gpuLoad: 94, gpuTemp: 74, gpuClock: 2610, gpuMemClock: 12002, gpuPower: 318, gpuFan: 62, cpuLoad: 42, cpuTemp: 71, cpuClock: 4900, ramUsed: 21.4, ramTotal: 32, vramUsed: 13.1, vramTotal: 24, netDown: 28, netUp: 3.1 };
   demoState ??= { ...b, cores: Array.from({ length: 16 }, (_, i) => (i < 2 ? 88 : 40)) };
   const d = demoState;
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
@@ -185,7 +185,7 @@ const LampBar = ({ label, lit, children }) => html`<div class="net"><span>${labe
 const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * LAMPS)) : 0}>
   ${value < 1 ? html`${Math.round(value * 1000)}<small> kb/s</small>` : html`${value >= 10 ? r0(value) : value.toFixed(1)}<small> Mb/s</small>`}<//>`;
 // GPU power draw against the most the card pulls.
-const GPU_WATTS = 450;
+const GPU_WATTS = 600;
 const PowerBar = ({ value }) => html`<${LampBar} label="GPU" lit=${Math.round(clamp(value / GPU_WATTS) * LAMPS)}>${r0(value)}<small> W</small><//>`;
 
 // The last hour as a film strip: one frame a minute, brighter is busier, red is flat out; an idle
@@ -223,6 +223,17 @@ export function Stats() {
     return () => clearInterval(t);
   }, [g, demo]);
 
+  // A VM's real processor clock, from the host the server runs on (see hostClock in games.mjs).
+  const [hostMhz, setHostMhz] = useState(null);
+  useEffect(() => {
+    if (demo || !g?.pc?.hostClock) return undefined;
+    const read = () => get('/api/games/clock').then((c) => setHostMhz(c?.mhz ?? null)).catch(() => {});
+    read();
+    const t = setInterval(read, 5000);
+    return () => clearInterval(t);
+  }, [g, demo]);
+  const cpuClock = s.cpuClock || hostMhz;
+
   // Swipe right for Games.
   const down = (e) => { swipe.current = { x: e.clientX, y: e.clientY }; };
   const up = (e) => {
@@ -249,9 +260,9 @@ export function Stats() {
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
       ${has(s.gpuLoad) && html`<section class="tile big"><h3>GPU</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
-        ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && ['Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuPower) && ['Draw', `${r0(s.gpuPower)} W`]])}</section>`}
+        ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`], has(s.gpuPower) && ['Draw', `${r0(s.gpuPower)} W`]])}</section>`}
       ${has(s.cpuLoad) && html`<section class="tile big"><h3>CPU</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
-        ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], has(s.cpuClock) && ['Clock', `${r0(s.cpuClock)} MHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
+        ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${r0(cpuClock)} MHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
         ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3>Memory</h3><div class="fuels">
           ${has(s.ramUsed) && html`<${Fuel} id="m" label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}

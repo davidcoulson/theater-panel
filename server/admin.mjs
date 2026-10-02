@@ -324,6 +324,10 @@ function cleanPc(pc) {
       kind: SENSOR_KINDS.includes(s.kind) ? s.kind : 'value',
     }));
   }
+  if (pc.hostCpus !== undefined) {
+    if (!Array.isArray(pc.hostCpus) || pc.hostCpus.some((n) => !Number.isInteger(n) || n < 0 || n > 4095)) throw httpError(400, 'pc.hostCpus must be a list of CPU numbers');
+    if (pc.hostCpus.length) out.hostCpus = pc.hostCpus.slice(0, 256);
+  }
   if (pc.stats) {
     if (typeof pc.stats !== 'object' || Array.isArray(pc.stats)) throw httpError(400, 'pc.stats must be an object');
     const stats = {};
