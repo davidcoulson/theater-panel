@@ -56,6 +56,7 @@ export const FIELDS = [
   { group: 'TMDB', key: 'TMDB_LIST_HALLOWEEN', label: 'Halloween list', type: 'text', placeholder: '7061968', help: 'The number from the list\'s address on themoviedb.org (themoviedb.org/list/7061968-halloween). Only films you own are shown, in the list\'s order.' },
   { group: 'TMDB', key: 'TMDB_LIST_CHRISTMAS', label: 'Christmas list', type: 'text', placeholder: '5915', help: 'Default: "The Best of Christmas", 105 films.' },
   { group: 'Entities', key: 'ENTITY_PROJECTOR', label: 'Projector (ADB media player)', type: 'entity', domain: 'media_player' },
+  { group: 'Entities', key: 'ENTITY_PROJECTOR_SHOWING', label: 'Projector "Showing" sensor', type: 'entity', domain: 'sensor', help: 'The projector plugin\'s Showing sensor. The Projector card names the input\'s source (or the app) from it when nothing it knows is playing.' },
   { group: 'Entities', key: 'ENTITY_APPLE_TV', label: 'Apple TV', type: 'entity', domain: 'media_player' },
   { group: 'Entities', key: 'ENTITY_APPLE_TV_REMOTE', label: 'Apple TV remote', type: 'entity', domain: 'remote' },
   { group: 'Entities', key: 'ENTITY_PLEX_PLAYER', label: 'Plex player', type: 'entity', domain: 'media_player' },

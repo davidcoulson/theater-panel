@@ -112,6 +112,9 @@ function build(env) {
     roomSpeaker: env.ENTITY_ROOM_SPEAKER || '',
     // Android Debug Bridge media_player for the projector. Empty until ADB is tested.
     projector: env.ENTITY_PROJECTOR || '',
+    // The projector plugin's Showing sensor ("HDMI 2", "HDMI 1 · Apple TV", "Plezy"): what the
+    // Projector card names when nothing it knows is playing.
+    projectorShowing: env.ENTITY_PROJECTOR_SHOWING || '',
     // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
     // from the device name, so one stem on the settings page finds them all.
     soundbar: soundbarIds(env.SOUNDBAR_PREFIX || '', list(env.SOUNDBAR_REARS, ['left', 'right'])),
@@ -318,7 +321,7 @@ export const config = build(effectiveVars());
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar),
     'input_select.theater_scene',

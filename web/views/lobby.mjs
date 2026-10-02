@@ -224,7 +224,22 @@ const appIcon = (a) => a.icon || APP_ICONS.find(([re]) => re.test(a.name))?.[1] 
 
 // What is on screen: the theater's Plex session (when PLEX_PLAYER_NAME pins it down), else the
 // Apple TV's own now-playing when it is the source.
-function useNowPlaying(on, current, tv) {
+// What is on the wall when nothing above is playing: the source on the projector's input (from
+// the plugin's Showing sensor, which follows inputs changed anywhere), else the last one picked here.
+function sourceLine(showing, current, games) {
+  const sources = games?.sources || [];
+  const input = showing && showing.match(/^HDMI \d/)?.[0];
+  if (showing && !input) return showing;   // an app on the projector itself
+  const picked = sources.find((x) => x.id === current);
+  if (!input) return picked?.name || null;
+  const direct = sources.find((x) => x.via !== 'switcher' && x.projectorInput === input);
+  if (direct) return direct.name;
+  if (games?.switcher?.projectorInput === input) return picked?.via === 'switcher' ? picked.name : 'Game switcher';
+  return showing;
+}
+
+function useNowPlaying(on, current, tv, games) {
+  const showing = useEntity(useStore((s) => s.entities.projectorShowing))?.state;
   const sessions = useStore((s) => s.sessions);
   const own = useStore((s) => s.ui?.theaterSessions);
   if (!on) return null;
@@ -238,7 +253,7 @@ function useNowPlaying(on, current, tv) {
     const a = tv.attributes;
     return `${tv.state === 'paused' ? 'Paused · ' : ''}${a.media_series_title ? `${a.media_series_title} · ` : ''}${a.media_title}`;
   }
-  return null;
+  return sourceLine(['unknown', 'unavailable'].includes(showing) ? null : showing, current, games);
 }
 
 function Projector() {
@@ -258,7 +273,7 @@ function Projector() {
   const sources = (games?.sources || []).map((s) => ({ ...s, icon: s.icon?.includes(':') ? s.icon : SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
   const current = runningApp ? null : picked || games?.active;
   const picture = useEntity(ents.pictureMode)?.state;
-  const nowPlaying = useNowPlaying(on, current, tv);
+  const nowPlaying = useNowPlaying(on, current, tv, games);
 
   async function pickSource(s) {
     setPicked(s.id);
