@@ -728,8 +728,8 @@ automation:
   # off at its Standby (or a power report going to standby). HA's Apple TV entity flapped between
   # off and on while the Apple TV stayed asleep (2026-09-27), and the old automation here followed it.
 
-  # The picture turned on with the Apple TV asleep (the remote, the panel, a restart) would only
-  # show the projector's "No signal" page: open Projectivy, the projector's launcher, instead.
+  # The picture turned on with the Apple TV asleep (the remote, the panel, a restart) on its input
+  # would only show the projector's "No signal" page: open Projectivy, the projector's launcher, instead.
   # The Apple TV waking takes the picture back to HDMI 1 (above).
   - id: theater_projector_home_without_source
     alias: "Theater: projector shows Projectivy when the Apple TV sleeps"
@@ -745,6 +745,10 @@ automation:
         state: "off"
       - condition: template
         value_template: "{{ state_attr('media_player.theater_projector', 'app_id') in [none, 'com.mediatek.wwtv.tvcenter'] }}"
+      # Only on the Apple TV's input: another source (the Unraid VM on HDMI 3) is showing
+      # something of its own (2026-10-01: Projectivy came up over the VM).
+      - condition: template
+        value_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') is match('HDMI 1\\b') }}"
     actions:
       - delay: "00:00:02"
       - action: androidtv.adb_command

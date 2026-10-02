@@ -72,9 +72,9 @@ export async function gamesState() {
     configured: true,
     active,
     // The panel reads the switcher's live input from this HA entity's state.
-    switcher: g.switcher?.entity ? { entity: g.switcher.entity } : null,
+    switcher: g.switcher?.entity ? { entity: g.switcher.entity, projectorInput: g.switcher.projectorInput || null } : null,
     // games: false keeps a source (the Apple TV) off the Games screen; it stays on the projector card.
-    sources: (g.sources || []).map(({ id, name, icon, via, option, input, games }) => ({ id, name, icon, via, option, input, games: games !== false })),
+    sources: (g.sources || []).map(({ id, name, icon, via, option, input, projectorInput, games }) => ({ id, name, icon, via, option, input, projectorInput, games: games !== false })),
     pc: g.pc ? {
       name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [],
       canLaunch: Boolean(g.pc.launchScript),
