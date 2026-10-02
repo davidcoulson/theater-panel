@@ -153,6 +153,20 @@ async function hostCpuTemp() {
   return Number.isFinite(milli) && milli > 0 ? Math.round(milli / 100) / 10 : null;
 }
 
+// What Steam says is being played right now (the profile's game details must be public): the
+// game's id, proper name and artwork. Cached for 20 s.
+let steamNowCache = null;
+export async function steamNow() {
+  if (!config.steam.apiKey || !config.steam.id) return null;
+  if (steamNowCache && Date.now() - steamNowCache.t < 20000) return steamNowCache.v;
+  const q = new URLSearchParams({ key: config.steam.apiKey, steamids: config.steam.id });
+  const r = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?${q}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  const p = r?.ok ? (await r.json().catch(() => null))?.response?.players?.[0] : null;
+  const v = p?.gameid && /^\d+$/.test(p.gameid) ? { appid: Number(p.gameid), name: p.gameextrainfo || null, header: `/img/steam/${p.gameid}/header.jpg`, poster: `/img/steam/${p.gameid}/library_600x900.jpg` } : null;
+  if (r?.ok) steamNowCache = { t: Date.now(), v };
+  return steamNowCache?.v ?? null;
+}
+
 // ---------- the PC as an Unraid VM ----------
 
 // Unraid's GraphQL API: the VM's state, and start / stop (stop asks Windows to shut down).
@@ -217,6 +231,7 @@ export async function gamesState() {
       hour: g.pc.stats ? [...hour] : null,
       hostClock: Boolean(g.pc.hostCpus?.length),
       vm: vmConfigured() ? await vmState().catch((e) => ({ state: 'unknown', error: e.message })) : null,
+      playing: await steamNow(),
       // What to call the parts on the Stats page; without these it reads the models from the sensors' names.
       gpuName: g.pc.gpuName || null, cpuName: g.pc.cpuName || null,
     } : null,

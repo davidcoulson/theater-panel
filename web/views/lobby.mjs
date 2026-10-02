@@ -224,7 +224,7 @@ function sourceLine(showing, current, games) {
   const picked = sources.find((x) => x.id === current);
   if (!input) return picked?.name || null;
   const direct = sources.find((x) => x.via !== 'switcher' && x.projectorInput === input);
-  if (direct) return direct.name;
+  if (direct) return games?.pc?.playing?.name && /^(windows|steam|pc|gaming)/i.test(direct.id) ? `${direct.name} · ${games.pc.playing.name}` : direct.name;
   if (games?.switcher?.projectorInput === input) return picked?.via === 'switcher' ? picked.name : 'Game switcher';
   return showing;
 }
@@ -266,6 +266,8 @@ function Projector() {
   const proj = useEntity(ents.projector);
   const tv = useEntity(ents.appleTv);
   const [games, , reload] = useLoad(() => get('/api/games').catch(() => null), []);
+  // What the PC is playing changes; ask again now and then.
+  useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
   const hasProj = Boolean(ents.projector);
   // Until the projector's own entity exists, the Apple TV's power state stands in for it (CEC).
