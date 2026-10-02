@@ -48,13 +48,11 @@ export function Lobby() {
         <span><b>Now in Plex</b> ${arrivals.list[0].title}</span>${arrivals.list.length > 1 && html`<span class="more">+${arrivals.list.length - 1}</span>`}
         <span class="x" role="button" aria-label="Dismiss" onClick=${(e) => { e.stopPropagation(); arrivals.dismiss(arrivals.list[0].id); }}>×</span></button>`}
       <${StreamsChip} onClick=${() => setStreamsOpen(true)} />
-      ${occ && html`<span class="chip"><${Icon} name="user" size=${20} />${occ.state === 'on' ? 'Occupied' : 'Empty'}</span>`}
-      ${tv && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
+      ${tv && ['playing', 'paused'].includes(tv.state) && html`<span class="chip"><${Icon} name="screen" size=${20} />Apple TV · ${tv.state}</span>`}
       <button type="button" class=${`chip ${plan ? 'on' : ''}`} onClick=${() => openTonight()}><${Icon} name="film" size=${20} />${plan ? `Tonight · ${plan.at ? new Date(plan.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : plan.state === 'feature' ? 'on' : 'ready'}` : 'Tonight'}</button>
       <button type="button" class="chip" onClick=${() => openGuest()}><${Icon} name="remote" size=${20} />Guest remote</button>
       ${soundbar && html`<button type="button" class=${`chip ${undocked.length ? 'warn' : ''}`} onClick=${() => openSound()}><${Icon} name="spk" size=${20} />${undocked.length ? `${undocked.join(' and ')} rear off its dock` : 'Sound'}</button>`}
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
-      ${services.plex && html`<button type="button" class="chip" onClick=${() => setMystery(true)}><${Icon} name="sparkle" size=${20} />Mystery box</button>`}
       <${SleepChip} />
       ${services.seerr && html`<button type="button" class="chip" onClick=${() => setScanOpen(true)}><${Icon} name="plus" size=${20} />Scan to request</button>`}
       ${downloading > 0 && html`<button type="button" class="chip warn" onClick=${() => go('request')}><${Icon} name="dl" size=${20} />${downloading} downloading</button>`}
@@ -460,7 +458,7 @@ function MusicBar() {
   return html`<section class="musicbar dark tx-suede">
     ${a.entity_picture ? html`<img class="cover" src=${`/api/ha-image?e=${encodeURIComponent(id)}&v=${encodeURIComponent(a.entity_picture)}`} alt="" />` : html`<div class="cover"></div>`}
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-      <div class="eyebrow" style="font-size:14px">${unavailable ? 'Music Assistant player unavailable' : `Music · ${a.friendly_name || 'Home Theater'}`}</div>
+      <div class="eyebrow ellipsis" style="font-size:14px">${unavailable ? 'Music Assistant player unavailable' : `Music · ${(a.friendly_name || 'Home Theater').replace(/\s*\([^)]*\)$/, '')}`}</div>
       <div class="ellipsis" style="font-size:23px;font-weight:600">${a.media_title || (unavailable ? 'Check the Music Assistant player' : 'Nothing playing')}</div>
       <div class="ellipsis" style="font-size:17px;color:var(--on-choc2)">${[a.media_artist, a.media_album_name].filter(Boolean).join(' · ')}</div>
     </div>
