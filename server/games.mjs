@@ -60,7 +60,7 @@ export async function gameEntities() {
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
 // Anything left out simply doesn't appear on the page.
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
-  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime'];
+  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
@@ -73,6 +73,7 @@ const SAMPLES = 360;
 const hour = [];
 let bucket = [];
 export function recordStats(ha) {
+  haRef = ha;
   const load = (id) => {
     const st = id && ha.states[id]?.state;
     const v = typeof st === 'string' ? Number(st) : NaN;
@@ -197,6 +198,7 @@ function unraid(query, variables) {
 }
 const vmConfigured = () => Boolean(config.unraid.url && config.unraid.apiKey && config.unraid.vm);
 let vmCache = null;   // { at, vm: { id, state } }
+export const vmNow = async () => ({ ...(await vmState()), streamingTo: streamingTo(await loadGames().catch(() => null)) });
 export async function vmState() {
   if (!vmConfigured()) return null;
   if (vmCache && Date.now() - vmCache.at < 4000) return vmCache.vm;
@@ -216,6 +218,14 @@ export async function vmPower(op) {
   return { state: VM_OPS[op] };
 }
 
+// The Moonlight client the PC is streaming to, by name when known, from the stream role's sensor.
+function streamingTo(g) {
+  const id = g?.pc?.stats?.stream, v = id && haRef?.states?.[id]?.state;
+  if (!v || ['unknown', 'unavailable', ''].includes(String(v).toLowerCase())) return null;
+  return g.pc.streamClients?.[v] || String(v);
+}
+let haRef = null;
+
 export async function gamesState() {
   const g = await loadGames();
   if (!g) return { configured: false };
@@ -234,8 +244,11 @@ export async function gamesState() {
       hostClock: Boolean(g.pc.hostCpus?.length),
       vm: vmConfigured() ? await vmState().catch((e) => ({ state: 'unknown', error: e.message })) : null,
       playing: await steamNow(),
+      streamingTo: streamingTo(g),
       // What to call the parts on the Stats page; without these it reads the models from the sensors' names.
       gpuName: g.pc.gpuName || null, cpuName: g.pc.cpuName || null,
+      // Names for the addresses Moonlight clients stream from (the stream role's sensor gives the address).
+      streamClients: g.pc.streamClients || {},
     } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
