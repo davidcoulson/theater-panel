@@ -61,7 +61,8 @@ function inPanelUnits(role, v, unit) {
 // Total Load". Anything that doesn't look like that gives no model.
 function partName(friendly) {
   const m = /^(?:\[[^\]]*\]\s*)?(.+?)\s+(?:GPU|CPU)\s+(?:Core|Total)\b/.exec(friendly || '');
-  return m ? m[1].replace(/\s+\d+-Cores?$/i, '') : null;
+  // Without the maker, which the model already says: "GeForce RTX 4090", "Threadripper PRO 5995WX".
+  return m ? m[1].replace(/\s+\d+-Cores?$/i, '').replace(/^(?:NVIDIA|AMD|Intel|ATI)(?:\(R\))?\s+/i, '').replace(/^Ryzen\s+(?=Threadripper)/i, '') : null;
 }
 
 // HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
@@ -80,7 +81,7 @@ function demoValues() {
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
   d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
   d.ramTotal = 32; d.vramTotal = 24;
-  return { ...d, game: 'Cyberpunk 2077', uptime: null, gpuName: 'NVIDIA GeForce RTX 4090', cpuName: 'AMD Ryzen 7 9800X3D' };
+  return { ...d, game: 'Cyberpunk 2077', uptime: null, gpuName: 'GeForce RTX 4090', cpuName: 'Ryzen 7 9800X3D' };
 }
 
 const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
