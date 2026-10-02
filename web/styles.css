@@ -466,7 +466,7 @@ canvas.fx { display: block; width: 100%; }
 .stats-view svg .val { font-family: var(--mono); font-weight: 600; font-size: 37px; text-anchor: middle; dominant-baseline: middle; fill: #F3D9A0; }
 .stats-view svg .val .unit { font-size: 20px; fill: #B88A45; }
 .stats-view svg .turn { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1.6s cubic-bezier(.3, 1.35, .5, 1); }
-.stats-view .sub { display: flex; gap: 34px; margin-top: 6px; }
+.stats-view .sub { display: flex; gap: 28px; margin-top: 6px; }
 .stats-view .sub div { text-align: center; }
 .stats-view .sub b { display: block; font-family: var(--mono); font-weight: 600; font-size: 23px; color: #F4ECE0; white-space: nowrap; }
 .stats-view .sub span { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #8C7660; font-weight: 600; }

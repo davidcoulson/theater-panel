@@ -58,7 +58,7 @@ export async function gameEntities() {
 
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
 // Anything left out simply doesn't appear on the page.
-export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuPower', 'gpuFan',
+export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
   'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
@@ -90,6 +90,21 @@ export function recordStats(ha) {
   }, 60000).unref();
 }
 
+// A virtual machine can't see its processor's real clock (Windows reports the nominal speed), but
+// the host can. When the PC is a VM on the machine this server runs on, pc.hostCpus lists the host
+// CPUs its cores are pinned to, and this gives their average clock in MHz from /proc/cpuinfo.
+export async function hostClock() {
+  const cpus = (await loadGames().catch(() => null))?.pc?.hostCpus;
+  if (!cpus?.length) return { mhz: null };
+  const text = await readFile('/proc/cpuinfo', 'utf8').catch(() => '');
+  const mhz = [];
+  for (const block of text.split(/\n\s*\n/)) {
+    const cpu = /^processor\s*:\s*(\d+)/m.exec(block), speed = /^cpu MHz\s*:\s*([\d.]+)/m.exec(block);
+    if (cpu && speed && cpus.includes(Number(cpu[1]))) mhz.push(Number(speed[1]));
+  }
+  return { mhz: mhz.length ? Math.round(mhz.reduce((a, b) => a + b, 0) / mhz.length) : null };
+}
+
 export async function gamesState() {
   const g = await loadGames();
   if (!g) return { configured: false };
@@ -105,6 +120,7 @@ export async function gamesState() {
       canLaunch: Boolean(g.pc.launchScript),
       stats: g.pc.stats || null,
       hour: g.pc.stats ? [...hour] : null,
+      hostClock: Boolean(g.pc.hostCpus?.length),
     } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
