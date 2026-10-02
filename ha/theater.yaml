@@ -756,6 +756,57 @@ automation:
         data:
           command: "am start -n com.spocky.projengmenu/.ui.home.MainActivity"
 
+  # The projector stays on the network around the clock (the plugin's stay-on guards), so dropping
+  # off it means a standby nobody asked for. Say so when it goes, and when it is back, what HDMI-CEC
+  # carried just before (the plugin keeps that across the cold boot).
+  - id: theater_projector_dropped_off
+    alias: "Theater: projector dropped off the network"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.aurora_pro_projector_connectivity
+        to: "unavailable"
+        for: "00:03:00"
+    actions:
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Projector offline"
+          message: >-
+            The theater projector dropped off the network at
+            {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%-I:%M %p') }}.
+            Probably a standby; only HDMI-CEC (the Apple TV) or its remote can wake it.
+
+  # "Last boot" moving to a fresh time means the projector booted: after a standby, or mains.
+  # A Kiosk Satellite restart or an HA restart brings the same boot time back, which is not news.
+  - id: theater_projector_rebooted
+    alias: "Theater: projector rebooted"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.home_theater_nexigo_aurora_pro_last_boot
+    conditions:
+      - condition: template
+        value_template: >-
+          {% set b = as_datetime(trigger.to_state.state) %}
+          {{ b is not none and (now() - b).total_seconds() < 600
+             and trigger.from_state is not none and trigger.from_state.state != trigger.to_state.state }}
+    actions:
+      # The plugin publishes its record of the CEC before the boot a few seconds after it starts.
+      - wait_template: >-
+          {{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_cec_before_last_boot')
+             not in ['unknown', 'unavailable', ''] }}
+        timeout: "00:02:00"
+      - action: notify.mobile_app_davids_iphone
+        data:
+          title: "Projector back online"
+          message: >-
+            The theater projector booted at
+            {{ as_timestamp(trigger.to_state.state) | timestamp_custom('%-I:%M %p') }}.
+            Before it went down: {{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_cec_before_last_boot') }}
+      # Single mode and this hold: a Kiosk Satellite restart soon after a boot brings "Last boot"
+      # back a second off, which must not notify again.
+      - delay: "00:10:00"
+
   # A cold boot lights the laser with the boot animation and leaves it on. The projector cannot
   # be told to boot dark, but the plugin's switch coming back is the moment to decide: with no
   # source awake, blank it (the front bar goes to its standby lights). A boot caused by the Apple
