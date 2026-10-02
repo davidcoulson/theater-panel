@@ -73,7 +73,7 @@ function demoValues() {
   return { ...d, game: 'Cyberpunk 2077', uptime: null };
 }
 
-const demoHour = () => Array.from({ length: 60 }, (_, i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
+const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
 
 // The highest value seen in the last minute, for the dials' red marker.
 function usePeak(value, ms = 60000) {
@@ -190,18 +190,32 @@ const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value
 const GPU_WATTS = 600;
 const PowerBar = ({ value }) => html`<${LampBar} label="GPU" lit=${Math.round(clamp(value / GPU_WATTS) * LAMPS)}>${r0(value)}<small> W</small><//>`;
 
-// The last hour as a film strip: one frame a minute, brighter is busier, red is flat out; an idle
-// minute is a faint amber and a minute with no reading (the PC was off) stays dark.
+// The PC's recent load as a film strip of 60 frames: brighter is busier, red is flat out; an idle
+// frame is a faint amber and one with no reading (the PC was off) stays dark. The server keeps a
+// sample every ten seconds for an hour. A strip that has only just started shows ten seconds a
+// frame, so it fills in ten minutes; as the recording grows each frame covers more, up to a
+// minute a frame for the whole hour.
 function frameStyle(v) {
   if (v == null) return '';
   const f = clamp(v / 100);
   const col = f > 0.9 ? `rgb(232,${Math.round(96 - 30 * f)},40)` : `rgb(${Math.round(104 + 126 * f)},${Math.round(66 + 100 * f)},${Math.round(30 + 50 * f)})`;
   return `background:${col};opacity:${(0.5 + 0.5 * f).toFixed(2)}`;
 }
-function FilmStrip({ hour }) {
-  const frames = [...Array(Math.max(0, 60 - hour.length)).fill(null), ...hour.slice(-60)];
-  return html`<div class="film">${frames.map((v) => html`<i><b style=${frameStyle(v)}></b></i>`)}</div>
-    <div class="ax"><span>60 min ago</span><span>45</span><span>30</span><span>15</span><span>now</span></div>`;
+const FRAMES = 60;
+function FilmStrip({ samples }) {
+  const first = samples.findIndex((v) => v != null);
+  const live = first < 0 ? [] : samples.slice(first);          // the recording, from its first reading
+  const per = Math.min(6, Math.max(1, Math.ceil(live.length / FRAMES)));   // samples in a frame
+  const shown = live.slice(-FRAMES * per);
+  const pad = FRAMES * per - shown.length;
+  const frames = Array.from({ length: FRAMES }, (_, f) => {
+    const vals = shown.slice(Math.max(0, f * per - pad), Math.max(0, (f + 1) * per - pad)).filter((v) => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  });
+  const minutes = per * 10, mark = (f) => `${+(minutes * f).toFixed(1)}`;
+  return html`<h3>${per === 6 ? 'The last hour' : `The last ${minutes} minutes`} <small>${per === 6 ? 'one frame a minute' : `one frame every ${per * 10} seconds`} · brighter is busier</small></h3>
+    <div class="film">${frames.map((v) => html`<i><b style=${frameStyle(v)}></b></i>`)}</div>
+    <div class="ax"><span>${minutes} min ago</span><span>${mark(0.75)}</span><span>${mark(0.5)}</span><span>${mark(0.25)}</span><span>now</span></div>`;
 }
 
 // Fire behind the instruments once the PC is working: the old "Doom fire" - a small grid of heat
@@ -260,7 +274,7 @@ export function Stats() {
   useEffect(() => {
     if (demo) { setHour(demoHour()); return undefined; }
     setHour(g?.pc?.hour || null);
-    const t = setInterval(() => get('/api/games').then((n) => setHour(n?.pc?.hour || null)).catch(() => {}), 60000);
+    const t = setInterval(() => get('/api/games').then((n) => setHour(n?.pc?.hour || null)).catch(() => {}), 10000);
     return () => clearInterval(t);
   }, [g, demo]);
 
@@ -320,6 +334,6 @@ export function Stats() {
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
-    ${hour && html`<section class="tile strip"><h3>The last hour <small>one frame a minute · brighter is busier</small></h3><${FilmStrip} hour=${hour} /></section>`}`}
+    ${hour && html`<section class="tile strip"><${FilmStrip} samples=${hour} /></section>`}`}
   </main>`;
 }
