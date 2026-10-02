@@ -27,6 +27,9 @@ export function Lobby() {
   const tv = useEntity(ents.appleTv);
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
+  // Steam downloads on the gaming PC, for a pill of their own.
+  const [gamesHead] = useLoad(() => get('/api/games').catch(() => null), []);
+  const steamDl = gamesHead?.pc?.downloads || [];
   const arrivals = useArrivals();
   const [streamsOpen, setStreamsOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
@@ -49,6 +52,7 @@ export function Lobby() {
       <button type="button" class="chip" onClick=${() => go('pick')}><${Icon} name="dice" size=${20} />Movie night</button>
       <${SleepChip} />
       ${downloading > 0 && html`<button type="button" class="chip warn" onClick=${() => go('request')}><${Icon} name="dl" size=${20} />${downloading} downloading</button>`}
+      ${steamDl.length > 0 && html`<button type="button" class="chip warn" onClick=${() => go('games')}><${Icon} name="pad" size=${20} />${steamDl.length === 1 ? `${steamDl[0].name} · ${steamDl[0].percent}%` : `${steamDl.length} games downloading`}</button>`}
     <//>
     <div class="lobby-grid">
       <${Continue} />

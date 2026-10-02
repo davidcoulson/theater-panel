@@ -291,6 +291,11 @@ input.range.thin { height: 40px; }
 .pc-ops .btn.danger { border-color: #B3261B; color: #F2B8A0; }
 .pc-ops .btn:disabled { opacity: .4; }
 .pc-ops .note { width: 100%; font-size: 14px; color: var(--on-choc2); }
+.pc .hk { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #F2C98A; }
+.pc .dl .t { display: flex; justify-content: space-between; font-size: 16px; color: #C7B39E; margin-bottom: 6px; }
+.pc .dl .t b { color: #F4ECE0; } .pc .dl .t small { color: #8C7660; font-weight: 500; }
+.pc .dl .b { height: 10px; border-radius: 5px; background: rgba(244,236,224,.1); overflow: hidden; }
+.pc .dl .b i { display: block; height: 100%; border-radius: 5px; background: var(--gold); transition: width 1.5s ease; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: #A89C8E; margin-right: 8px; }
 .dot.on { background: #4F8A55; }
 

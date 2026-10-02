@@ -60,7 +60,7 @@ export async function gameEntities() {
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
 // Anything left out simply doesn't appear on the page.
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
-  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream'];
+  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream', 'downloads', 'updates'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
@@ -198,7 +198,7 @@ function unraid(query, variables) {
 }
 const vmConfigured = () => Boolean(config.unraid.url && config.unraid.apiKey && config.unraid.vm);
 let vmCache = null;   // { at, vm: { id, state } }
-export const vmNow = async () => ({ ...(await vmState()), streamingTo: streamingTo(await loadGames().catch(() => null)) });
+export const vmNow = async () => { const g = await loadGames().catch(() => null); return { ...(await vmState()), streamingTo: streamingTo(g), downloads: steamDownloads(g), housekeeping: housekeeping(g) }; };
 export async function vmState() {
   if (!vmConfigured()) return null;
   if (vmCache && Date.now() - vmCache.at < 4000) return vmCache.vm;
@@ -216,6 +216,22 @@ export async function vmPower(op) {
   await unraid(`mutation ($id: PrefixedID!) { vm { ${op}(id: $id) } }`, { id: vm.id });
   vmCache = null;
   return { state: VM_OPS[op] };
+}
+
+const sensorText = (g, role) => { const id = g?.pc?.stats?.[role], v = id && haRef?.states?.[id]?.state; return v && !['unknown', 'unavailable'].includes(String(v).toLowerCase()) ? String(v) : ''; };
+function steamDownloads(g) {
+  return sensorText(g, 'downloads').split(';').filter(Boolean).map((line) => {
+    const [name, pct, mb] = line.split('|');
+    return { name, percent: Number(pct) || 0, mbLeft: Number(mb) || 0 };
+  });
+}
+// "reboot", "N updates", "ok" or "" (no sensor).
+function housekeeping(g) {
+  const v = sensorText(g, 'updates');
+  if (!v || v === 'ok' || v === 'unknown') return null;
+  if (v === 'reboot') return { kind: 'reboot', text: 'Windows is waiting to restart' };
+  const n = Number(v.split(' ')[0]);
+  return n > 0 ? { kind: 'updates', text: `${n} Windows update${n === 1 ? '' : 's'} waiting` } : null;
 }
 
 // The Moonlight client the PC is streaming to, by name when known, from the stream role's sensor.
@@ -244,6 +260,8 @@ export async function gamesState() {
       hostClock: Boolean(g.pc.hostCpus?.length),
       vm: vmConfigured() ? await vmState().catch((e) => ({ state: 'unknown', error: e.message })) : null,
       playing: await steamNow(),
+      // Steam downloads in progress (name, percent, MB left) and Windows housekeeping, from the VM's sensors.
+      downloads: steamDownloads(g), housekeeping: housekeeping(g),
       streamingTo: streamingTo(g),
       // What to call the parts on the Stats page; without these it reads the models from the sensors' names.
       gpuName: g.pc.gpuName || null, cpuName: g.pc.cpuName || null,
