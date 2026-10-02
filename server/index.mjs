@@ -19,7 +19,7 @@ import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue, musicProviders } from './actions.mjs';
-import { gameEntities, gamesState, steamLibrary } from './games.mjs';
+import { gameEntities, gamesState, recordStats, steamLibrary } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
@@ -57,6 +57,7 @@ const TYPES = {
 const gameEntitiesSafe = () => gameEntities().catch((e) => { console.warn('[games] config unreadable:', e.message); return []; });
 let entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
 const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entities });
+recordStats(ha);
 
 // After the admin page saves: reconnect HA if its URL, token or the entity list changed, and tell
 // open panels to reload their settings.
