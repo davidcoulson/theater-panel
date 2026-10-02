@@ -65,12 +65,12 @@ function statEntities(g) {
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
 }
 
-// The Stats page's film strip: the last hour, one number a minute - the busier of GPU and CPU
-// load, in percent, or null for a minute with no reading (the PC was off). Kept in memory, so it
-// starts again with the server.
-const HOUR = 60;
+// The Stats page's film strip: the last hour as one number every ten seconds - the busier of GPU
+// and CPU load, in percent, or null for ten seconds with no reading (the PC was off). The page
+// groups them into its 60 frames. Kept in memory, so it starts again with the server.
+const SAMPLES = 360;
 const hour = [];
-let minute = [];
+let bucket = [];
 export function recordStats(ha) {
   const load = (id) => {
     const st = id && ha.states[id]?.state;
@@ -81,13 +81,13 @@ export function recordStats(ha) {
     const st = (await loadGames().catch(() => null))?.pc?.stats;
     if (!st) return;
     const gpu = load(st.gpuLoad), cpu = load(st.cpuLoad);
-    if (gpu != null || cpu != null) minute.push(Math.max(gpu ?? 0, cpu ?? 0));
+    if (gpu != null || cpu != null) bucket.push(Math.max(gpu ?? 0, cpu ?? 0));
   }, 5000).unref();
   setInterval(() => {
-    hour.push(minute.length ? Math.round(minute.reduce((a, b) => a + b, 0) / minute.length) : null);
-    minute = [];
-    while (hour.length > HOUR) hour.shift();
-  }, 60000).unref();
+    hour.push(bucket.length ? Math.round(bucket.reduce((a, b) => a + b, 0) / bucket.length) : null);
+    bucket = [];
+    while (hour.length > SAMPLES) hour.shift();
+  }, 10000).unref();
 }
 
 // A virtual machine can't see its processor's real clock (Windows reports the nominal speed), but
