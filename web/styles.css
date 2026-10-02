@@ -465,12 +465,15 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .st-row .big h3 { align-self: flex-start; }
 .st-row .side { flex: 1; }
 .st-row .side .fuels + h3, .st-row .side .net + h3 { margin-top: 24px; }
-.stats-view svg.dial { width: 408px; height: 408px; display: block; border-radius: 50%; box-shadow: 0 14px 22px rgba(0,0,0,.6); }
-.stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 25px; text-anchor: middle; dominant-baseline: middle; }
-.stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 22px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #5F4A32; }
-.stats-view svg .val { font-family: var(--mono); font-weight: 600; font-size: 37px; text-anchor: middle; dominant-baseline: middle; fill: #F3D9A0; }
-.stats-view svg .val .unit { font-size: 20px; fill: #B88A45; }
+.stats-view svg.dial { width: 408px; height: 408px; display: block; }
+.stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
+.stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #9C8672; }
+.stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 22px; text-anchor: middle; dominant-baseline: middle; }
+.stats-view svg .val { font-family: var(--disp); font-weight: 800; font-size: 76px; text-anchor: middle; dominant-baseline: middle; fill: #F4ECE0; }
+.stats-view svg .val .unit { font-size: 32px; fill: #9C8672; }
 .stats-view svg .turn { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1.6s cubic-bezier(.3, 1.35, .5, 1); }
+.stats-view svg .band { transition: stroke-dasharray 1.6s ease; }
+.stats-view svg .band.glow { opacity: .22; }
 .stats-view .sub { display: flex; gap: 28px; margin-top: 6px; }
 .stats-view .sub div { text-align: center; }
 .stats-view .sub b { display: block; font-family: var(--mono); font-weight: 600; font-size: 23px; color: #F4ECE0; white-space: nowrap; }
@@ -478,8 +481,7 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .fuels { display: flex; gap: 16px; margin-top: 10px; justify-content: center; }
 .stats-view .fuel { margin: 0; text-align: center; }
 .stats-view .fuel svg { width: 262px; display: block; }
-.stats-view .fuel .num { font-size: 20px; }
-.stats-view .fuel .lbl { font-size: 15px; }
+.stats-view .fuel .num { font-size: 19px; }
 .stats-view .fuel figcaption { font-family: var(--mono); font-weight: 600; font-size: 24px; color: #F4ECE0; margin-top: 6px; }
 .stats-view .fuel small, .stats-view .net small { font-size: 14px; color: #8C7660; }
 .stats-view .net { display: flex; align-items: center; gap: 14px; margin-top: 16px; font-weight: 600; color: #C7B39E; }
