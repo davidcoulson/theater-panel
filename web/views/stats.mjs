@@ -118,7 +118,8 @@ const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PA
 
 // A load dial, 0-100, on a dark face. A glowing band fills round the rim to the reading, amber
 // turning red; the ticks it has passed light up; a faint inner band marks the last minute's range.
-// Under the hub are the reading, the part's temperature and the last minute as a line. The needle and the band move with
+// The reading sits above the hub (the needle passes over it); under the hub are the part's
+// temperature and the last minute as a line. The needle and the band move with
 // CSS transitions. Drawn on a 400 grid.
 const SWEEP = 135, DIAL_RED = 85;
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
@@ -129,7 +130,7 @@ function Dial({ id, value, temp, trail = [], label = 'Load' }) {
   const lo = trail.length ? Math.min(...trail, v) : v, hi = trail.length ? Math.max(...trail, v) : v;
   // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
   const mid = (lo + hi) / 2, span = Math.max(12, hi - lo);
-  const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (TRAIL - 1)) * 152).toFixed(1)} ${(c + 146 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
+  const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (trail.length - 1)) * 152).toFixed(1)} ${(c + 146 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
   return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
       <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
@@ -146,12 +147,12 @@ function Dial({ id, value, temp, trail = [], label = 'Load' }) {
       return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${col} stroke-width=${major ? 2.8 : 1.4} stroke-linecap="round" />
         ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill=${t >= DIAL_RED ? '#E0674A' : '#9C8672'}>${t}</text>`}`;
     })}
+    <text x=${c} y=${c - 62} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
+    ${temp != null && html`<text x=${c} y=${c + 80} class="temp" fill=${temp >= 80 ? '#E0674A' : '#E8A06A'}>${degF(temp)}</text>`}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
       <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 150} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
     <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${AMBER} stroke-width="2.6" />
-    <text x=${c} y=${c + 64} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
-    ${temp != null && html`<text x=${c} y=${c + 112} class="temp" fill=${temp >= 80 ? '#E0674A' : '#E8A06A'}>${degF(temp)}</text>`}
     <line x1=${c - 76} y1=${c + 162} x2=${c + 76} y2=${c + 162} stroke=${TRACK} stroke-width="1.5" />
     ${line && html`<path d=${line} stroke=${AMBER} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
   </svg>`;

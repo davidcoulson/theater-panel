@@ -468,8 +468,8 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view svg.dial { width: 408px; height: 408px; display: block; }
 .stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
 .stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #9C8672; }
-.stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 22px; text-anchor: middle; dominant-baseline: middle; }
-.stats-view svg .val { font-family: var(--disp); font-weight: 800; font-size: 76px; text-anchor: middle; dominant-baseline: middle; fill: #F4ECE0; }
+.stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 34px; text-anchor: middle; dominant-baseline: middle; }
+.stats-view svg .val { font-family: var(--disp); font-weight: 800; font-size: 66px; text-anchor: middle; dominant-baseline: middle; fill: #F4ECE0; }
 .stats-view svg .val .unit { font-size: 32px; fill: #9C8672; }
 .stats-view svg .turn { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1.6s cubic-bezier(.3, 1.35, .5, 1); }
 .stats-view svg .band { transition: stroke-dasharray 1.6s ease; }
