@@ -1,7 +1,7 @@
 // Games: switch the projector to a console (through the HDMI switcher) or the gaming PC, browse
 // and launch the Steam library, and watch the PC's temperatures and load.
 
-import { useState, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Poster, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useEntity, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
@@ -68,15 +68,40 @@ export function Games() {
 
 const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
 
+// The VM's state is polled from the server; a Home Assistant power entity is used when set instead.
+const VM_WORDS = { running: 'Running', shutoff: 'Off', shutdown: 'Shutting down', paused: 'Paused', pmsuspended: 'Suspended', crashed: 'Crashed', missing: 'VM not found', unknown: 'Unreachable', starting: 'Starting', 'shutting down': 'Shutting down' };
 function PcPanel({ pc }) {
   const power = useEntity(pc.power);
-  const on = power && power.state === 'on';
+  const [vm, setVm] = useState(pc.vm);
+  const [armed, setArmed] = useState(false);   // the off button needs a second tap
+  useEffect(() => {
+    if (!pc.vm) return undefined;
+    const read = () => get('/api/games/vm').then(setVm).catch(() => {});
+    const t = setInterval(read, 5000);
+    return () => clearInterval(t);
+  }, [pc.vm]);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 6000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  const state = pc.power ? (power ? (power.state === 'on' ? 'running' : 'shutoff') : 'unknown') : vm?.state;
+  const on = state === 'running' || state === 'paused' || state === 'shutdown' || state === 'starting';
+  const busy = state === 'shutdown' || state === 'starting' || state === 'shutting down';
+  const canPower = Boolean(pc.power || pc.vm);
+  const press = async () => {
+    if (busy) return;
+    if (on && !armed) { setArmed(true); return; }
+    setArmed(false);
+    await act({ action: 'game_pc_power', on: !on });
+    setVm((v) => v && { ...v, state: on ? 'shutting down' : 'starting' });
+  };
   return html`<aside class="pc dark tx-suede">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div><div class="eyebrow">${pc.power ? (on ? 'Running' : power ? power.state : 'Unknown') : 'Stats'}</div>
+      <div><div class="eyebrow">${armed ? 'Tap again to shut down' : canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
         <div style="font-family:var(--disp);font-weight:800;font-size:44px;line-height:1;text-transform:uppercase">${pc.name}</div></div>
-      ${pc.power && html`<button type="button" class=${`power ${on ? 'on' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Turn PC off' : 'Turn PC on'}
-        onClick=${() => act({ action: 'game_pc_power', on: !on })}><${Icon} name="power" size=${34} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} /></button>`}
+      ${canPower && html`<button type="button" class=${`power ${on ? 'on' : ''} ${armed ? 'armed' : ''} ${busy ? 'busy' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Shut the PC down' : 'Start the PC'}
+        onClick=${press}><${Icon} name="power" size=${34} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} /></button>`}
     </div>
     <div class="stats">${pc.sensors.map((s) => html`<${Stat} s=${s} />`)}</div>
     ${!pc.sensors.length && html`<div class="empty" style="color:var(--on-choc2)">Add the PC's sensors to games.json to show them here.</div>`}

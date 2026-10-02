@@ -259,6 +259,8 @@ function build(env) {
   },
   // Steam library on the Games screen (Steam Web API key and 64-bit SteamID).
   steam: { apiKey: env.STEAM_API_KEY || '', id: env.STEAM_ID || '' },
+  // The gaming PC as an Unraid VM: its API (an API key with VM read/update) starts and stops it.
+  unraid: { url: (env.UNRAID_URL || '').replace(/\/+$/, ''), apiKey: env.UNRAID_API_KEY || '', vm: env.UNRAID_VM || '' },
   // How far back the "Now in Plex" chip looks for requests that arrived.
   arrivalHours: Math.min(Number(env.ARRIVAL_HOURS) || 48, 24 * 14),
   // Minutes without a touch before the panel drifts to the Now Showing screen (0 = never).

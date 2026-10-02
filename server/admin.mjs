@@ -83,6 +83,9 @@ export const FIELDS = [
 
   { group: 'Projector apps', key: 'PROJECTOR_APPS', label: 'Apps', type: 'apps', help: 'Open on the projector over ADB. The package is the Android app id.' },
 
+  { group: 'Games', key: 'UNRAID_URL', label: 'Unraid address', type: 'text', placeholder: 'http://10.0.0.2', help: 'When the gaming PC is a VM on an Unraid server: the server\'s web address. The Games page then starts and shuts the VM down.' },
+  { group: 'Games', key: 'UNRAID_API_KEY', label: 'Unraid API key', type: 'secret', help: 'An Unraid API key that can read and update VMs (Settings > Management Access > API keys, or `unraid-api apikey --create`).' },
+  { group: 'Games', key: 'UNRAID_VM', label: 'VM name', type: 'text', placeholder: 'Windows 11', help: 'The VM\'s name in Unraid.' },
   { group: 'Games', key: 'STEAM_API_KEY', label: 'Steam Web API key', type: 'secret', help: 'steamcommunity.com/dev/apikey' },
   { group: 'Games', key: 'STEAM_ID', label: 'SteamID64', type: 'text' },
 

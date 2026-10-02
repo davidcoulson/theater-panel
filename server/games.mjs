@@ -9,6 +9,7 @@
 // Either kind may also run an HA script (wake a console, start Steam Big Picture...).
 
 import { readFile, readdir } from 'node:fs/promises';
+import { request } from 'node:https';
 import { config, settings } from './config.mjs';
 
 const file = process.env.GAMES_CONFIG || './config/games.json';
@@ -152,6 +153,53 @@ async function hostCpuTemp() {
   return Number.isFinite(milli) && milli > 0 ? Math.round(milli / 100) / 10 : null;
 }
 
+// ---------- the PC as an Unraid VM ----------
+
+// Unraid's GraphQL API: the VM's state, and start / stop (stop asks Windows to shut down).
+// Unraid answers on HTTPS with a certificate for its unraid.net name, not its address, so the
+// request is made with node:https and the certificate is not checked: the key, not the
+// certificate, is what proves we are talking to the right server on the house network.
+function unraid(query, variables) {
+  const { url, apiKey } = config.unraid;
+  const target = new URL('/graphql', url.startsWith('http') ? url : `https://${url}`);
+  if (target.protocol === 'http:') target.protocol = 'https:';
+  const body = JSON.stringify({ query, variables });
+  return new Promise((resolve, reject) => {
+    const req = request(target, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), 'x-api-key': apiKey }, rejectUnauthorized: false, timeout: 8000 }, (res) => {
+      let text = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { text += c; });
+      res.on('end', () => {
+        let j = {};
+        try { j = JSON.parse(text); } catch {}
+        if (res.statusCode !== 200 || j.errors?.length) reject(new Error(j.errors?.[0]?.message || `Unraid API ${res.statusCode}`));
+        else resolve(j.data);
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('Unraid API timed out')));
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+const vmConfigured = () => Boolean(config.unraid.url && config.unraid.apiKey && config.unraid.vm);
+let vmCache = null;   // { at, vm: { id, state } }
+export async function vmState() {
+  if (!vmConfigured()) return null;
+  if (vmCache && Date.now() - vmCache.at < 4000) return vmCache.vm;
+  const d = await unraid('{ vms { domain { id name state } } }');
+  const dom = d?.vms?.domain?.find((v) => v.name === config.unraid.vm);
+  const vm = dom ? { id: dom.id, state: String(dom.state || '').toLowerCase() } : { id: null, state: 'missing' };
+  vmCache = { at: Date.now(), vm };
+  return vm;
+}
+export async function vmPower(on) {
+  const vm = await vmState();
+  if (!vm?.id) throw new Error(`No VM called ${config.unraid.vm} on the Unraid server`);
+  await unraid(`mutation ($id: PrefixedID!) { vm { ${on ? 'start' : 'stop'}(id: $id) } }`, { id: vm.id });
+  vmCache = null;
+  return { state: on ? 'starting' : 'shutting down' };
+}
+
 export async function gamesState() {
   const g = await loadGames();
   if (!g) return { configured: false };
@@ -168,6 +216,7 @@ export async function gamesState() {
       stats: g.pc.stats || null,
       hour: g.pc.stats ? [...hour] : null,
       hostClock: Boolean(g.pc.hostCpus?.length),
+      vm: vmConfigured() ? await vmState().catch((e) => ({ state: 'unknown', error: e.message })) : null,
       // What to call the parts on the Stats page; without these it reads the models from the sensors' names.
       gpuName: g.pc.gpuName || null, cpuName: g.pc.cpuName || null,
     } : null,
@@ -200,6 +249,7 @@ export async function selectSource(ha, id) {
 
 export async function pcPower(ha, on) {
   const g = await loadGames();
+  if (!g?.pc?.power && vmConfigured()) return vmPower(on);
   if (!g?.pc?.power) throw new Error('No PC power entity set in games.json');
   return ha.callService('homeassistant', on ? 'turn_on' : 'turn_off', {}, { target: { entity_id: g.pc.power } });
 }
