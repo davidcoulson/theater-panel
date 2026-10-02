@@ -101,6 +101,9 @@ function build(opts) {
     // here: HA's intent_script calls esphome.theater_panel_voice, waits for this to change, and
     // reads it. It is cleared to "…" first so the same answer twice still counts as a change.
     voiceAnswer: d.textSensor({ name: 'Voice answer', icon: 'mdi:message-reply-text', category: 'diagnostic', state: '' }),
+    // The gaming PC, when it is an Unraid VM: off / starting / running / streaming to <client> / shutting down.
+    pc: d.textSensor({ name: 'Gaming PC', icon: 'mdi:desktop-tower', state: '' }),
+    pcGame: d.textSensor({ name: 'Game', icon: 'mdi:controller', state: '' }),
     update: d.update({ name: 'Panel image', title: 'Theater panel', category: 'diagnostic' }, async (what) => {
       // The image is pulled by Unraid, not by the panel: hand the request to HA as an event so an
       // automation can run the container update, and re-check GHCR either way.
@@ -182,6 +185,12 @@ async function pushVersion(force = false) {
 }
 
 // Hooks from the server: sessions and streams from the Plex poll, the sleep timer, HA states.
+// The PC's state and game, from the Games module's poll.
+export function pc(info) {
+  if (!dev) return;
+  ent.pc.set(info.state || '');
+  ent.pcGame.set(info.game || '');
+}
 export function sessions(sessionsNow, streamsNow) { last = { sessions: sessionsNow, streams: streamsNow }; refresh(); }
 // The evening's plan for any dashboard outside the room: "Title · 8:00 PM", "Title · now", or blank.
 let tonightText = '';
