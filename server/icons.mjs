@@ -105,7 +105,18 @@ export async function iconSvg(ha, prefix, name) {
 }
 
 // Iconify bodies are plain SVG shapes; drop anything active just in case.
-const stripScripts = (body) => body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/\son\w+="[^"]*"/gi, '').replace(/(href|xlink:href)="(?!#)[^"]*"/gi, '');
+// Repeated until nothing changes, so a tag split around a removed one cannot reassemble; the
+// response's CSP (default-src 'none'; sandbox) is the real guard, this is belt and braces.
+const stripScripts = (body) => {
+  let out = String(body); let prev;
+  do {
+    prev = out;
+    out = out.replace(/<\s*\/?\s*(script|foreignObject|iframe|object|embed)\b[^>]*>/gi, '')
+      .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/\s(?:xlink:)?href\s*=\s*("(?!#)[^"]*"|'(?!#)[^']*'|(?![#"'])[^\s>]+)/gi, '');
+  } while (out !== prev);
+  return out;
+};
 
 // ---------- search ----------
 

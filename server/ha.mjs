@@ -4,6 +4,10 @@
 
 import { EventEmitter } from 'node:events';
 
+// What an entity id looks like; anything else from the socket is ignored rather than becoming a
+// property name (no "__proto__").
+const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
+
 export class HomeAssistant extends EventEmitter {
   constructor({ url, token, entities }) {
     super();
@@ -95,7 +99,7 @@ export class HomeAssistant extends EventEmitter {
 
   #onMessage(msg) {
     if (msg.type === 'auth_required') return this.#send({ type: 'auth', access_token: this.token });
-    if (msg.type === 'auth_invalid') { console.error('[ha] auth rejected:', msg.message); this.ws.close(); return; }
+    if (msg.type === 'auth_invalid') { console.error('[ha] auth rejected:', JSON.stringify(String(msg.message ?? ''))); this.ws.close(); return; }
     if (msg.type === 'auth_ok') {
       this.connected = true;
       this.retryMs = 1000;
@@ -125,10 +129,12 @@ export class HomeAssistant extends EventEmitter {
   #applyEntityEvent(ev) {
     const changed = [];
     for (const [id, s] of Object.entries(ev.a || {})) {
+      if (!ENTITY_ID.test(id)) continue;
       this.states[id] = { state: s.s, attributes: s.a || {}, last_changed: toIso(s.lc) };
       changed.push(id);
     }
     for (const [id, d] of Object.entries(ev.c || {})) {
+      if (!ENTITY_ID.test(id)) continue;
       const cur = this.states[id] || { state: null, attributes: {}, last_changed: null };
       const plus = d['+'] || {};
       if ('s' in plus) cur.state = plus.s;
@@ -138,7 +144,7 @@ export class HomeAssistant extends EventEmitter {
       this.states[id] = cur;
       changed.push(id);
     }
-    for (const id of ev.r || []) { delete this.states[id]; changed.push(id); }
+    for (const id of ev.r || []) { if (!ENTITY_ID.test(id)) continue; delete this.states[id]; changed.push(id); }
     if (changed.length) this.emit('states', Object.fromEntries(changed.map((id) => [id, this.states[id] || null])));
   }
 

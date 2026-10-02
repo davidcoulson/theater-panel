@@ -336,7 +336,8 @@ const F = () => html`${Rail(2)}
     </div>
   </main>`;
 
-render(({ a: A, b: B, c: C, d: D, e: E, f: F }[v] || A)(), document.getElementById('page'));
+const PAGES = { a: A, b: B, c: C, d: D, e: E, f: F };
+render((Object.hasOwn(PAGES, v) ? PAGES[v] : A)(), document.getElementById('page'));
 </script>
 </body>
 </html>
