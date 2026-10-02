@@ -174,7 +174,7 @@ function CoreMeters({ loads, clocks = [] }) {
     <div class="segs">${Array.from({ length: SEGS }, (_, k) => {
       const zone = k >= SEGS * 0.85 ? 'r' : k >= SEGS * 0.65 ? 'a' : 'g';
       return html`<i class=${`${zone} ${k < lit[i] || k === peaks[i] - 1 ? 'on' : ''}`}></i>`;
-    })}</div><span>${clocks[i] > 0 ? (clocks[i] / 1000).toFixed(1) : i + 1}</span></div>`)}</div>`;
+    })}</div><span>${clocks[i] > 0 ? html`${(clocks[i] / 1000).toFixed(1)}<small> GHz</small>` : i + 1}</span></div>`)}</div>`;
 }
 
 // A row of lamps with its reading. With nothing lit the first lamp glows dimly, as a pilot light.
@@ -276,7 +276,7 @@ export function Stats() {
         ${has(s.gpuPower) && html`<h3>Power</h3><${PowerBar} value=${s.gpuPower} />`}
       </section>
     </div>
-    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>${coreClocks.length ? 'load, with each core\'s clock in GHz' : 'peak hold'}</small></h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
+    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>peak hold</small></h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
     ${hour && html`<section class="tile strip"><h3>The last hour <small>one frame a minute · brighter is busier</small></h3><${FilmStrip} hour=${hour} /></section>`}`}
   </main>`;
 }
