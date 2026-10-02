@@ -44,6 +44,7 @@ export function Games() {
 
   return html`<main class="view" style="touch-action:pan-y" onPointerDown=${down} onPointerUp=${up}>
     <${Header} title="Games" kicker="HDMI switcher · Gaming PC">
+      ${g?.pc && html`<${DesktopChip} />`}
       ${g?.pc && html`<${GameLightsChip} />`}
       ${g?.pc && html`<button type="button" class="chip" onClick=${() => go('stats')}><${Icon} name="chart" size=${20} />PC stats<${Icon} name="chev" size=${18} /></button>`}
     <//>
@@ -68,6 +69,15 @@ export function Games() {
 }
 
 const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
+
+// "Windows desktop": the PC on the wall with the lights up, for the admin only (shown while the
+// admin room sensor puts them at this panel).
+function DesktopChip() {
+  const adminRoom = useStore((s) => s.ui?.adminRoom);
+  const at = useEntity(useStore((s) => s.entities.adminRoomSensor))?.state;
+  if (!adminRoom || !at || at.toLowerCase() !== adminRoom.toLowerCase()) return null;
+  return html`<button type="button" class="chip" onClick=${() => act({ action: 'game_pc_desktop' })}><${Icon} name="screen" size=${20} />Windows desktop</button>`;
+}
 
 // Lights follow the game: a switch kept on the server (GAME_LIGHTS), shared with Home Assistant.
 function GameLightsChip() {
