@@ -58,6 +58,13 @@ const gameEntitiesSafe = () => gameEntities().catch((e) => { console.warn('[game
 let entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
 const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entities });
 recordStats(ha);
+// The PC as a Home Assistant sensor: its VM state, who it streams to, and the game being played.
+setInterval(async () => {
+  const vm = await vmNow().catch(() => null);
+  if (!vm?.state) return;
+  const g = await gamesState().catch(() => null);
+  hass.pc({ state: vm.state === 'running' && vm.streamingTo ? `streaming to ${vm.streamingTo}` : vm.state, game: g?.pc?.playing?.name || '' });
+}, 15000).unref();
 
 // After the admin page saves: reconnect HA if its URL, token or the entity list changed, and tell
 // open panels to reload their settings.
