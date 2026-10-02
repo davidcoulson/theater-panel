@@ -463,7 +463,7 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view h3 small { letter-spacing: 1px; text-transform: none; font-weight: 500; color: #8C7660; margin-left: 10px; font-size: 14px; }
 .st-row { display: flex; gap: 18px; }
 .st-row .big { width: 536px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
-.st-row .big h3 { align-self: flex-start; }
+.st-row .big h3 { align-self: stretch; }
 .st-row .side { flex: 1; }
 .st-row .side .fuels + h3, .st-row .side .net + h3 { margin-top: 24px; }
 .stats-view svg.dial { width: 408px; height: 408px; display: block; }
