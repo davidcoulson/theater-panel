@@ -1,12 +1,13 @@
 // Gaming PC stats, dressed as the projection booth's instruments: brass needle dials for GPU and
 // CPU load, fuel gauges for memory, lamps for the network and GPU draw, LED meters for the cores, and the last hour as
-// a film strip. The page's accent warms from amber to red as the GPU works harder. Numbers come
+// a film strip. The page's accent warms from amber to red as the GPU works harder, and
+// flames rise behind the instruments. Numbers come
 // from the PC's Home Assistant sensors (LibreHardwareMonitor's integration or HASS.Agent), mapped
 // to roles in games.json (pc.stats); the hour is recorded by the server. Swipe right for Games.
 // #/stats?demo=1 fills it with made-up numbers to see the layout.
 
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
-import { html, Header, Icon } from '../lib/ui.mjs';
+import { html, Icon } from '../lib/ui.mjs';
 import { get, useStore, useLoad, runtime } from '../lib/api.mjs';
 import { route, go } from '../app.mjs';
 
@@ -203,6 +204,45 @@ function FilmStrip({ hour }) {
     <div class="ax"><span>60 min ago</span><span>45</span><span>30</span><span>15</span><span>now</span></div>`;
 }
 
+// Fire behind the instruments once the PC is working: the old "Doom fire" - a small grid of heat
+// that rises, drifts and cools, fed along the bottom row - drawn tiny and stretched over the page,
+// so it is soft and costs almost nothing. The harder the PC works, the hotter the bottom row and
+// the higher the flames; smoke-dark red at the tips, yellow at the base. Off when the PC is cool.
+const FIRE_W = 192, FIRE_H = 80, FIRE_MAX = 36;
+const FIRE_STOPS = [[0, [90, 14, 4, 0]], [0.2, [120, 22, 6, 110]], [0.5, [214, 74, 30, 200]], [0.8, [240, 150, 40, 235]], [1, [255, 226, 150, 255]]];
+const FIRE_PALETTE = Uint32Array.from({ length: FIRE_MAX + 1 }, (_, i) => {
+  const t = i / FIRE_MAX, hi = FIRE_STOPS.findIndex(([at]) => at >= t), [a0, c0] = FIRE_STOPS[Math.max(0, hi - 1)], [a1, c1] = FIRE_STOPS[hi];
+  const [r, g, b, a] = c0.map((v, k) => Math.round(v + (c1[k] - v) * (a1 > a0 ? (t - a0) / (a1 - a0) : 0)));
+  return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;   // canvas pixels are RGBA bytes, little-endian
+});
+function Flames({ heat }) {
+  const ref = useRef(null);
+  const level = useRef(heat); level.current = heat;
+  const lit = heat > 0.12;
+  useEffect(() => {
+    if (!lit) return undefined;
+    const ctx = ref.current.getContext('2d');
+    const fire = new Uint8Array(FIRE_W * FIRE_H), img = ctx.createImageData(FIRE_W, FIRE_H), px = new Uint32Array(img.data.buffer);
+    const t = setInterval(() => {
+      const base = Math.round(9 + (FIRE_MAX - 11) * level.current), cool = 0.9 - 0.22 * level.current;
+      for (let x = 0; x < FIRE_W; x++) fire[(FIRE_H - 1) * FIRE_W + x] = Math.random() < 0.8 ? base : base >> 1;
+      for (let from = FIRE_W; from < fire.length; from++) {
+        const r = (Math.random() * 3) | 0, to = from - FIRE_W - r + 1, v = fire[from] - (Math.random() < cool ? 1 : 0);
+        if (to >= 0) fire[to] = v > 0 ? v : 0;
+      }
+      // Each pixel is drawn as the average of itself and its four neighbours, which turns the
+      // grid's speckle into tongues of flame.
+      const last = fire.length - FIRE_W;
+      for (let i = 0; i < fire.length; i++) {
+        px[i] = FIRE_PALETTE[i < FIRE_W || i >= last ? fire[i] : (fire[i] * 2 + fire[i - 1] + fire[i + 1] + fire[i - FIRE_W] + fire[i + FIRE_W] + 3) / 6 | 0];
+      }
+      ctx.putImageData(img, 0, 0);
+    }, 55);
+    return () => clearInterval(t);
+  }, [lit]);
+  return html`<canvas class="flames" ref=${ref} width=${FIRE_W} height=${FIRE_H} style=${`opacity:${lit ? Math.min(1, 0.4 + heat * 0.6).toFixed(2) : 0}`} aria-hidden="true"></canvas>`;
+}
+
 // ---------- the page ----------
 
 // How hard the PC is working, 0 (idle) to 1 (flat out): GPU load, or its temperature if hotter.
@@ -253,12 +293,15 @@ export function Stats() {
   const style = `--heat:${heat.toFixed(2)};--acc:${mix([184, 118, 58], [224, 88, 43], heat)};--edge:${mix([42, 28, 18], [90, 36, 20], heat)}`;
 
   return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
-    <${Header} title=${g?.pc?.name || 'Gaming PC'} kicker=${demo ? 'Demo numbers · set pc.stats in games.json' : null}>
+    <${Flames} heat=${heat} />
+    <header class="top">
+      <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
+        <div class=${`playing ${s.game ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${s.game || 'Idle'}</div></div>
+      <div class="right">
       ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${s.fpsLow >= 1 ? html`<small>1% low ${r0(s.fpsLow)}</small>` : ''}</span>`}
-      ${heat >= 0.75 && html`<span class="chip dark-chip hot"><span class="dot"></span>Running hot</span>`}
-      <span class="chip dark-chip"><span class=${`dot ${s.game ? 'on' : ''}`}></span>${s.game || 'Idle'}</span>
       <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
-    <//>
+      </div>
+    </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
       ${has(s.gpuLoad) && html`<section class="tile big"><h3>GPU</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
