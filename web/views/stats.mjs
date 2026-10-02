@@ -116,44 +116,48 @@ const pt = (cx, cy, r, deg) => { const a = deg * Math.PI / 180; return [cx + r *
 const arc = (cx, cy, r, a0, a1) => { const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
 const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PALE = '#F4ECE0';
 
-// A load dial, 0-100, on a dark face. A glowing band fills round the rim to the reading, amber
-// turning red; the ticks it has passed light up; a faint inner band marks the last minute's range.
-// The reading sits above the hub (the needle passes over it); under the hub are the part's
-// temperature and the last minute as a line. The needle and the band move with
-// CSS transitions. Drawn on a 400 grid.
-const SWEEP = 135, DIAL_RED = 85;
+// A load dial, 0-100, on a dark face. A glowing band fills round to the reading, amber turning
+// red; the ticks it has passed light up; a faint inner band marks the last minute's range. A thin
+// ring outside the band is the part's temperature, from 85 °F to 195 °F, with the figure at the
+// top. Under the hub are the reading and the last minute as a line. The needle, band and ring move
+// with CSS transitions. Drawn on a 400 grid.
+const SWEEP = 135, DIAL_RED = 85, TEMP_FROM = 30, TEMP_TO = 90;   // the ring's range in °C
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
 function Dial({ id, value, temp, trail = [], label = 'Load' }) {
-  const c = 200, rim = 182;
+  const c = 200, ring = 192, rim = 175;
   const v = clamp(value / 100) * 100;
-  const full = arc(c, c, rim, -SWEEP, SWEEP);
+  const full = arc(c, c, rim, -SWEEP, SWEEP), outer = arc(c, c, ring, -SWEEP, SWEEP);
+  const warm = temp != null ? clamp((temp - TEMP_FROM) / (TEMP_TO - TEMP_FROM)) * 100 : 0;
   const lo = trail.length ? Math.min(...trail, v) : v, hi = trail.length ? Math.max(...trail, v) : v;
   // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
   const mid = (lo + hi) / 2, span = Math.max(12, hi - lo);
-  const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (trail.length - 1)) * 152).toFixed(1)} ${(c + 146 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
+  const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (trail.length - 1)) * 152).toFixed(1)} ${(c + 144 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
   return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
       <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
       <linearGradient id=${`hot${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color=${AMBER} /><stop offset=".6" stop-color="#E8792E" /><stop offset="1" stop-color=${RED} /></linearGradient>
+      <linearGradient id=${`deg${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color="#8FB9A0" /><stop offset=".5" stop-color="#E8C27A" /><stop offset="1" stop-color="#E0674A" /></linearGradient>
     </defs>
-    <circle cx=${c} cy=${c} r="194" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="2" />
+    <circle cx=${c} cy=${c} r="199" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="1.5" />
+    ${temp != null && html`<path d=${outer} stroke=${TRACK} stroke-width="5" fill="none" stroke-linecap="round" />
+      ${warm >= 0.5 && html`<path class="band" d=${outer} pathLength="100" stroke-dasharray=${`${warm} 100`} stroke=${`url(#deg${id})`} stroke-width="5" fill="none" stroke-linecap="round" />`}
+      <text x=${c} y=${c - 64} class="temp" fill=${temp >= 80 ? '#E0674A' : '#C9A77E'}>${degF(temp)}</text>`}
     <path d=${full} stroke=${TRACK} stroke-width="11" fill="none" stroke-linecap="round" />
-    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="26" fill="none" stroke-linecap="round" />
+    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
       <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#hot${id})`} stroke-width="11" fill="none" stroke-linecap="round" />`}
-    ${hi - lo >= 1 && html`<path d=${arc(c, c, 146, dialAngle(lo), dialAngle(hi))} stroke=${AMBER} stroke-opacity=".26" stroke-width="14" fill="none" />`}
+    ${hi - lo >= 1 && html`<path d=${arc(c, c, 140, dialAngle(lo), dialAngle(hi))} stroke=${AMBER} stroke-opacity=".26" stroke-width="12" fill="none" />`}
     ${Array.from({ length: 51 }, (_, i) => {
       const t = i * 2, major = i % 5 === 0, a = dialAngle(t), col = t > v ? DIM : t >= DIAL_RED ? RED : AMBER;
-      const [x0, y0] = pt(c, c, 170, a), [x1, y1] = pt(c, c, major ? 154 : 162, a), [tx, ty] = pt(c, c, 131, a);
+      const [x0, y0] = pt(c, c, 163, a), [x1, y1] = pt(c, c, major ? 148 : 155, a), [tx, ty] = pt(c, c, 125, a);
       return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${col} stroke-width=${major ? 2.8 : 1.4} stroke-linecap="round" />
         ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill=${t >= DIAL_RED ? '#E0674A' : '#9C8672'}>${t}</text>`}`;
     })}
-    <text x=${c} y=${c - 62} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
-    ${temp != null && html`<text x=${c} y=${c + 80} class="temp" fill=${temp >= 80 ? '#E0674A' : '#E8A06A'}>${degF(temp)}</text>`}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
-      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 150} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
     <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${AMBER} stroke-width="2.6" />
-    <line x1=${c - 76} y1=${c + 162} x2=${c + 76} y2=${c + 162} stroke=${TRACK} stroke-width="1.5" />
+    <text x=${c} y=${c + 70} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
+    <line x1=${c - 76} y1=${c + 160} x2=${c + 76} y2=${c + 160} stroke=${TRACK} stroke-width="1.5" />
     ${line && html`<path d=${line} stroke=${AMBER} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
   </svg>`;
 }
