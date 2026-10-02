@@ -22,6 +22,7 @@ function useStats(stats, demo) {
   // Only the mapped entities' raw states: the whole map is a new object on every HA update.
   const ids = Object.values(stats || {}).flat().filter((id) => typeof id === 'string');
   const states = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.state])));
+  const names = useStore((s) => [stats?.gpuLoad, stats?.cpuLoad].map((id) => s.states[id]?.attributes?.friendly_name || '').join('\n')).split('\n');
   const units = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.attributes?.unit_of_measurement])));
   const num = (role) => {
     const id = stats?.[role];
@@ -36,6 +37,7 @@ function useStats(stats, demo) {
     netDown: num('netDown'), netUp: num('netUp'),
     cores: (stats?.cores || []).map((id) => Number(states[id])).filter(Number.isFinite),
     game: gameName(states[stats?.game]),
+    gpuName: partName(names[0]), cpuName: partName(names[1]),
     uptime: states[stats?.uptime],
   };
   return vals;
@@ -54,6 +56,14 @@ function inPanelUnits(role, v, unit) {
   return v;
 }
 
+// The part's model, from its load sensor's name in Home Assistant: LibreHardwareMonitor's are like
+// "[PC-NAME] NVIDIA GeForce RTX 4090 GPU Core Load" and "[PC-NAME] AMD Ryzen 9 7950X 16-Cores CPU
+// Total Load". Anything that doesn't look like that gives no model.
+function partName(friendly) {
+  const m = /^(?:\[[^\]]*\]\s*)?(.+?)\s+(?:GPU|CPU)\s+(?:Core|Total)\b/.exec(friendly || '');
+  return m ? m[1].replace(/\s+\d+-Cores?$/i, '') : null;
+}
+
 // HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
 function gameName(v) {
   if (!v || ['unknown', 'unavailable', 'idle', ''].includes(String(v).toLowerCase())) return null;
@@ -70,7 +80,7 @@ function demoValues() {
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
   d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
   d.ramTotal = 32; d.vramTotal = 24;
-  return { ...d, game: 'Cyberpunk 2077', uptime: null };
+  return { ...d, game: 'Cyberpunk 2077', uptime: null, gpuName: 'NVIDIA GeForce RTX 4090', cpuName: 'AMD Ryzen 7 9800X3D' };
 }
 
 const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
@@ -265,10 +275,10 @@ function Steam({ heat }) {
 
 // ---------- the page ----------
 
-// How hot the PC is running, 0 to 1: the GPU's temperature from 110 °F to 150 °F (it climbs and
+// How hot the PC is running, 0 to 1: the GPU's temperature from 100 °F to 135 °F (it climbs and
 // cools slowly, so the steam builds and lingers like the real thing). Without a temperature
 // sensor, load from 50% to 90% stands in.
-const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 110) / 40) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
+const heatOf = (s) => (s.gpuTemp != null ? clamp((s.gpuTemp * 9 / 5 + 32 - 100) / 35) : clamp(((s.gpuLoad ?? s.cpuLoad ?? 0) - 50) / 40));
 const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(' ')})`;
 
 export function Stats() {
@@ -326,12 +336,12 @@ export function Stats() {
     </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3>GPU</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${s.gpuName && html`<small>${s.gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
         ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
-      ${has(s.cpuLoad) && html`<section class="tile big"><h3>CPU</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
+      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${s.cpuName && html`<small>${s.cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
         ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
-        ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3>Memory</h3><div class="fuels">
+        ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3 class="lead">Memory</h3><div class="fuels">
           ${has(s.ramUsed) && html`<${Fuel} id="m" label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}
           ${has(s.vramUsed) && html`<${Fuel} id="v" label="VRAM" value=${s.vramUsed} max=${s.vramTotal}>${s.vramUsed.toFixed(1)}<small> ${s.vramTotal ? `/ ${r0(s.vramTotal)} ` : ''}GB</small><//>`}
         </div>`}

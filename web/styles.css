@@ -445,7 +445,7 @@ canvas.fx { display: block; width: 100%; }
 .stats-view .kicker { color: var(--gold); }
 .dark-chip { background: rgba(0,0,0,.3); color: #F4ECE0; border-color: rgba(244,236,224,.15); text-decoration: none; }
 /* The booth's instruments. --heat (0-1), --acc and --edge are set by the page from the GPU. */
-.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding-top: 26px;
+main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding-top: 20px;
   background: radial-gradient(1300px 760px at 45% 8%, rgb(224 88 43 / calc(var(--heat) * .26)), transparent 70%),
     radial-gradient(900px 500px at 100% 100%, rgb(180 50 20 / calc(var(--heat) * .16)), transparent 70%),
     radial-gradient(1200px 700px at 60% 0%, rgba(90,52,24,.22), transparent 70%), #0d0907; }
@@ -457,6 +457,8 @@ canvas.fx { display: block; width: 100%; }
 .stats-view .tile { background: rgb(22 14 9 / calc(.92 - var(--heat) * .2)); border: 1px solid var(--edge); border-radius: 20px; padding: 16px 22px; min-width: 0;
   box-shadow: 0 0 34px rgb(224 88 43 / calc(var(--heat) * .34)), inset 0 1px 0 rgba(255,255,255,.04); }
 .stats-view h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
+.stats-view h3.lead { font-size: 24px; letter-spacing: 4px; line-height: 1; margin-bottom: 8px; }
+.stats-view h3.lead small { display: block; margin: 5px 0 0; font-size: 15px; font-weight: 500; letter-spacing: .5px; text-transform: none; color: #C7B39E; white-space: nowrap; }
 .stats-view h3 small { letter-spacing: 1px; text-transform: none; font-weight: 500; color: #8C7660; margin-left: 10px; font-size: 14px; }
 .st-row { display: flex; gap: 18px; }
 .st-row .big { width: 536px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
