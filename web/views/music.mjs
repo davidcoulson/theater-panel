@@ -63,7 +63,7 @@ function PlayerButton({ id, active, onPick }) {
   const st = useEntity(id);
   return html`<button type="button" class="player-btn" aria-pressed=${active ? 'true' : 'false'} onClick=${onPick}>
     <${Icon} name="spk" size=${26} color=${active ? 'var(--acc)' : 'var(--muted)'} />
-    <span style="flex-grow:1" class="ellipsis">${(st?.attributes?.friendly_name || id).replace(/ player$/i, '')}</span>
+    <span style="flex-grow:1" class="ellipsis">${(st?.attributes?.friendly_name || id).replace(/ player$/i, '').replace(/\s*\([^)]*\)$/, '')}</span>
     <span class="muted" style="font-size:15px;font-weight:500">${st?.state || 'unknown'}</span>
   </button>`;
 }
