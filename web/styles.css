@@ -286,9 +286,11 @@ input.range.thin { height: 40px; }
 .proj .row { display: flex; gap: 16px; align-items: center; margin-top: 16px; }
 .power { width: 92px; height: 92px; flex-shrink: 0; border-radius: 46px; border: 2px solid var(--acc); background: var(--acc-soft); display: flex; align-items: center; justify-content: center; }
 .power.on { background: var(--acc); }
-.power.armed { background: #B3261B; border-color: #B3261B; animation: st-arm .9s ease-in-out infinite alternate; }
 .power.busy { opacity: .55; }
-@keyframes st-arm { to { transform: scale(.94); } }
+.pc-ops { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pc-ops .btn.danger { border-color: #B3261B; color: #F2B8A0; }
+.pc-ops .btn:disabled { opacity: .4; }
+.pc-ops .note { width: 100%; font-size: 14px; color: var(--on-choc2); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: #A89C8E; margin-right: 8px; }
 .dot.on { background: #4F8A55; }
 

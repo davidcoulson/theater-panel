@@ -228,7 +228,7 @@ get(/^\/api\/state$/, () => ({
   sessions,
   streams,
   entities: config.entities,
-  ui: { ...config.ui, birthdays: undefined, accent: accentNow(), dogName: config.entities.dogName },
+  ui: { ...config.ui, birthdays: undefined, accent: accentNow(), dogName: config.entities.dogName, adminRoom: config.entities.adminRoom || null },
   projectorApps: config.projectorApps,
   effectFavourites: config.effectFavourites,
   build: config.build,

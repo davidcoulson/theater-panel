@@ -83,6 +83,8 @@ export const FIELDS = [
 
   { group: 'Projector apps', key: 'PROJECTOR_APPS', label: 'Apps', type: 'apps', help: 'Open on the projector over ADB. The package is the Android app id.' },
 
+  { group: 'Games', key: 'ENTITY_ADMIN_ROOM', label: 'Admin\'s room sensor', type: 'entity', domain: 'sensor', help: 'A sensor that says which room the house\'s admin is in (a Sextant or Bermuda person room sensor). Restarting or force-stopping the PC is only offered on the panel while that person is in the room below.' },
+  { group: 'Games', key: 'ADMIN_ROOM', label: 'This panel\'s room', type: 'text', placeholder: 'Home Theater', help: 'The room name the sensor reports when the admin is at this panel.' },
   { group: 'Games', key: 'UNRAID_URL', label: 'Unraid address', type: 'text', placeholder: 'http://10.0.0.2', help: 'When the gaming PC is a VM on an Unraid server: the server\'s web address. The Games page then starts and shuts the VM down.' },
   { group: 'Games', key: 'UNRAID_API_KEY', label: 'Unraid API key', type: 'secret', help: 'An Unraid API key that can read and update VMs (Settings > Management Access > API keys, or `unraid-api apikey --create`).' },
   { group: 'Games', key: 'UNRAID_VM', label: 'VM name', type: 'text', placeholder: 'Windows 11', help: 'The VM\'s name in Unraid.' },
