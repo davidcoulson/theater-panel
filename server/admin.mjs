@@ -324,6 +324,7 @@ function cleanPc(pc) {
       kind: SENSOR_KINDS.includes(s.kind) ? s.kind : 'value',
     }));
   }
+  for (const k of ['gpuName', 'cpuName']) if (pc[k]) out[k] = String(pc[k]).slice(0, 40);
   if (pc.hostCpus !== undefined) {
     if (!Array.isArray(pc.hostCpus) || pc.hostCpus.some((n) => !Number.isInteger(n) || n < 0 || n > 4095)) throw httpError(400, 'pc.hostCpus must be a list of CPU numbers');
     if (pc.hostCpus.length) out.hostCpus = pc.hostCpus.slice(0, 256);

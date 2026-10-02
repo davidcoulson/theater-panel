@@ -317,6 +317,8 @@ export function Stats() {
   };
 
   const has = (v) => v != null;
+  // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
+  const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
   const gpuPeak = usePeak(s.gpuLoad), cpuPeak = usePeak(s.cpuLoad);
   const heat = heatOf(s);
   const ramTotal = s.ramTotal ?? (has(s.ramUsed) && s.ramLoad > 0 ? s.ramUsed / (s.ramLoad / 100) : null);
@@ -337,9 +339,9 @@ export function Stats() {
     </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${s.gpuName && html`<small>${s.gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} peak=${gpuPeak} />
         ${readout([has(s.gpuTemp) && ['Temp', degF(s.gpuTemp)], has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
-      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${s.cpuName && html`<small>${s.cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
+      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} peak=${cpuPeak} />
         ${readout([has(s.cpuTemp) && ['Temp', degF(s.cpuTemp)], cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       <section class="tile side">
         ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3 class="lead">Memory</h3><div class="fuels">
