@@ -154,7 +154,7 @@ function Fuel({ id, label, value, max, children }) {
         return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${i >= 7 ? RED : INK} stroke-width=${i % 2 ? 2 : 4} stroke-linecap="round" />`;
       })}
       <text x=${ex} y=${ey} class="num" fill=${INK}>E</text><text x=${fx} y=${fy} class="num" fill=${RED}>F</text>
-      <text x=${cx} y=${h * 0.24} class="lbl">${label}</text>
+      <text x=${cx} y="27" class="lbl">${label}</text>
       ${max > 0 && html`<g class="turn needle" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(value / max)}deg)`}>
         <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r * 0.86} stroke="#B3261B" stroke-width="5" stroke-linecap="round" /></g>`}
       <circle cx=${cx} cy=${cy} r="11" fill="#3B2710" stroke="#B88A45" stroke-width="2" />
