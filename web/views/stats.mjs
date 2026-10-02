@@ -217,9 +217,10 @@ const LampBar = ({ label, lit, children }) => html`<div class="net"><span>${labe
 // Network on a square-root scale to 1 Gb/s, so a stream's few megabits still show.
 const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * LAMPS)) : 0}>
   ${value < 1 ? html`${Math.round(value * 1000)}<small> kb/s</small>` : html`${value >= 10 ? r0(value) : value.toFixed(1)}<small> Mb/s</small>`}<//>`;
-// GPU power draw against the most the card pulls.
-const GPU_WATTS = 600;
-const PowerBar = ({ value }) => html`<${LampBar} label="GPU" lit=${Math.round(clamp(value / GPU_WATTS) * LAMPS)}>${r0(value)}<small> W</small><//>`;
+// Power draw against the most the part pulls: the graphics card's, and the whole processor's as
+// the host measures it.
+const GPU_WATTS = 600, CPU_WATTS = 350;
+const PowerBar = ({ label, value, max }) => html`<${LampBar} label=${label} lit=${Math.round(clamp(value / max) * LAMPS)}>${r0(value)}<small> W</small><//>`;
 
 // The PC's recent load as a film strip of 60 frames: brighter is busier, red is flat out; an idle
 // frame is a faint amber and one with no reading (the PC was off) stays dark. The server keeps a
@@ -326,6 +327,7 @@ export function Stats() {
     const t = setInterval(read, 5000);
     return () => clearInterval(t);
   }, [g, demo]);
+  const cpuWatts = demo ? 96 + s.cpuLoad : host?.watts;
   const cpuClock = s.cpuClock || host?.mhz, cpuTemp = s.cpuTemp > 0 ? s.cpuTemp : demo ? s.cpuTemp : host?.temp;
   const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
 
@@ -371,7 +373,9 @@ export function Stats() {
         ${(has(s.netDown) || has(s.netUp)) && html`<h3>Network</h3>
           ${has(s.netDown) && html`<${NetBar} label="Down" value=${s.netDown} />`}
           ${has(s.netUp) && html`<${NetBar} label="Up" value=${s.netUp} />`}`}
-        ${has(s.gpuPower) && html`<h3>Power</h3><${PowerBar} value=${s.gpuPower} />`}
+        ${(has(s.gpuPower) || has(cpuWatts)) && html`<h3>Power</h3>
+          ${has(cpuWatts) && html`<${PowerBar} label="CPU" value=${cpuWatts} max=${CPU_WATTS} />`}
+          ${has(s.gpuPower) && html`<${PowerBar} label="GPU" value=${s.gpuPower} max=${GPU_WATTS} />`}`}
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}

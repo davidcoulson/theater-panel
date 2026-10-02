@@ -94,10 +94,12 @@ export function recordStats(ha) {
 // the host can. When the PC is a VM on the machine this server runs on, pc.hostCpus lists the host
 // CPUs its cores are pinned to, in the VM's core order, and this gives each one's clock and their
 // average, in MHz, from /proc/cpuinfo - and the processor's temperature in °C from the kernel's
-// hardware monitors (AMD's k10temp or Intel's coretemp), which a VM can't see either.
+// hardware monitors (AMD's k10temp or Intel's coretemp), which a VM can't see either - and the
+// whole processor's power draw in watts from its energy counter (RAPL), when the host lets this
+// server read it (the counter is root-only unless the host makes it readable).
 export async function hostClock() {
   const cpus = (await loadGames().catch(() => null))?.pc?.hostCpus;
-  if (!cpus?.length) return { mhz: null, cores: [], temp: null };
+  if (!cpus?.length) return { mhz: null, cores: [], temp: null, watts: null };
   const text = await readFile('/proc/cpuinfo', 'utf8').catch(() => '');
   const byCpu = new Map();
   for (const block of text.split(/\n\s*\n/)) {
@@ -105,7 +107,33 @@ export async function hostClock() {
     if (cpu && speed) byCpu.set(Number(cpu[1]), Math.round(Number(speed[1])));
   }
   const cores = cpus.map((n) => byCpu.get(n) ?? null), known = cores.filter((v) => v != null);
-  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp() };
+  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp(), watts: await hostCpuWatts() };
+}
+
+// Watts are the energy counter's rise between two readings; it is read at most once a second and
+// wraps at its maximum.
+// Docker hides the counter's usual place from containers, so the host folder
+// (/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0) is mapped in as /host/cpu-power.
+const RAPL = ['/host/cpu-power', '/sys/class/powercap/intel-rapl:0'];
+let energy = null;   // { at, uj, watts }
+let rapl;            // the folder that answered
+async function hostCpuWatts() {
+  const at = Date.now();
+  if (energy && at - energy.at < 1000) return energy.watts;
+  let uj = NaN;
+  for (const dir of rapl ? [rapl] : RAPL) {
+    uj = Number(await readFile(`${dir}/energy_uj`, 'utf8').catch(() => ''));
+    if (Number.isFinite(uj) && uj > 0) { rapl = dir; break; }
+  }
+  if (!Number.isFinite(uj) || uj <= 0) return null;
+  let watts = energy?.watts ?? null;
+  if (energy && at - energy.at < 60000) {
+    let rise = uj - energy.uj;
+    if (rise < 0) rise += Number(await readFile(`${rapl}/max_energy_range_uj`, 'utf8').catch(() => '0')) || 0;
+    if (rise >= 0) watts = Math.round(rise / 1e6 / ((at - energy.at) / 1000));
+  }
+  energy = { at, uj, watts };
+  return watts;
 }
 
 const HWMON = '/sys/class/hwmon';
