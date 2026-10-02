@@ -102,7 +102,7 @@ function PcPanel({ pc }) {
   const press = () => { if (busy) return; if (on) setMenu((m) => !m); else run('start'); };
   return html`<aside class="pc dark tx-suede">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div><div class="eyebrow">${canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
+      <div><div class="eyebrow">${(vm?.streamingTo ?? pc.streamingTo) && state === 'running' ? `Streaming to ${vm?.streamingTo ?? pc.streamingTo}` : canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
         <div style="font-family:var(--disp);font-weight:800;font-size:44px;line-height:1;text-transform:uppercase">${pc.name}</div></div>
       ${canPower && html`<button type="button" class=${`power ${on ? 'on' : ''} ${busy ? 'busy' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Power options' : 'Start the PC'} aria-expanded=${menu}
         onClick=${press}><${Icon} name="power" size=${34} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} /></button>`}

@@ -224,7 +224,11 @@ function sourceLine(showing, current, games) {
   const picked = sources.find((x) => x.id === current);
   if (!input) return picked?.name || null;
   const direct = sources.find((x) => x.via !== 'switcher' && x.projectorInput === input);
-  if (direct) return games?.pc?.playing?.name && /^(windows|steam|pc|gaming)/i.test(direct.id) ? `${direct.name} · ${games.pc.playing.name}` : direct.name;
+  if (direct) {
+    if (!/^(windows|steam|pc|gaming)/i.test(direct.id)) return direct.name;
+    const bits = [direct.name, games?.pc?.playing?.name, games?.pc?.streamingTo && `streaming to ${games.pc.streamingTo}`].filter(Boolean);
+    return bits.join(' · ');
+  }
   if (games?.switcher?.projectorInput === input) return picked?.via === 'switcher' ? picked.name : 'Game switcher';
   return showing;
 }

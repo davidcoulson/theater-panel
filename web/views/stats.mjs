@@ -37,6 +37,7 @@ function useStats(stats, demo) {
     netDown: num('netDown'), netUp: num('netUp'),
     cores: (stats?.cores || []).map((id) => Number(states[id])).filter(Number.isFinite),
     game: gameName(states[stats?.game]),
+    stream: streamAddress(states[stats?.stream]),
     gpuName: partName(names[0]), cpuName: partName(names[1]),
     uptime: states[stats?.uptime],
   };
@@ -64,6 +65,9 @@ function partName(friendly) {
   // Without the maker, which the model already says: "GeForce RTX 4090", "Threadripper PRO 5995WX".
   return m ? m[1].replace(/\s+\d+-Cores?$/i, '').replace(/^(?:NVIDIA|AMD|Intel|ATI)(?:\(R\))?\s+/i, '').replace(/^Ryzen\s+(?=Threadripper)/i, '') : null;
 }
+
+// The streaming sensor gives the Moonlight client's address, or nothing.
+const streamAddress = (v) => (v && !['unknown', 'unavailable', ''].includes(String(v).toLowerCase()) ? String(v) : null);
 
 // HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
 function gameName(v) {
@@ -342,6 +346,7 @@ export function Stats() {
   const has = (v) => v != null;
   // Steam's word on what is running: the game's proper name and art (the sensor only knows the program).
   const playing = demo ? { name: 'Cyberpunk 2077', header: '/img/steam/1091500/header.jpg' } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
+  const streamingTo = s.stream ? (g?.pc?.streamClients?.[s.stream] || s.stream) : null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
   const gpuTrail = useTrail(s.gpuLoad), cpuTrail = useTrail(s.cpuLoad);
@@ -357,7 +362,7 @@ export function Stats() {
     <header class="top">
       <div class="title">
         <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}</div></div>
+          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div></div>
         ${playing && html`<img class="art" src=${playing.header} alt="" />`}
       </div>
       <div class="right">
