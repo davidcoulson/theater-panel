@@ -120,8 +120,8 @@ const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PA
 // A load dial, 0-100, on a dark face. Load is drawn in cool colours - a glowing teal band fills
 // round to the reading, the ticks it has passed light up, a faint inner band marks the last
 // minute's range - so that heat can have the warm ones: a thin ring round the outside is a fixed
-// scale from warm (yellow) through orange to hot (red), and a glowing bead rides along it to show
-// where the part is (heat is 0-1). Under the hub are the reading and the last minute as a line.
+// scale from warm (yellow) through orange to hot (red), lit up to a glowing bead that shows where
+// the part is (heat is 0-1) and dim beyond it. Under the hub are the reading and the last minute as a line.
 // The needle, band and bead move with CSS transitions. Drawn on a 400 grid, scaled down a little
 // so the bead has room outside the ring.
 const SWEEP = 135, DIAL_TOP = 85;
@@ -137,8 +137,9 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
   // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
   const mid = (lo + hi) / 2, span = Math.max(12, hi - lo);
   const line = trail.length > 1 ? trail.map((t, i) => `${i ? 'L' : 'M'}${(c - 76 + (i / (trail.length - 1)) * 152).toFixed(1)} ${(c + 144 - ((t - mid) / span) * 24).toFixed(1)}`).join(' ') : null;
-  const scale = useMemo(() => Array.from({ length: HEAT_STEPS }, (_, i) => html`<path
-    d=${arc(c, c, 196, dialAngle((i / HEAT_STEPS) * 100), dialAngle(((i + 1) / HEAT_STEPS) * 100) + 0.6)} stroke=${heatColour((i + 0.5) / HEAT_STEPS)} stroke-width="7" fill="none" />`), []);
+  // The ring beyond the bead is dimmed, so where the bead is reads at a glance.
+  const scale = Array.from({ length: HEAT_STEPS }, (_, i) => html`<path
+    d=${arc(c, c, 196, dialAngle((i / HEAT_STEPS) * 100), dialAngle(((i + 1) / HEAT_STEPS) * 100) + 0.6)} stroke=${heatColour((i + 0.5) / HEAT_STEPS)} stroke-width="7" fill="none" opacity=${(i + 0.5) / HEAT_STEPS <= heat ? 1 : 0.35} />`);
   return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
       <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
