@@ -115,6 +115,9 @@ function build(env) {
     // The projector plugin's Showing sensor ("HDMI 2", "HDMI 1 · Apple TV", "Plezy"): what the
     // Projector card names when nothing it knows is playing.
     projectorShowing: env.ENTITY_PROJECTOR_SHOWING || '',
+    // Who is in the room: a room sensor for the house's admin, and the room the panel is in. The
+    // Games page's restart and force-off are only offered when that person is in the room.
+    adminRoomSensor: env.ENTITY_ADMIN_ROOM || '', adminRoom: env.ADMIN_ROOM || '',
     // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
     // from the device name, so one stem on the settings page finds them all.
     soundbar: soundbarIds(env.SOUNDBAR_PREFIX || '', list(env.SOUNDBAR_REARS, ['left', 'right'])),
@@ -323,7 +326,7 @@ export const config = build(effectiveVars());
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.adminRoomSensor,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar),
     'input_select.theater_scene',

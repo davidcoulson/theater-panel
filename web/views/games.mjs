@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Poster, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useEntity, toast } from '../lib/api.mjs';
+import { get, act, useLoad, useEntity, useStore, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
 
 export function Games() {
@@ -69,11 +69,16 @@ export function Games() {
 const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
 
 // The VM's state is polled from the server; a Home Assistant power entity is used when set instead.
-const VM_WORDS = { running: 'Running', shutoff: 'Off', shutdown: 'Shutting down', paused: 'Paused', pmsuspended: 'Suspended', crashed: 'Crashed', missing: 'VM not found', unknown: 'Unreachable', starting: 'Starting', 'shutting down': 'Shutting down' };
+// Tapping the power button while the PC is on offers shut down, restart and force off; the last two
+// only while the house's admin is in the room (the admin room sensor on the settings page).
+const VM_WORDS = { running: 'Running', shutoff: 'Off', shutdown: 'Shutting down', paused: 'Paused', pmsuspended: 'Suspended', crashed: 'Crashed', missing: 'VM not found', unknown: 'Unreachable', starting: 'Starting', 'shutting down': 'Shutting down', restarting: 'Restarting' };
 function PcPanel({ pc }) {
   const power = useEntity(pc.power);
   const [vm, setVm] = useState(pc.vm);
-  const [armed, setArmed] = useState(false);   // the off button needs a second tap
+  const [menu, setMenu] = useState(false);
+  const adminRoom = useStore((s) => s.ui?.adminRoom);
+  const adminAt = useEntity(useStore((s) => s.entities.adminRoomSensor))?.state;
+  const admin = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
   useEffect(() => {
     if (!pc.vm) return undefined;
     const read = () => get('/api/games/vm').then(setVm).catch(() => {});
@@ -81,28 +86,34 @@ function PcPanel({ pc }) {
     return () => clearInterval(t);
   }, [pc.vm]);
   useEffect(() => {
-    if (!armed) return undefined;
-    const t = setTimeout(() => setArmed(false), 6000);
+    if (!menu) return undefined;
+    const t = setTimeout(() => setMenu(false), 10000);
     return () => clearTimeout(t);
-  }, [armed]);
+  }, [menu]);
   const state = pc.power ? (power ? (power.state === 'on' ? 'running' : 'shutoff') : 'unknown') : vm?.state;
-  const on = state === 'running' || state === 'paused' || state === 'shutdown' || state === 'starting';
-  const busy = state === 'shutdown' || state === 'starting' || state === 'shutting down';
+  const on = ['running', 'paused', 'shutdown', 'starting', 'restarting'].includes(state);
+  const busy = ['shutdown', 'starting', 'shutting down', 'restarting'].includes(state);
   const canPower = Boolean(pc.power || pc.vm);
-  const press = async () => {
-    if (busy) return;
-    if (on && !armed) { setArmed(true); return; }
-    setArmed(false);
-    await act({ action: 'game_pc_power', on: !on });
-    setVm((v) => v && { ...v, state: on ? 'shutting down' : 'starting' });
+  const run = async (op) => {
+    setMenu(false);
+    const r = await act({ action: 'game_pc_power', op });
+    if (r?.state) setVm((v) => v && { ...v, state: r.state });
   };
+  const press = () => { if (busy) return; if (on) setMenu((m) => !m); else run('start'); };
   return html`<aside class="pc dark tx-suede">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div><div class="eyebrow">${armed ? 'Tap again to shut down' : canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
+      <div><div class="eyebrow">${canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
         <div style="font-family:var(--disp);font-weight:800;font-size:44px;line-height:1;text-transform:uppercase">${pc.name}</div></div>
-      ${canPower && html`<button type="button" class=${`power ${on ? 'on' : ''} ${armed ? 'armed' : ''} ${busy ? 'busy' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Shut the PC down' : 'Start the PC'}
+      ${canPower && html`<button type="button" class=${`power ${on ? 'on' : ''} ${busy ? 'busy' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Power options' : 'Start the PC'} aria-expanded=${menu}
         onClick=${press}><${Icon} name="power" size=${34} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} /></button>`}
     </div>
+    ${menu && html`<div class="pc-ops">
+      <button type="button" class="btn" onClick=${() => run('stop')}>Shut down</button>
+      <button type="button" class="btn" disabled=${!admin || !pc.vm} onClick=${() => run('reboot')}>Restart</button>
+      <button type="button" class="btn danger" disabled=${!admin || !pc.vm} onClick=${() => run('forceStop')}>Force off</button>
+      <button type="button" class="btn quiet" onClick=${() => setMenu(false)}>Cancel</button>
+      ${!admin && html`<div class="note">Restart and force off need ${adminRoom ? 'the admin in the room' : 'an admin room sensor on the settings page'}.</div>`}
+    </div>`}
     <div class="stats">${pc.sensors.map((s) => html`<${Stat} s=${s} />`)}</div>
     ${!pc.sensors.length && html`<div class="empty" style="color:var(--on-choc2)">Add the PC's sensors to games.json to show them here.</div>`}
   </aside>`;

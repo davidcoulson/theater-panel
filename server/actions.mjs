@@ -203,7 +203,7 @@ export async function runAction(ha, body) {
     }
 
     case 'game_source': return games.selectSource(ha, String(body.id));
-    case 'game_pc_power': return games.pcPower(ha, body.on !== false);
+    case 'game_pc_power': return games.pcPower(ha, body.op || (body.on !== false ? 'start' : 'stop'));
     case 'game_launch': return games.launchSteamGame(ha, body.appid);
 
     default: throw httpError(400, 'Unknown action');

@@ -206,12 +206,14 @@ export async function vmState() {
   vmCache = { at: Date.now(), vm };
   return vm;
 }
-export async function vmPower(on) {
+const VM_OPS = { start: 'starting', stop: 'shutting down', reboot: 'restarting', forceStop: 'shutting down' };
+export async function vmPower(op) {
+  if (!VM_OPS[op]) throw new Error('Unknown VM operation');
   const vm = await vmState();
   if (!vm?.id) throw new Error(`No VM called ${config.unraid.vm} on the Unraid server`);
-  await unraid(`mutation ($id: PrefixedID!) { vm { ${on ? 'start' : 'stop'}(id: $id) } }`, { id: vm.id });
+  await unraid(`mutation ($id: PrefixedID!) { vm { ${op}(id: $id) } }`, { id: vm.id });
   vmCache = null;
-  return { state: on ? 'starting' : 'shutting down' };
+  return { state: VM_OPS[op] };
 }
 
 export async function gamesState() {
@@ -262,11 +264,19 @@ export async function selectSource(ha, id) {
   return { active };
 }
 
-export async function pcPower(ha, on) {
+// Is the house's admin at this panel? Restart and force-off are only for them.
+export const adminHere = (ha) => {
+  const { adminRoomSensor, adminRoom } = config.entities;
+  if (!adminRoomSensor || !adminRoom) return false;
+  return String(ha.states[adminRoomSensor]?.state || '').toLowerCase() === adminRoom.toLowerCase();
+};
+export async function pcPower(ha, op) {
+  if ((op === 'reboot' || op === 'forceStop') && !adminHere(ha)) throw Object.assign(new Error('Only when the admin is in the room'), { status: 403 });
   const g = await loadGames();
-  if (!g?.pc?.power && vmConfigured()) return vmPower(on);
+  if (!g?.pc?.power && vmConfigured()) return vmPower(op);
   if (!g?.pc?.power) throw new Error('No PC power entity set in games.json');
-  return ha.callService('homeassistant', on ? 'turn_on' : 'turn_off', {}, { target: { entity_id: g.pc.power } });
+  if (op === 'reboot' || op === 'forceStop') throw new Error('Only a VM on Unraid can be restarted from here');
+  return ha.callService('homeassistant', op === 'start' ? 'turn_on' : 'turn_off', {}, { target: { entity_id: g.pc.power } });
 }
 
 export async function launchSteamGame(ha, appid) {
