@@ -494,7 +494,8 @@ canvas.fx { display: block; width: 100%; }
 .stats-view .vu .segs i.on.g { background: #7FB069; }
 .stats-view .vu .segs i.on.a { background: #E3A865; }
 .stats-view .vu .segs i.on.r { background: #E0432B; }
-.stats-view .vu span { font-family: var(--disp); font-weight: 800; font-size: 17px; color: #8C7660; }
+.stats-view .vu span { font-family: var(--disp); font-weight: 800; font-size: 17px; color: #8C7660; white-space: nowrap; }
+.stats-view .vu span small { font-size: 13px; letter-spacing: .5px; }
 .stats-view .strip { padding-bottom: 10px; }
 .stats-view .film { display: flex; background: #0A0705; border: 1px solid #2A1C12; border-radius: 6px; padding: 0 14px; margin-top: 6px; }
 .stats-view .film i { flex: 1; height: 88px; padding: 26px 2px; position: relative; }
