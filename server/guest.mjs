@@ -2,7 +2,7 @@
 // the break, the lights - and nothing that needs the panel key. One token at a time, kept in
 // memory; it dies at its hour or when the panel ends it, whichever comes first.
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 let guest = null;   // { token, created, expires }
 
@@ -21,5 +21,6 @@ export function state() {
 
 export function valid(token) {
   const g = state();
-  return Boolean(g && token && token.length === g.token.length && token === g.token);
+  // Constant time, like every other secret here.
+  return Boolean(g && token && token.length === g.token.length && timingSafeEqual(Buffer.from(token), Buffer.from(g.token)));
 }
