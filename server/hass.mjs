@@ -73,6 +73,7 @@ function build(opts) {
     weather: d.number({ name: 'Accent weather', min: 0, max: 100, step: 5, unit: '%', mode: 'slider', icon: 'mdi:weather-snowy', category: 'config' }, (v) => look('ACCENT_INTENSITY', Math.round(v))),
     cinema: d.switch({ name: 'Cinema mode', icon: 'mdi:theater', category: 'config' }, (on) => look('CINEMA_MODE', on ? 'true' : 'false')),
     preroll: d.switch({ name: 'Pre-roll', icon: 'mdi:volume-high', category: 'config' }, (on) => look('PREROLL_ENABLED', on ? 'true' : 'false')),
+    gameLights: d.switch({ name: 'Game lights', icon: 'mdi:led-strip-variant', category: 'config' }, (on) => look('GAME_LIGHTS', on ? 'true' : 'false')),
     sleep: d.select({ name: 'Sleep timer', options: SLEEP_OPTIONS, icon: 'mdi:sleep' }, (v) => {
       if (v === 'Off') sleep.set({ mode: null });
       else if (v === 'After this film') sleep.set({ mode: 'end' });
@@ -160,6 +161,7 @@ export function refresh() {
   ent.weather.set(config.ui.accentIntensity);
   ent.cinema.set(config.ui.cinema);
   ent.preroll.set(Boolean(config.preroll.url) && config.preroll.enabled);
+  ent.gameLights.set(config.gameLights.enabled);
   ent.sleep.set(sleepOption());
   ent.activeAccent.set(accentName(accentNow().id));
   ent.build.set(config.build.version);

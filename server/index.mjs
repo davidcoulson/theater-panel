@@ -29,6 +29,7 @@ import * as tmdb from './tmdb.mjs';
 import { netList, clientIp } from './net.mjs';
 import { versions } from './version.mjs';
 import * as hass from './hass.mjs';
+import * as gameLights from './gamelights.mjs';
 import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,6 +59,7 @@ const gameEntitiesSafe = () => gameEntities().catch((e) => { console.warn('[game
 let entities = [...new Set([...watchedEntities(), ...(await gameEntitiesSafe())])];
 const ha = new HomeAssistant({ url: config.ha.url, token: config.ha.token, entities });
 recordStats(ha);
+gameLights.start(ha);
 // The PC as a Home Assistant sensor: its VM state, who it streams to, and the game being played.
 setInterval(async () => {
   const vm = await vmNow().catch(() => null);

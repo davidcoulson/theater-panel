@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Poster, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useEntity, useStore, toast } from '../lib/api.mjs';
+import { get, post, act, useLoad, useEntity, useStore, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
 
 export function Games() {
@@ -44,6 +44,7 @@ export function Games() {
 
   return html`<main class="view" style="touch-action:pan-y" onPointerDown=${down} onPointerUp=${up}>
     <${Header} title="Games" kicker="HDMI switcher · Gaming PC">
+      ${g?.pc && html`<${GameLightsChip} />`}
       ${g?.pc && html`<button type="button" class="chip" onClick=${() => go('stats')}><${Icon} name="chart" size=${20} />PC stats<${Icon} name="chev" size=${18} /></button>`}
     <//>
     <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(sources.length || 5, 1)}, minmax(0, 1fr))`}>
@@ -67,6 +68,18 @@ export function Games() {
 }
 
 const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', monitor: 'screen', server: 'server', steam: 'playc' };
+
+// Lights follow the game: a switch kept on the server (GAME_LIGHTS), shared with Home Assistant.
+function GameLightsChip() {
+  const on = useStore((s) => s.ui?.gameLights);
+  const [busy, setBusy] = useState(false);
+  const flip = async () => {
+    setBusy(true);
+    try { await post('/api/tweaks', { values: { GAME_LIGHTS: on ? 'false' : 'true' } }); } catch (e) { toast(e.message); }
+    setBusy(false);
+  };
+  return html`<button type="button" class=${`chip ${on ? 'on' : ''}`} disabled=${busy} aria-pressed=${on} onClick=${flip}><${Icon} name="bulb" size=${20} />Game lights</button>`;
+}
 
 // The VM's state is polled from the server; a Home Assistant power entity is used when set instead.
 // Tapping the power button while the PC is on offers shut down, restart and force off; the last two
