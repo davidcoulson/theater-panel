@@ -276,7 +276,7 @@ export function Stats() {
         ${has(s.gpuPower) && html`<h3>Power</h3><${PowerBar} value=${s.gpuPower} />`}
       </section>
     </div>
-    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores <small>peak hold</small></h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
+    ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
     ${hour && html`<section class="tile strip"><h3>The last hour <small>one frame a minute · brighter is busier</small></h3><${FilmStrip} hour=${hour} /></section>`}`}
   </main>`;
 }
