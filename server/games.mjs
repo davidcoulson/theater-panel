@@ -59,10 +59,35 @@ export async function gameEntities() {
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
 // Anything left out simply doesn't appear on the page.
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuPower', 'gpuFan',
-  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime'];
+  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
+}
+
+// The Stats page's film strip: the last hour, one number a minute - the busier of GPU and CPU
+// load, in percent, or null for a minute with no reading (the PC was off). Kept in memory, so it
+// starts again with the server.
+const HOUR = 60;
+const hour = [];
+let minute = [];
+export function recordStats(ha) {
+  const load = (id) => {
+    const st = id && ha.states[id]?.state;
+    const v = typeof st === 'string' ? Number(st) : NaN;
+    return Number.isFinite(v) ? v : null;
+  };
+  setInterval(async () => {
+    const st = (await loadGames().catch(() => null))?.pc?.stats;
+    if (!st) return;
+    const gpu = load(st.gpuLoad), cpu = load(st.cpuLoad);
+    if (gpu != null || cpu != null) minute.push(Math.max(gpu ?? 0, cpu ?? 0));
+  }, 5000).unref();
+  setInterval(() => {
+    hour.push(minute.length ? Math.round(minute.reduce((a, b) => a + b, 0) / minute.length) : null);
+    minute = [];
+    while (hour.length > HOUR) hour.shift();
+  }, 60000).unref();
 }
 
 export async function gamesState() {
@@ -79,6 +104,7 @@ export async function gamesState() {
       name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [],
       canLaunch: Boolean(g.pc.launchScript),
       stats: g.pc.stats || null,
+      hour: g.pc.stats ? [...hour] : null,
     } : null,
     steam: Boolean(config.steam.apiKey && config.steam.id),
   };
