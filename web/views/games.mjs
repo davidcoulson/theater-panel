@@ -127,6 +127,10 @@ function PcPanel({ pc }) {
       <button type="button" class="btn quiet" onClick=${() => setMenu(false)}>Cancel</button>
       ${!admin && html`<div class="note">Restart and force off need ${adminRoom ? 'the admin in the room' : 'an admin room sensor on the settings page'}.</div>`}
     </div>`}
+    ${(vm?.housekeeping ?? pc.housekeeping) && html`<div class="hk"><${Icon} name="alert" size=${18} />${(vm?.housekeeping ?? pc.housekeeping).text}</div>`}
+    ${((vm?.downloads ?? pc.downloads) || []).map((d) => html`<div class="dl" key=${d.name}>
+      <div class="t"><span>${d.name}</span><b>${d.percent}%${d.mbLeft > 0 ? html`<small> · ${d.mbLeft >= 1024 ? `${(d.mbLeft / 1024).toFixed(1)} GB` : `${d.mbLeft} MB`} left</small>` : ''}</b></div>
+      <div class="b"><i style=${`width:${d.percent}%`}></i></div></div>`)}
     <div class="stats">${pc.sensors.map((s) => html`<${Stat} s=${s} />`)}</div>
     ${!pc.sensors.length && html`<div class="empty" style="color:var(--on-choc2)">Add the PC's sensors to games.json to show them here.</div>`}
   </aside>`;
