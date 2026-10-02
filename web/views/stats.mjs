@@ -340,6 +340,8 @@ export function Stats() {
   };
 
   const has = (v) => v != null;
+  // Steam's word on what is running: the game's proper name and art (the sensor only knows the program).
+  const playing = demo ? { name: 'Cyberpunk 2077', header: '/img/steam/1091500/header.jpg' } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
   const gpuTrail = useTrail(s.gpuLoad), cpuTrail = useTrail(s.cpuLoad);
@@ -353,8 +355,11 @@ export function Stats() {
   return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
     <${Steam} heat=${heat} />
     <header class="top">
-      <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-        <div class=${`playing ${s.game ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${s.game || 'Idle'}</div></div>
+      <div class="title">
+        <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
+          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}</div></div>
+        ${playing && html`<img class="art" src=${playing.header} alt="" />`}
+      </div>
       <div class="right">
       ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${s.fpsLow >= 1 ? html`<small>1% low ${r0(s.fpsLow)}</small>` : ''}</span>`}
       <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
