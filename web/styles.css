@@ -230,6 +230,7 @@ input.range.thin { height: 40px; }
 .poster-btn .y { font-family: var(--mono); font-size: 14px; color: var(--muted); margin-top: -4px; }
 .framed { padding: 5px; background: #121010; border-radius: 4px; box-shadow: 0 6px 14px rgba(30,15,5,.35); flex-shrink: 0; }
 .framed .poster { border-radius: 1px; box-shadow: none; }
+.req-badge { position: absolute; left: 10px; top: 10px; padding: 3px 8px; border-radius: 6px; background: var(--gold); color: var(--choc2); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 
 .scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .scroll::-webkit-scrollbar { display: none; }

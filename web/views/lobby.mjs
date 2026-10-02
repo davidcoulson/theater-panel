@@ -43,10 +43,6 @@ export function Lobby() {
 
   return html`<main class="view">
     <${Header} title="Home Theater" kicker=${countdown ? `${weekday} ${part} · ${countdown.text}` : `${weekday} ${part}`}>
-      ${arrivals.list.length > 0 && html`<button type="button" class="chip arrival" onClick=${() => go('watch', { item: arrivals.list[0].plexId })}>
-        ${arrivals.list[0].poster && html`<img src=${arrivals.list[0].poster} alt="" />`}
-        <span><b>Now in Plex</b> ${arrivals.list[0].title}</span>${arrivals.list.length > 1 && html`<span class="more">+${arrivals.list.length - 1}</span>`}
-        <span class="x" role="button" aria-label="Dismiss" onClick=${(e) => { e.stopPropagation(); arrivals.dismiss(arrivals.list[0].id); }}>×</span></button>`}
       <${StreamsChip} onClick=${() => setStreamsOpen(true)} />
       <button type="button" class=${`chip ${plan ? 'on' : ''}`} onClick=${() => openTonight()}><${Icon} name="film" size=${20} />${plan ? `Tonight · ${plan.at ? new Date(plan.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : plan.state === 'feature' ? 'on' : 'ready'}` : 'Tonight'}</button>
       ${soundbar && html`<button type="button" class=${`chip ${undocked.length ? 'warn' : ''}`} onClick=${() => openSound()}><${Icon} name="spk" size=${20} />${undocked.length ? `${undocked.join(' and ')} rear off its dock` : 'Sound'}</button>`}
@@ -60,7 +56,7 @@ export function Lobby() {
       <${Projector} />
       <${Lights} />
       <div class="right-col">
-        <${JustAdded} />
+        <${JustAdded} arrivals=${arrivals.list} />
         <${MusicBar} />
       </div>
     </div>
@@ -233,6 +229,19 @@ function sourceLine(showing, current, games) {
   return showing;
 }
 
+// The panel source on the projector's input: a source wired straight to that input, or the one
+// the game switcher has selected when the input is the switcher's.
+function sourceOnWall(showing, games, switcher) {
+  const input = showing && showing.match(/^HDMI \d/)?.[0];
+  if (!input) return null;
+  const sources = games?.sources || [];
+  const direct = sources.find((x) => x.via !== 'switcher' && x.projectorInput === input);
+  if (direct) return direct.id;
+  if (games?.switcher?.projectorInput !== input || !switcher) return null;
+  const n = (switcher.attributes?.options || []).indexOf(switcher.state) + 1;
+  return sources.find((x) => x.via === 'switcher' && (x.option === switcher.state || x.input === n))?.id || null;
+}
+
 function useNowPlaying(on, current, tv, games) {
   const showing = useEntity(useStore((s) => s.entities.projectorShowing))?.state;
   const sessions = useStore((s) => s.sessions);
@@ -266,7 +275,11 @@ function Projector() {
 
   // In the order set on the admin page.
   const sources = (games?.sources || []).map((s) => ({ ...s, icon: s.icon?.includes(':') ? s.icon : SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
-  const current = runningApp ? null : picked || games?.active;
+  // Lit from what the projector shows (its Showing sensor and, behind the game switcher, the
+  // switcher's input); the last source picked here only while that is unknown.
+  const showing = useEntity(ents.projectorShowing)?.state;
+  const switcher = useEntity(games?.switcher?.entity);
+  const current = runningApp ? null : picked || sourceOnWall(showing, games, switcher) || games?.active;
   const picture = useEntity(ents.pictureMode)?.state;
   const nowPlaying = useNowPlaying(on, current, tv, games);
 
@@ -426,19 +439,28 @@ function LightRow({ id, onEffects }) {
   </div>`;
 }
 
-function JustAdded() {
+function JustAdded({ arrivals = [] }) {
   const [items] = useLoad(() => get('/api/plex/recent?size=14'), []);
   // One card per movie or show: collapse episodes into their show.
   const seen = new Set();
-  const list = (items || []).filter((m) => {
+  const recent = (items || []).filter((m) => {
     const k = m.showTitle || m.id;
     if (seen.has(k)) return false; seen.add(k); return true;
-  }).slice(0, 6);
+  });
+  // What someone asked for in Seerr and has just landed comes first, marked, even when newer
+  // additions have pushed it off Plex's recent list.
+  const requested = arrivals.map((a) => {
+    const hit = recent.find((m) => String(m.id) === a.plexId || String(m.showKey) === a.plexId);
+    return hit ? { ...hit, requested: true } : { id: a.plexId, title: a.title, poster: a.poster, requested: true };
+  });
+  const asked = new Set(requested.map((m) => String(m.id)));
+  const list = [...requested, ...recent.filter((m) => !asked.has(String(m.id)))].slice(0, 6);
   return html`<section class="card">
     <${H2} title="Just added"><button type="button" class="link" onClick=${() => go('watch', { lib: 'library' })}>Browse library</button><//>
     <div class="shelf">
       ${list.map((m) => html`<button type="button" class="poster-btn" key=${m.id} style="width:130px" onClick=${() => go('watch', { item: m.id })} aria-label=${m.showTitle || m.title}>
-        <div class="framed"><${Poster} src=${m.poster} title=${m.showTitle || m.title} /></div>
+        <div class="framed" style="position:relative"><${Poster} src=${m.poster} title=${m.showTitle || m.title} />
+          ${m.requested && html`<span class="req-badge">Requested</span>`}</div>
       </button>`)}
     </div>
   </section>`;
