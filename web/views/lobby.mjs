@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, runtime, endsAt, livePosition, mmss, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -454,19 +454,30 @@ function MusicBar() {
   const a = st?.attributes || {};
   const playing = st?.state === 'playing';
   const vol = Math.round((a.volume_level || 0) * 100);
+  const pos = livePosition(st);
+  const dur = a.media_duration || 0;
   const unavailable = !st || st.state === 'unavailable';
+  // The art as big as the card allows; the track, then its controls under it. Which player it
+  // is lives on the Music page, not here.
   return html`<section class="musicbar dark tx-suede">
     ${a.entity_picture ? html`<img class="cover" src=${`/api/ha-image?e=${encodeURIComponent(id)}&v=${encodeURIComponent(a.entity_picture)}`} alt="" />` : html`<div class="cover"></div>`}
-    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-      <div class="eyebrow ellipsis" style="font-size:14px">${unavailable ? 'Music Assistant player unavailable' : `Music · ${(a.friendly_name || 'Home Theater').replace(/\s*\([^)]*\)$/, '')}`}</div>
-      <div class="ellipsis" style="font-size:23px;font-weight:600">${a.media_title || (unavailable ? 'Check the Music Assistant player' : 'Nothing playing')}</div>
-      <div class="ellipsis" style="font-size:17px;color:var(--on-choc2)">${[a.media_artist, a.media_album_name].filter(Boolean).join(' · ')}</div>
+    <div class="mb-body">
+      <div style="min-width:0">
+        <div class="ellipsis" style="font-size:24px;font-weight:600">${a.media_title || (unavailable ? 'Music player unavailable' : 'Nothing playing')}</div>
+        <div class="ellipsis" style="font-size:17px;color:var(--on-choc2)">${[a.media_artist, a.media_album_name].filter(Boolean).join(' · ')}</div>
+        ${dur > 0 && html`<div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+          <div class="bar" style="flex:1;height:5px"><i style=${`width:${Math.min(100, ((pos || 0) / dur) * 100)}%`}></i></div>
+          <span class="mono" style="font-size:13px;color:var(--on-choc2)">${mmss(pos || 0)} / ${mmss(dur)}</span></div>`}
+      </div>
+      <div class="mb-controls">
+        <button type="button" class="icon-btn" style="width:56px;height:56px" aria-label="Previous" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'previous', entity_id: id })}><${Prev} size=${24} color="#F4F0E8" /></button>
+        <button type="button" class="icon-btn" style="width:68px;height:68px;background:var(--gold)" aria-label=${playing ? 'Pause' : 'Play'} disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'play_pause', entity_id: id })}>
+          ${playing ? html`<${Pause} size=${28} color="var(--choc2)" />` : html`<${Play} size=${28} color="var(--choc2)" />`}
+        </button>
+        <button type="button" class="icon-btn" style="width:56px;height:56px" aria-label="Next" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'next', entity_id: id })}><${Next} size=${24} color="#F4F0E8" /></button>
+        <span style="margin-left:12px;display:flex"><${Icon} name="volm" size=${22} color="var(--on-choc2)" /></span>
+        <div style="flex:1;min-width:80px;max-width:200px" title="Volume"><${Range} cls="thin" value=${vol} label="Music volume" fill="var(--gold)" rest="rgba(0,0,0,.35)" onCommit=${(v) => act({ action: 'music', cmd: 'volume', level: v / 100, entity_id: id })} /></div>
+      </div>
     </div>
-    <button type="button" class="icon-btn" style="width:60px;height:60px" aria-label="Previous" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'previous', entity_id: id })}><${Prev} size=${26} color="#F4F0E8" /></button>
-    <button type="button" class="icon-btn" style="width:76px;height:76px;background:var(--gold)" aria-label=${playing ? 'Pause' : 'Play'} disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'play_pause', entity_id: id })}>
-      ${playing ? html`<${Pause} size=${30} color="var(--choc2)" />` : html`<${Play} size=${30} color="var(--choc2)" />`}
-    </button>
-    <button type="button" class="icon-btn" style="width:60px;height:60px" aria-label="Next" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'next', entity_id: id })}><${Next} size=${26} color="#F4F0E8" /></button>
-    <div style="width:150px"><${Range} cls="thin" value=${vol} label="Music volume" fill="var(--gold)" rest="rgba(0,0,0,.35)" onCommit=${(v) => act({ action: 'music', cmd: 'volume', level: v / 100, entity_id: id })} /></div>
   </section>`;
 }
