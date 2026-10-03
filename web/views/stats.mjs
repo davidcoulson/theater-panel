@@ -243,8 +243,8 @@ const PowerStack = ({ cpu, gpu }) => {
     <div class="ptrack"><div class="bed"></div>
       ${c > 0 && html`<i class="sec cpu" style=${`left:0;width:${pc(c)}%`}></i>`}
       ${g > 0 && html`<i class="sec gpu" style=${`left:${pc(c)}%;width:${pc(g)}%`}></i>`}
-      ${cpu != null && html`<div class="blob cpu" style=${`left:${pc(c)}%`}><em>CPU ${r0(c)}</em></div>`}
-      ${gpu != null && html`<div class="blob gpu" style=${`left:${pc(c + g)}%`}><em>GPU ${r0(g)}</em></div>`}
+      ${cpu != null && html`<div class="blob cpu" style=${`left:${pc(c)}%`}><em>CPU ${r0(c)} W</em></div>`}
+      ${gpu != null && html`<div class="blob gpu" style=${`left:${pc(c + g)}%`}><em>GPU ${r0(g)} W</em></div>`}
     </div>
   </div>`;
 };
