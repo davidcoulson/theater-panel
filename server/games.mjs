@@ -10,6 +10,7 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import { request } from 'node:https';
+import { execFile } from 'node:child_process';
 import { config, settings } from './config.mjs';
 
 const file = process.env.GAMES_CONFIG || './config/games.json';
@@ -100,8 +101,10 @@ export function recordStats(ha) {
 // whole processor's power draw in watts from its energy counter (RAPL), when the host lets this
 // server read it (the counter is root-only unless the host makes it readable).
 export async function hostClock() {
-  const cpus = (await loadGames().catch(() => null))?.pc?.hostCpus;
-  if (!cpus?.length) return { mhz: null, cores: [], temp: null, watts: null };
+  const pc = (await loadGames().catch(() => null))?.pc;
+  cachedPumpName = pc?.pumpSensor || null;
+  const cpus = pc?.hostCpus;
+  if (!cpus?.length) return { mhz: null, cores: [], temp: null, watts: null, pump: await pumpRpm() };
   const text = await readFile('/proc/cpuinfo', 'utf8').catch(() => '');
   const byCpu = new Map();
   for (const block of text.split(/\n\s*\n/)) {
@@ -109,8 +112,27 @@ export async function hostClock() {
     if (cpu && speed) byCpu.set(Number(cpu[1]), Math.round(Number(speed[1])));
   }
   const cores = cpus.map((n) => byCpu.get(n) ?? null), known = cores.filter((v) => v != null);
-  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp(), watts: await hostCpuWatts() };
+  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp(), watts: await hostCpuWatts(), pump: await pumpRpm() };
 }
+
+// The water pump's speed from the host's BMC, when the BMC device is mapped in and pc.pumpSensor
+// names its fan header ("CPU_FAN2/WP"). Read at most every 10 s; the BMC is slow to answer.
+let pumpCache = { at: 0, rpm: null };
+function pumpRpm() {
+  const name = cachedPumpName;
+  if (!name) return null;
+  if (Date.now() - pumpCache.at < 10000) return pumpCache.rpm;
+  pumpCache.at = Date.now();
+  return new Promise((resolve) => {
+    execFile('ipmi-sensors', ['--sensor-types=Fan', '--no-header-output', '--comma-separated-output'], { timeout: 8000 }, (err, out) => {
+      if (err) { resolve(pumpCache.rpm = null); return; }
+      const row = String(out).split('\n').map((l) => l.split(',')).find((c) => c[1] === name);
+      const rpm = row ? Number(row[3]) : NaN;
+      resolve(pumpCache.rpm = Number.isFinite(rpm) ? Math.round(rpm) : null);
+    });
+  });
+}
+let cachedPumpName = null;
 
 // Watts are the energy counter's rise between two readings; it is read at most once a second and
 // wraps at its maximum.
