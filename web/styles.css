@@ -502,8 +502,6 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .twin .k i { width: 10px; height: 10px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 8px var(--kc); align-self: center; }
 .stats-view .twin .k b { font-family: var(--mono); font-size: 24px; color: #F4ECE0; margin-left: 4px; }
 .stats-view .twin .k small { font-size: 13px; color: #8C7660; }
-.stats-view .twin .k.ram { --kc: #E3A865; }
-.stats-view .twin .k.vram, .stats-view .twin .k.pump { --kc: #7FD6C4; }
 .stats-view .pstack { margin-top: 26px; }
 .stats-view .pstack .ph { display: flex; align-items: baseline; justify-content: space-between; }
 .stats-view .pstack .ph h3 { margin: 0; }
