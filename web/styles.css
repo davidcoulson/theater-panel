@@ -495,9 +495,9 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .sub span { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #8C7660; font-weight: 600; }
 .stats-view .fuels { display: flex; gap: 16px; margin-top: 10px; justify-content: center; }
 .stats-view .fuel { margin: 0; text-align: center; }
-.stats-view .fuel svg { width: 262px; display: block; }
+.stats-view .fuel svg { width: 262px; display: block; overflow: visible; }
 .stats-view .fuel .num { font-size: 19px; }
-.stats-view .fuel figcaption { font-family: var(--mono); font-weight: 600; font-size: 24px; color: #F4ECE0; margin-top: 6px; }
+.stats-view .fuel figcaption { font-family: var(--mono); font-weight: 600; font-size: 24px; color: #F4ECE0; margin-top: 6px; text-shadow: 0 0 18px rgba(227,168,101,.45); }
 .stats-view .fuel small, .stats-view .net small { font-size: 14px; color: #8C7660; }
 .stats-view .net { display: flex; align-items: center; gap: 14px; margin-top: 16px; font-weight: 600; color: #C7B39E; }
 .stats-view .net span { width: 52px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }

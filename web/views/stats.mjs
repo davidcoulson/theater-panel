@@ -184,15 +184,18 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
 }
 
 // A fuel gauge in the same dress: a band that fills from empty to full, red over the last eighth,
-// with a slim needle; the reading sits under it.
+// with a slim needle and a soft light where the band ends; the reading sits under it, lit softly.
 function Fuel({ label, value, max, children }) {
+  const id = `f${label}`;
   const w = 260, h = 150, cx = w / 2, cy = 134, r = 92, HALF = 75;
   const f = max > 0 ? clamp(value / max) : 0, ang = (x) => -HALF + 2 * HALF * x;
   const full = arc(cx, cy, r, -HALF, HALF), col = f >= 0.875 ? RED : AMBER;
   const [ex, ey] = pt(cx, cy, r - 30, ang(0)), [fx, fy] = pt(cx, cy, r - 30, ang(1));
   return html`<figure class="fuel">
     <svg viewBox=${`0 0 ${w} ${h}`} aria-hidden="true">
+      <defs><radialGradient id=${`g${id}`}><stop offset="0" stop-color="#FFF2DC" stop-opacity=".85" /><stop offset=".35" stop-color=${col} stop-opacity=".45" /><stop offset="1" stop-color=${col} stop-opacity="0" /></radialGradient></defs>
       <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
+      ${f > 0.005 && html`<g class="turn" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}><circle cx=${cx} cy=${cy - r} r="46" fill=${`url(#g${id})`} /></g>`}
       <path d=${full} stroke=${TRACK} stroke-width="10" fill="none" stroke-linecap="round" />
       <path d=${arc(cx, cy, r, ang(0.875), ang(1))} stroke=${RED} stroke-opacity=".35" stroke-width="10" fill="none" stroke-linecap="round" />
       ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />
