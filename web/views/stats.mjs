@@ -152,9 +152,9 @@ const HEAT_STEPS = 45;
 // Where a bubble's label goes: out past it down the sides, but beside it across the top, where
 // above would run into the tile's heading. side (-1 left, 1 right) keeps two close labels apart.
 function markAt(c, deg, side) {
-  if (Math.abs(deg) >= 45) return pt(c, c, 222, deg);
-  const [bx, by] = pt(c, c, 196, deg);
-  return [bx + (side ?? (deg >= 0 ? 1 : -1)) * 36, by + 5];
+  if (Math.abs(deg) >= 45) return [...pt(c, c, 222, deg), 'middle'];
+  const [bx, by] = pt(c, c, 196, deg), sd = side ?? (deg >= 0 ? 1 : -1);
+  return [bx + sd * 20, by + 5, sd > 0 ? 'start' : 'end'];   // starts just past the bubble's glow, whatever the word
 }
 function Dial({ id, value, heat, heatLabel, trail = [], label = 'Load', marks = [] }) {
   const glowScale = true;
@@ -216,13 +216,13 @@ function Dial({ id, value, heat, heatLabel, trail = [], label = 'Load', marks = 
     ${heat != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(heat * 100)}deg)`}>
       <circle class="halo" cx=${c} cy=${c - 196} r="14" fill=${heatColour(heat)} opacity=".35" />
       <circle cx=${c} cy=${c - 196} r="7.5" fill="#FFF5DC" stroke=${heatColour(heat)} stroke-width="3" /></g>`}
-    ${heat != null && heatLabel && (() => { const [lx, ly] = markAt(c, dialAngle(heat * 100), marks[0] && marks[0].f > heat ? -1 : 1); return html`<text x=${lx} y=${ly} class="mark" fill=${heatColour(heat)}>${heatLabel}</text>`; })()}
+    ${heat != null && heatLabel && (() => { const [lx, ly, an] = markAt(c, dialAngle(heat * 100), marks[0] && marks[0].f > heat ? -1 : 1); return html`<text x=${lx} y=${ly} class="mark" style=${`text-anchor:${an}`} fill=${heatColour(heat)}>${heatLabel}</text>`; })()}
     ${heat != null && marks.map((m) => { const deg = dialAngle(m.f * 100), col = heatColour(m.f);
-      const [lx, ly] = markAt(c, deg, heatLabel ? (m.f > heat ? 1 : -1) : null);
+      const [lx, ly, an] = markAt(c, deg, heatLabel ? (m.f > heat ? 1 : -1) : null);
       return html`<g class="turn" style=${`transform:rotate(${deg}deg)`}>
         <circle class="halo" cx=${c} cy=${c - 196} r="13" fill=${col} opacity=".4" />
         <circle cx=${c} cy=${c - 196} r="5" fill=${col} stroke="#FFF5DC" stroke-width="1.5" /></g>
-        <text x=${lx} y=${ly} class="mark" fill=${col}>${m.label}</text>`; })}
+        <text x=${lx} y=${ly} class="mark" style=${`text-anchor:${an}`} fill=${col}>${m.label}</text>`; })}
     <text x=${c} y=${c + 70} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
     <line x1=${c - 76} y1=${c + 160} x2=${c + 76} y2=${c + 160} stroke=${TRACK} stroke-width="1.5" />
     ${line && html`<path d=${line} stroke=${TEAL} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
