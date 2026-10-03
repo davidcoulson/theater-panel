@@ -185,23 +185,26 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
   </svg>`;
 }
 
-// A fuel gauge in the same dress: a band that fills from empty to full, red over the last eighth,
+// A fuel gauge in the same dress: a scale from empty to full, amber warming to red, bright up to the
+// reading and dim beyond it,
 // on a 0-100 % scale whose ticks light up to the reading, with a glowing needle and a soft light
 // where the band ends; the reading sits under it, lit softly.
+// The memory scale: amber, warming to red over the last stretch.
+const FUEL_STEPS = 30;
+const fuelColour = (t) => (t < 0.7 ? mix([227, 168, 101], [232, 140, 60], t / 0.7) : mix([232, 140, 60], [224, 67, 43], (t - 0.7) / 0.3));
 function Fuel({ label, value, max, children }) {
   const id = `f${label}`;
   const w = 260, h = 150, cx = w / 2, cy = 134, r = 92, HALF = 75;
   const f = max > 0 ? clamp(value / max) : 0, ang = (x) => -HALF + 2 * HALF * x;
-  const full = arc(cx, cy, r, -HALF, HALF), col = f >= 0.875 ? RED : AMBER;
+  const full = arc(cx, cy, r, -HALF, HALF), col = fuelColour(f);
   return html`<figure class="fuel">
     <svg viewBox=${`0 0 ${w} ${h}`} aria-hidden="true">
       <defs><radialGradient id=${`g${id}`}><stop offset="0" stop-color="#FFF2DC" stop-opacity=".85" /><stop offset=".35" stop-color=${col} stop-opacity=".45" /><stop offset="1" stop-color=${col} stop-opacity="0" /></radialGradient></defs>
       <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
       ${f > 0.005 && html`<g class="turn" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}><circle cx=${cx} cy=${cy - r} r="46" fill=${`url(#g${id})`} /></g>`}
-      <path d=${full} stroke=${TRACK} stroke-width="10" fill="none" stroke-linecap="round" />
-      <path d=${arc(cx, cy, r, ang(0.875), ang(1))} stroke=${RED} stroke-opacity=".35" stroke-width="10" fill="none" stroke-linecap="round" />
-      ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />
-        <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="10" fill="none" stroke-linecap="round" />`}
+      ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />`}
+      ${Array.from({ length: FUEL_STEPS }, (_, i) => html`<path d=${arc(cx, cy, r, ang(i / FUEL_STEPS), ang((i + 1) / FUEL_STEPS) + 0.6)}
+        stroke=${fuelColour((i + 0.5) / FUEL_STEPS)} stroke-width="10" fill="none" opacity=${(i + 0.5) / FUEL_STEPS <= f ? 1 : 0.3} />`)}
       ${Array.from({ length: 11 }, (_, i) => {
         const t = i / 10, major = i % 5 === 0, a = ang(t), on = t <= f + 0.001;
         const [x0, y0] = pt(cx, cy, r - 12, a), [x1, y1] = pt(cx, cy, r - (major ? 24 : 19), a), [tx, ty] = pt(cx, cy, r - 38, a);
