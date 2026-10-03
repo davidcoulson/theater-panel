@@ -39,7 +39,7 @@ function useStats(stats, demo) {
     game: gameName(states[stats?.game]),
     stream: streamAddress(states[stats?.stream]),
     gpuName: partName(names[0]), cpuName: partName(names[1]),
-    gpuHotspot: num('gpuHotspot'), gpuMemTemp: num('gpuMemTemp'),
+    gpuMemTemp: num('gpuMemTemp'),
     diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'),
     frames: parseFrames(states[stats?.frames]),
     uptime: states[stats?.uptime],
@@ -56,7 +56,7 @@ function inPanelUnits(role, v, unit) {
     return unit === 'MB' || unit === 'MiB' ? v / 1024 : unit === 'KB' || unit === 'kB' ? v / 1024 ** 2 : unit === 'TB' ? v * 1024 : v;
   }
   if (role === 'netDown' || role === 'netUp') return NET[unit] ? v * NET[unit] : v;
-  if (['gpuTemp', 'cpuTemp', 'gpuHotspot', 'gpuMemTemp', 'diskTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
+  if (['gpuTemp', 'cpuTemp', 'gpuMemTemp', 'diskTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
   if (role === 'diskFree' || role === 'diskTotal') return unit === 'MB' ? v / 1024 : unit === 'TB' ? v * 1024 : v;   // GB
   if (role === 'diskRead' || role === 'diskWrite') return unit === 'KB/s' || unit === 'kB/s' ? v / 1024 : unit === 'B/s' ? v / 1024 ** 2 : unit === 'GB/s' ? v * 1024 : v;   // MB/s
   return v;
@@ -97,7 +97,7 @@ function demoValues() {
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
   d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
   d.ramTotal = 32; d.vramTotal = 24;
-  return { ...d, gpuHotspot: d.gpuTemp + 11, gpuMemTemp: d.gpuTemp + 8, diskFree: 3650, diskTotal: 3726, diskTemp: 41, diskRead: 212, diskWrite: 18,
+  return { ...d, gpuMemTemp: d.gpuTemp + 8, diskFree: 3650, diskTotal: 3726, diskTemp: 41, diskRead: 212, diskWrite: 18,
     frames: { low: Math.round(d.fps * 0.78), ms: Array.from({ length: 40 }, (_, i) => 1000 / d.fps + ((i * 7) % 5) * 0.15 + (i % 13 === 0 ? 3.5 : 0)) }, game: 'Cyberpunk 2077', uptime: null, gpuName: 'GeForce RTX 4090', cpuName: 'Ryzen 7 9800X3D' };
 }
 
@@ -148,7 +148,14 @@ const TEAL = '#5DBFAE', ICE = '#DDF7F0';
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
 const heatColour = (h) => (h < 0.5 ? mix([236, 210, 130], [240, 140, 44], h * 2) : mix([240, 140, 44], [224, 60, 36], (h - 0.5) * 2));
 const HEAT_STEPS = 45;
-function Dial({ id, value, heat, trail = [], label = 'Load', marks = [] }) {
+// Where a bubble's label goes: out past it down the sides, but beside it across the top, where
+// above would run into the tile's heading. side (-1 left, 1 right) keeps two close labels apart.
+function markAt(c, deg, side) {
+  if (Math.abs(deg) >= 45) return pt(c, c, 222, deg);
+  const [bx, by] = pt(c, c, 196, deg);
+  return [bx + (side ?? (deg >= 0 ? 1 : -1)) * 36, by + 5];
+}
+function Dial({ id, value, heat, heatLabel, trail = [], label = 'Load', marks = [] }) {
   const glowScale = true;
   const c = 200, rim = 175;
   const v = clamp(value / 100) * 100;
@@ -208,7 +215,9 @@ function Dial({ id, value, heat, trail = [], label = 'Load', marks = [] }) {
     ${heat != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(heat * 100)}deg)`}>
       <circle class="halo" cx=${c} cy=${c - 196} r="14" fill=${heatColour(heat)} opacity=".35" />
       <circle cx=${c} cy=${c - 196} r="7.5" fill="#FFF5DC" stroke=${heatColour(heat)} stroke-width="3" /></g>`}
-    ${heat != null && marks.map((m, i) => { const deg = dialAngle(m.f * 100), col = heatColour(m.f), [lx, ly] = pt(c, c, 222 + i * 22, deg);   // labels stack outward, never on top of each other
+    ${heat != null && heatLabel && (() => { const [lx, ly] = markAt(c, dialAngle(heat * 100), marks[0] && marks[0].f > heat ? -1 : 1); return html`<text x=${lx} y=${ly} class="mark" fill=${heatColour(heat)}>${heatLabel}</text>`; })()}
+    ${heat != null && marks.map((m) => { const deg = dialAngle(m.f * 100), col = heatColour(m.f);
+      const [lx, ly] = markAt(c, deg, heatLabel ? (m.f > heat ? 1 : -1) : null);
       return html`<g class="turn" style=${`transform:rotate(${deg}deg)`}>
         <circle class="halo" cx=${c} cy=${c - 196} r="13" fill=${col} opacity=".4" />
         <circle cx=${c} cy=${c - 196} r="5" fill=${col} stroke="#FFF5DC" stroke-width="1.5" /></g>
@@ -439,7 +448,9 @@ export function Stats() {
 
   const has = (v) => v != null;
   // Steam's word on what is running: the game's proper name and art (the sensor only knows the program).
-  const playing = demo ? { name: 'Cyberpunk 2077', header: '/img/steam/1091500/header.jpg' } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
+  const demoApp = route.params.app || '1091500';
+  const playing = demo ? { name: route.params.app ? 'Shadow of the Tomb Raider' : 'Cyberpunk 2077', header: `/img/steam/${demoApp}/header.jpg`, hero: `/img/steam/${demoApp}/library_hero.jpg`, logo: `/img/steam/${demoApp}/logo.png` } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
+  const artMode = Number(route.params.art) || 0;   // MOCKUP: which art treatment (0 is the box)
   const streamingTo = s.stream ? (g?.pc?.streamClients?.[s.stream] || s.stream) : null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
@@ -451,14 +462,17 @@ export function Stats() {
   const readout = (list) => html`<div class="sub">${list.filter(Boolean).map(([k, v]) => html`<div><b>${v}</b><span>${k}</span></div>`)}</div>`;
   const style = `--heat:${heat.toFixed(2)};--acc:${mix([184, 118, 58], [224, 88, 43], heat)};--edge:${mix([42, 28, 18], [90, 36, 20], heat)}`;
 
-  return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
+  return html`<main class=${`view stats-view dark art-${artMode}`} style=${style} onPointerDown=${down} onPointerUp=${up}>
+    ${artMode && artMode !== 2 && playing?.hero ? html`<div class="game-bg"><img src=${playing.hero} alt="" /></div>` : ''}
+    ${artMode === 2 && playing?.hero ? html`<div class="game-bg glow"><img src=${playing.hero} alt="" /></div>` : ''}
     <${Steam} heat=${heat} />
     <header class="top">
       <div class="title">
         <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>
+          ${artMode === 2 && playing?.logo ? html`<img class="logo" src=${playing.logo} alt=${playing.name} />` : html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>`}
           ${session && html`<div class="session">${hm(session.minutes)} · peak ${degF(session.peakC)} · peak ${session.peakW} W · ${session.kwh.toFixed(2)} kWh</div>`}</div>
-        ${playing && html`<img class="art" src=${playing.header} alt="" />`}
+        ${playing && !artMode && html`<img class="art" src=${playing.header} alt="" />`}
+        ${playing?.logo && (artMode === 4 || artMode === 6) && html`<img class="logo side" src=${playing.logo} alt="" />`}
       </div>
       <div class="right">
       ${s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
@@ -471,7 +485,7 @@ export function Stats() {
       ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
         ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 95, 185)} trail=${gpuTrail}
-          marks=${[has(s.gpuHotspot) && { f: warmth(s.gpuHotspot, 95, 185), label: 'HOT' }, has(s.gpuMemTemp) && { f: warmth(s.gpuMemTemp, 95, 185), label: 'MEM' }].filter(Boolean)} />
+          heatLabel=${has(s.gpuMemTemp) ? 'CORE' : null} marks=${has(s.gpuMemTemp) ? [{ f: warmth(s.gpuMemTemp, 95, 185), label: 'MEM' }] : []} />
         ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
       <section class="tile side">
         <div class="twins">
