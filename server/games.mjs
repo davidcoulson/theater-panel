@@ -124,10 +124,11 @@ function pumpRpm() {
   if (Date.now() - pumpCache.at < 10000) return pumpCache.rpm;
   pumpCache.at = Date.now();
   return new Promise((resolve) => {
-    execFile('ipmi-sensors', ['--sensor-types=Fan', '--no-header-output', '--comma-separated-output'], { timeout: 8000 }, (err, out) => {
+    // ipmitool sdr lines: "CPU_FAN2/WP      | 61h | ok  | 29.0 | 2700 RPM"
+    execFile('ipmitool', ['sdr', 'type', 'Fan'], { timeout: 8000 }, (err, out) => {
       if (err) { resolve(pumpCache.rpm = null); return; }
-      const row = String(out).split('\n').map((l) => l.split(',')).find((c) => c[1] === name);
-      const rpm = row ? Number(row[3]) : NaN;
+      const row = String(out).split('\n').map((l) => l.split('|').map((c) => c.trim())).find((c) => c[0] === name);
+      const rpm = row ? parseFloat(row[4]) : NaN;
       resolve(pumpCache.rpm = Number.isFinite(rpm) ? Math.round(rpm) : null);
     });
   });

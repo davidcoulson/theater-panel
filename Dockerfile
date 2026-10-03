@@ -17,8 +17,9 @@ COPY package.json package-lock.json ./
 # Alpine fixes published since the base image was built, then the app's dependencies. npm itself
 # is removed afterwards: the panel never runs it, and its own bundled packages were the only
 # vulnerabilities a scan of the image found (brace-expansion, undici, ip-address in npm's tree).
-# freeipmi: the PC stats page reads the host's BMC (pump speed) when /dev/ipmi0 is mapped in.
-RUN apk upgrade --no-cache && apk add --no-cache freeipmi \
+# ipmitool: the PC stats page reads the host's BMC (pump speed) when /dev/ipmi0 is mapped in
+# (FreeIPMI refuses to run as a non-root user; ipmitool only needs the device).
+RUN apk upgrade --no-cache && apk add --no-cache ipmitool \
  && npm ci --omit=dev && npm cache clean --force \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /root/.npm
 
