@@ -27,11 +27,19 @@ const MAX_MOUND = 16, MAX_SCATTER = 40;
 function spawn(k, fresh) {
   const p = { x: rnd(0, W), size: rnd(...(k.size || [3, 6])), color: pick(k.colors || ['#fff']), phase: rnd(0, 6.28), rot: rnd(0, 6.28), spin: rnd(-2, 2) };
   if (k.wander) { p.y = rnd(80, H - 80); p.vx = rnd(-20, 20); p.vy = rnd(-14, 14); p.blink = rnd(0.4, 1.2); return p; }
-  if (k.bats) { p.y = rnd(30, 260); p.x = -80 - rnd(0, W); p.vx = rnd(120, 200); p.size = rnd(22, 34); p.flap = rnd(6, 9); return p; }
+  if (k.bats) { p.y = rnd(batTop + 24, batTop + 150); p.x = -80 - rnd(0, W); p.vx = rnd(120, 200); p.size = rnd(22, 34); p.flap = rnd(6, 9); return p; }
   p.vy = rnd(...k.vy);
   if (p.vy < 0) { p.y = fresh ? rnd(0, H) : H + 20; p.alpha = 1; }   // rises from the bottom
   else p.y = fresh ? rnd(-H, 0) : -20;
   return p;
+}
+
+// Bats keep below the page's heading: where its bottom is, in stage coordinates.
+let batTop = 130;
+function headingBottom(canvas) {
+  const stage = canvas.parentElement, sr = stage.getBoundingClientRect(), z = sr.width / W || 1;
+  const h = stage.querySelector('header.top');
+  return h ? Math.max(0, (h.getBoundingClientRect().bottom - sr.top) / z) : 0;
 }
 
 // The tops of the cards, in stage coordinates, as ledges things can land on.
@@ -374,6 +382,7 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
     const count = Math.max(1, Math.round(k.n * intensity));
+    if (k.bats) batTop = headingBottom(cv);
     let ps = Array.from({ length: count }, () => spawn(k, true));
     // Halloween at 50% and up brings out the ghosts: one more for every notch of the slider.
     const ghosts = k.bats ? Array.from({ length: Math.max(0, Math.floor(intensity) - 1) }, () => spawnGhost(true)) : [];
@@ -387,6 +396,7 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
       const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
       if (paused || document.hidden) { setTimeout(() => requestAnimationFrame(frame), 500); return; }
       t += dt; sinceLedges += dt; sinceMelt += dt; sinceMen += dt; sinceSanta += dt;
+      if (k.bats && sinceLedges > 3) { sinceLedges = 0; batTop = headingBottom(cv); }
       if (k.land && sinceLedges > 3) { sinceLedges = 0; const fresh = findLedges(cv); if (fresh.length !== ledges.length) ledges = fresh; }
       // what has settled clears slowly, so an evening of snow does not bury the buttons
       if (k.land && sinceMelt > 60) {
@@ -468,6 +478,7 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
         }
         if (k.bats) {
           p.x += p.vx * dt; p.y += Math.sin(t * 2 + p.phase) * 25 * dt;
+          if (p.y < batTop + 16) p.y += 80 * dt;    // the page changed under it: drop clear of the new heading
           if (p.x > W + 80) { ps[i] = spawn(k, false); continue; }
           ctx.fillStyle = '#1B1210'; drawBat(ctx, p.x, p.y, p.size, t, p.flap);
           continue;
