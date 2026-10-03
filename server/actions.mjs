@@ -189,7 +189,7 @@ export async function runAction(ha, body) {
       if (body.cmd === 'volume') return ha.callService('media_player', 'volume_set', { volume_level: clamp(body.level, 0, 1) }, { target });
       if (body.cmd === 'seek_rel') {
         const s = ha.states[player]?.attributes || {};
-        const pos = livePosition(s);
+        const pos = livePosition(s, ha.states[player]?.state);
         if (pos == null) throw new Error('Position unknown');
         const to = Math.max(0, Math.min((s.media_duration || Infinity) - 1, pos + Number(body.seconds || 0)));
         return ha.callService('media_player', 'media_seek', { seek_position: to }, { target });
