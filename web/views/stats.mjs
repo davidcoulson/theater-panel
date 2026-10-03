@@ -414,6 +414,7 @@ export function Stats() {
   // The hour comes from the server, which records it whether or not this page is open.
   const [sessionLive, setSession] = useState(null);
   const [hour, setHour] = useState(null);
+  const [logoShown, setLogoShown] = useState(null);   // the logo that loaded, which then stands in for the name
   useEffect(() => {
     if (demo) { setHour(demoHour()); return undefined; }
     setHour(g?.pc?.hour || null); setSession(g?.pc?.session || null);
@@ -470,9 +471,11 @@ export function Stats() {
     <header class="top">
       <div class="title">
         <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>
+          ${(() => { const named = !(playing?.logo && logoShown === playing.logo);
+            const line = [demo && 'Demo numbers', named && (playing?.name || s.game || 'Idle'), streamingTo && `streaming to ${streamingTo}`].filter(Boolean).join(' · ');
+            return line && html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${named ? line : line[0].toUpperCase() + line.slice(1)}</div>`; })()}
           ${session && html`<div class="session">${hm(session.minutes)} · peak ${degF(session.peakC)} · peak ${session.peakW} W · ${session.kwh.toFixed(2)} kWh</div>`}</div>
-        ${playing?.logo && html`<img class="logo" key=${playing.logo} src=${playing.logo} alt="" onError=${hide} />`}
+        ${playing?.logo && html`<img class="logo" key=${playing.logo} src=${playing.logo} alt=${playing.name || ''} onLoad=${() => setLogoShown(playing.logo)} onError=${hide} />`}
       </div>
       <div class="right">
       ${s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
