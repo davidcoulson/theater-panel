@@ -321,6 +321,17 @@ get(/^\/api\/plex\/related\/(\d+)$/, async (m) => {
 get(/^\/api\/habits$/, () => taste.habits());
 
 // The guest remote. Start and end need the panel; state and act need the evening's token.
+// The panel's own errors (see report() in web/lib/api.mjs), into this log.
+const clientLogAt = [];
+post(/^\/api\/client-log$/, (m, q, body = {}) => {
+  const now = Date.now();
+  while (clientLogAt.length && now - clientLogAt[0] > 60000) clientLogAt.shift();
+  if (clientLogAt.length >= 30) return { ok: false };
+  clientLogAt.push(now);
+  const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, n);
+  console.warn(`[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'}: ${clean(body.message, 500)}`);
+  return { ok: true };
+});
 post(/^\/api\/guest\/start$/, () => guest.start(config.tonight.guestHours));
 post(/^\/api\/guest\/end$/, () => { guest.end(); return { ok: true }; });
 get(/^\/api\/guest$/, () => guest.state() || {});
@@ -603,6 +614,9 @@ const server = createServer(async (req, res) => {
     `default-src 'self'; script-src 'self' ${inlineHashes}; img-src 'self' data:; media-src 'self' ${soundOrigins()}; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors ${frameAncestors(path)}`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
+  // A request that takes this long is worth knowing about: it is what leaves a card loading.
+  const started = Date.now();
+  res.on('finish', () => { const ms = Date.now() - started; if (ms > 8000 && path.startsWith('/api/') && path !== '/api/events') console.warn(`[http] slow: ${req.method} ${path} took ${ms} ms`); });
   try {
     if (!authorized(req, url, res)) {
       res.writeHead(401, { 'content-type': 'text/plain' }).end('Open this page once with ?key=<PANEL_KEY>.');

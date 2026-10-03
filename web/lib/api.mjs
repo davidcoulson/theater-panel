@@ -2,19 +2,39 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-export async function get(path) {
-  const r = await fetch(path);
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
-  return body;
+// Requests give up after 20 s, so one that hangs fails (and useLoad tries again) instead of
+// leaving a card at "Loading..." for good. Failures are reported to the server's log.
+const TIMEOUT = 20000;
+async function call(path, init) {
+  const started = Date.now();
+  try {
+    const r = await fetch(path, { ...init, signal: AbortSignal.timeout(TIMEOUT) });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+    return body;
+  } catch (e) {
+    const what = e.name === 'TimeoutError' ? `no answer in ${TIMEOUT / 1000} s` : e.message;
+    report('request', `${init?.method || 'GET'} ${path}: ${what} (${Date.now() - started} ms)`);
+    throw e.name === 'TimeoutError' ? new Error('The panel server did not answer') : e;
+  }
 }
+export const get = (path) => call(path);
+export const post = (path, data) => call(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
 
-export async function post(path, data) {
-  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
-  return body;
+// Errors in the page - a failed request, an exception, a promise nobody caught - go to the
+// server's log with the page they happened on, so a blank card leaves a trace. A few a minute
+// at most, and never about the report itself.
+let reported = [];
+export function report(kind, message) {
+  const now = Date.now();
+  reported = reported.filter((t) => now - t < 60000);
+  if (reported.length >= 6) return;
+  reported.push(now);
+  fetch('/api/client-log', { method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
+    body: JSON.stringify({ kind, message: String(message).slice(0, 500), page: location.hash.slice(0, 120) }) }).catch(() => {});
 }
+addEventListener('error', (e) => report('error', `${e.message} at ${(e.filename || '').split('/').pop()}:${e.lineno}`));
+addEventListener('unhandledrejection', (e) => report('rejection', e.reason?.message || String(e.reason)));
 
 // Fire an action; failures surface as a toast instead of throwing into the UI.
 export async function act(data) {

@@ -9,14 +9,14 @@ import { go } from '../app.mjs';
 export function Games() {
   const swipe = useRef(null);
   const [g, err, reload] = useLoad(() => get('/api/games'), []);
-  const [steam] = useLoad(() => get('/api/steam/library').catch(() => ({ configured: false, games: [] })), []);
+  const [steam, steamErr] = useLoad(() => get('/api/steam/library'), []);
   const [active, setActive] = useState(null);
   // Live from HA: the switcher select's state names the console on screen.
   const switcher = useEntity(g?.switcher?.entity);
   const switcherState = switcher?.state;
   const switchOptions = switcher?.attributes?.options || [];
 
-  if (err) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><div class="empty" style="flex-grow:1">${err.message}</div></main>`;
+  if (err && !g) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><div class="empty" style="flex-grow:1">Couldn't load the games: ${err.message}. Trying again…</div></main>`;
   if (g && !g.configured) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><${Setup} /></main>`;
 
   const sources = (g?.sources || []).filter((s) => s.games !== false);
@@ -57,7 +57,7 @@ export function Games() {
     <div class="games-body">
       <section class="card steam scroll">
         <${H2} title="Steam library"><span class="aside">${steam?.games?.length ? `${steam.games.length} games · recently played first` : ''}</span><//>
-        ${!steam ? html`<div class="empty">Loading…</div>`
+        ${!steam ? html`<div class="empty">${steamErr ? `Couldn't reach Steam: ${steamErr.message}. Trying again…` : 'Loading…'}</div>`
           : !steam.configured ? html`<div class="empty" style="flex-direction:column;gap:8px">Add STEAM_API_KEY and STEAM_ID to the panel's settings to show your library here.</div>`
           : html`<div class="steam-grid">${steam.games.slice(0, 60).map((s) => html`<button type="button" class="poster-btn" key=${s.appid} onClick=${() => launch(s)} aria-label=${`Launch ${s.name}`}>
               <${Poster} src=${s.poster} title=${s.name} />
