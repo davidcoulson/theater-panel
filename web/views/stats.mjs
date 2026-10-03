@@ -170,6 +170,8 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
         ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill="#9C8672">${t}</text>`}`;
     })}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=".16" stroke-width="16" stroke-linecap="round" />
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=".3" stroke-width="8" stroke-linecap="round" />
       <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
     <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${TEAL} stroke-width="2.6" />
@@ -184,13 +186,13 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
 }
 
 // A fuel gauge in the same dress: a band that fills from empty to full, red over the last eighth,
-// with a slim needle and a soft light where the band ends; the reading sits under it, lit softly.
+// on a 0-100 % scale whose ticks light up to the reading, with a glowing needle and a soft light
+// where the band ends; the reading sits under it, lit softly.
 function Fuel({ label, value, max, children }) {
   const id = `f${label}`;
   const w = 260, h = 150, cx = w / 2, cy = 134, r = 92, HALF = 75;
   const f = max > 0 ? clamp(value / max) : 0, ang = (x) => -HALF + 2 * HALF * x;
   const full = arc(cx, cy, r, -HALF, HALF), col = f >= 0.875 ? RED : AMBER;
-  const [ex, ey] = pt(cx, cy, r - 30, ang(0)), [fx, fy] = pt(cx, cy, r - 30, ang(1));
   return html`<figure class="fuel">
     <svg viewBox=${`0 0 ${w} ${h}`} aria-hidden="true">
       <defs><radialGradient id=${`g${id}`}><stop offset="0" stop-color="#FFF2DC" stop-opacity=".85" /><stop offset=".35" stop-color=${col} stop-opacity=".45" /><stop offset="1" stop-color=${col} stop-opacity="0" /></radialGradient></defs>
@@ -200,9 +202,16 @@ function Fuel({ label, value, max, children }) {
       <path d=${arc(cx, cy, r, ang(0.875), ang(1))} stroke=${RED} stroke-opacity=".35" stroke-width="10" fill="none" stroke-linecap="round" />
       ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />
         <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="10" fill="none" stroke-linecap="round" />`}
-      <text x=${ex} y=${ey} class="num" fill="#9C8672">E</text><text x=${fx} y=${fy} class="num" fill="#E0674A">F</text>
+      ${Array.from({ length: 11 }, (_, i) => {
+        const t = i / 10, major = i % 5 === 0, a = ang(t), on = t <= f + 0.001;
+        const [x0, y0] = pt(cx, cy, r - 12, a), [x1, y1] = pt(cx, cy, r - (major ? 24 : 19), a), [tx, ty] = pt(cx, cy, r - 38, a);
+        return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${on ? (t >= 0.875 ? RED : AMBER) : DIM} stroke-width=${major ? 2.6 : 1.4} stroke-linecap="round" />
+          ${major && html`<text x=${tx} y=${ty} class="num" fill=${t >= 0.875 ? '#E0674A' : '#9C8672'}>${i * 10}</text>`}`;
+      })}
       <text x=${cx} y="26" class="lbl">${label}</text>
       ${max > 0 && html`<g class="turn needle" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}>
+        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${col} stroke-opacity=".18" stroke-width="14" stroke-linecap="round" />
+        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${col} stroke-opacity=".35" stroke-width="7" stroke-linecap="round" />
         <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${PALE} stroke-width="3.2" stroke-linecap="round" /></g>`}
       <circle cx=${cx} cy=${cy} r="8" fill="#17100B" stroke=${AMBER} stroke-width="2.4" />
     </svg>
