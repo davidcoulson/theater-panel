@@ -518,6 +518,9 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .pbar small, .stats-view .netline small { font-size: 14px; color: #8C7660; }
 /* Network: a power-style bar in a cool tone, set a little apart from the power bars. */
 .stats-view .pbar.net { margin-top: 30px; }
+.stats-view .pbar.pump .fill { background: linear-gradient(90deg, #2E6E64, #5DBFAE 70%, #DDF7F0); box-shadow: 0 0 14px 2px rgba(93,191,174,.35), 0 0 30px 6px rgba(93,191,174,.14); }
+.stats-view .pbar.pump .fill::after { background: radial-gradient(circle, rgba(221,247,240,.85), rgba(93,191,174,.35) 40%, rgba(93,191,174,0) 72%); }
+.stats-view .pbar.pump b { color: #DDF7F0; text-shadow: 0 0 16px rgba(93,191,174,.5); }
 .stats-view .pbar.net .fill { background: linear-gradient(90deg, #3E6A80, #9CCFE6 70%, #E6F6FF); box-shadow: 0 0 14px 2px rgba(140,190,220,.35), 0 0 30px 6px rgba(140,190,220,.14); }
 .stats-view .pbar.net .fill::after { background: radial-gradient(circle, rgba(240,250,255,.85), rgba(140,190,220,.35) 40%, rgba(140,190,220,0) 72%); }
 .stats-view .pbar.net b { color: #DDEBF0; text-shadow: 0 0 16px rgba(140,190,220,.5); }

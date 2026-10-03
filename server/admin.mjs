@@ -331,7 +331,7 @@ function cleanPc(pc) {
       kind: SENSOR_KINDS.includes(s.kind) ? s.kind : 'value',
     }));
   }
-  for (const k of ['gpuName', 'cpuName']) if (pc[k]) out[k] = String(pc[k]).slice(0, 40);
+  for (const k of ['gpuName', 'cpuName', 'pumpSensor']) if (pc[k]) out[k] = String(pc[k]).slice(0, 40);
   if (pc.streamClients && typeof pc.streamClients === 'object' && !Array.isArray(pc.streamClients)) {
     out.streamClients = Object.fromEntries(Object.entries(pc.streamClients).filter(([k, v]) => /^[\d.:a-f]{3,45}$/i.test(k) && typeof v === 'string').map(([k, v]) => [k, v.slice(0, 40)]));
   }
