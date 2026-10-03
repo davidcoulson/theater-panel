@@ -1,7 +1,7 @@
 // Music: Music Assistant now playing, library browsing and search, and which player to use.
 
 import { useState } from 'preact/hooks';
-import { html, Icon, Play, Pause, Prev, Next, Seg, Range, Header, H2, useDebounced } from '../lib/ui.mjs';
+import { html, Icon, Play, Pause, Prev, Next, Skip, Seg, Range, Header, H2, useDebounced } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, livePosition, mmss } from '../lib/api.mjs';
 
 const TABS = [
@@ -89,8 +89,10 @@ function NowPlaying({ id }) {
     <div style="align-self:stretch;display:flex;align-items:center;justify-content:space-between">
       <button type="button" class="icon-btn" style="width:64px;height:64px" aria-label="Shuffle" aria-pressed=${a.shuffle ? 'true' : 'false'} disabled=${unavailable} onClick=${() => cmd('shuffle', { on: !a.shuffle })}><${Icon} name="shuffle" size=${28} color=${a.shuffle ? 'var(--gold)' : 'var(--on-choc2)'} /></button>
       <button type="button" class="icon-btn" style="width:72px;height:72px" aria-label="Previous" disabled=${unavailable} onClick=${() => cmd('previous')}><${Prev} size=${34} color="#F4F0E8" /></button>
+      <button type="button" class="icon-btn" style="width:60px;height:60px" aria-label="Back 10 seconds" disabled=${unavailable || !dur} onClick=${() => cmd('seek_rel', { seconds: -10 })}><${Skip} seconds=${-10} size=${32} color="#F4F0E8" /></button>
       <button type="button" class="icon-btn" style="width:100px;height:100px;background:var(--gold)" aria-label=${playing ? 'Pause' : 'Play'} disabled=${unavailable} onClick=${() => cmd('play_pause')}>
         ${playing ? html`<${Pause} size=${40} color="var(--choc2)" />` : html`<${Play} size=${40} color="var(--choc2)" />`}</button>
+      <button type="button" class="icon-btn" style="width:60px;height:60px" aria-label="Ahead 10 seconds" disabled=${unavailable || !dur} onClick=${() => cmd('seek_rel', { seconds: 10 })}><${Skip} seconds=${10} size=${32} color="#F4F0E8" /></button>
       <button type="button" class="icon-btn" style="width:72px;height:72px" aria-label="Next" disabled=${unavailable} onClick=${() => cmd('next')}><${Next} size=${34} color="#F4F0E8" /></button>
       <button type="button" class="icon-btn" style="width:64px;height:64px" aria-label="Repeat" disabled=${unavailable} onClick=${() => cmd('repeat', { mode: a.repeat === 'off' ? 'all' : a.repeat === 'all' ? 'one' : 'off' })}><${Icon} name="repeat" size=${28} color=${a.repeat && a.repeat !== 'off' ? 'var(--gold)' : 'var(--on-choc2)'} /></button>
     </div>

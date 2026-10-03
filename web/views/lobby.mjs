@@ -1,7 +1,7 @@
 // Lobby: continue watching, scenes, projector, lights, just added and the pre-show music bar.
 
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { html, Icon, Play, Pause, Prev, Next, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
+import { html, Icon, Play, Pause, Prev, Next, Skip, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, livePosition, mmss, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
@@ -501,9 +501,11 @@ function MusicBar() {
       </div>
       <div class="mb-controls">
         <button type="button" class="icon-btn" style="width:56px;height:56px" aria-label="Previous" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'previous', entity_id: id })}><${Prev} size=${24} color="#F4F0E8" /></button>
+        <button type="button" class="icon-btn" style="width:52px;height:52px" aria-label="Back 10 seconds" disabled=${unavailable || !dur} onClick=${() => act({ action: 'music', cmd: 'seek_rel', seconds: -10, entity_id: id })}><${Skip} seconds=${-10} size=${28} color="#F4F0E8" /></button>
         <button type="button" class="icon-btn" style="width:68px;height:68px;background:var(--gold)" aria-label=${playing ? 'Pause' : 'Play'} disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'play_pause', entity_id: id })}>
           ${playing ? html`<${Pause} size=${28} color="var(--choc2)" />` : html`<${Play} size=${28} color="var(--choc2)" />`}
         </button>
+        <button type="button" class="icon-btn" style="width:52px;height:52px" aria-label="Ahead 10 seconds" disabled=${unavailable || !dur} onClick=${() => act({ action: 'music', cmd: 'seek_rel', seconds: 10, entity_id: id })}><${Skip} seconds=${10} size=${28} color="#F4F0E8" /></button>
         <button type="button" class="icon-btn" style="width:56px;height:56px" aria-label="Next" disabled=${unavailable} onClick=${() => act({ action: 'music', cmd: 'next', entity_id: id })}><${Next} size=${24} color="#F4F0E8" /></button>
         <span style="margin-left:12px;display:flex"><${Icon} name="volm" size=${22} color="var(--on-choc2)" /></span>
         <div style="flex:1;min-width:80px;max-width:200px" title="Volume"><${Range} cls="thin" value=${vol} label="Music volume" fill="var(--gold)" rest="rgba(0,0,0,.35)" onCommit=${(v) => act({ action: 'music', cmd: 'volume', level: v / 100, entity_id: id })} /></div>
