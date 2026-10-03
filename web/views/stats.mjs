@@ -189,8 +189,13 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
 // its reading and dim beyond, with a glowing blob at the reading. Its name sits at the top; the two
 // readings go under it in their own colours.
 const RING_STEPS = 28;
-const TEAL_SCALE = (t) => mix([46, 110, 100], [221, 247, 240], t);
-const AMBER_SCALE = (t) => (t < 0.7 ? mix([227, 168, 101], [232, 140, 60], t / 0.7) : mix([232, 140, 60], [224, 67, 43], (t - 0.7) / 0.3));
+// The two-ring gauges: copper outside (RAM) and olive inside (VRAM, the pump), colours that say
+// nothing about hot or cold. The water ring keeps its own blue-to-red, since it is a temperature.
+const ramp = (lo, hi) => (t) => mix(lo, hi, t);
+const COPPER_SCALE = ramp([130, 70, 40], [240, 160, 110]);
+const OLIVE_SCALE = ramp([88, 90, 40], [214, 214, 120]);
+// The water ring is a temperature, so it runs cold blue through a pale middle to hot red.
+const WATER_SCALE = (t) => (t < 0.5 ? mix([70, 140, 225], [235, 215, 175], t * 2) : mix([235, 215, 175], [224, 60, 36], (t - 0.5) * 2));
 function TwinGauge({ id, label, outer, inner, children }) {
   const w = 260, h = 196, cx = w / 2, cy = 160, HALF = 100, ang = (x) => -HALF + 2 * HALF * x;
   const ring = (k, r, { f, colour }) => {
@@ -403,15 +408,15 @@ export function Stats() {
       <section class="tile side">
         <div class="twins">
           ${(has(s.ramUsed) || has(s.vramUsed)) && html`<${TwinGauge} id="m" label="Memory"
-            outer=${has(s.ramUsed) && ramTotal ? { f: s.ramUsed / ramTotal, colour: AMBER_SCALE } : null}
-            inner=${has(s.vramUsed) && s.vramTotal ? { f: s.vramUsed / s.vramTotal, colour: TEAL_SCALE } : null}>
-            ${has(s.ramUsed) && html`<div class="k ram"><i></i>RAM <b>${s.ramUsed.toFixed(1)}</b><small> / ${ramTotal ? r0(ramTotal) : '?'} GB</small></div>`}
-            ${has(s.vramUsed) && html`<div class="k vram"><i></i>VRAM <b>${s.vramUsed.toFixed(1)}</b><small> / ${s.vramTotal ? r0(s.vramTotal) : '?'} GB</small></div>`}<//>`}
+            outer=${has(s.ramUsed) && ramTotal ? { f: s.ramUsed / ramTotal, colour: COPPER_SCALE } : null}
+            inner=${has(s.vramUsed) && s.vramTotal ? { f: s.vramUsed / s.vramTotal, colour: OLIVE_SCALE } : null}>
+            ${has(s.ramUsed) && html`<div class="k ram" style=${`--kc:${COPPER_SCALE(0.85)}`}><i></i>RAM <b>${s.ramUsed.toFixed(1)}</b><small> / ${ramTotal ? r0(ramTotal) : '?'} GB</small></div>`}
+            ${has(s.vramUsed) && html`<div class="k vram" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>VRAM <b>${s.vramUsed.toFixed(1)}</b><small> / ${s.vramTotal ? r0(s.vramTotal) : '?'} GB</small></div>`}<//>`}
           ${(water > 0 || pump > 0) && html`<${TwinGauge} id="c" label="Cooling"
-            outer=${water > 0 ? { f: (water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0]), colour: heatColour } : null}
-            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: TEAL_SCALE } : null}>
-            ${water > 0 && html`<div class="k water" style=${`--kc:${heatColour(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Water <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
-            ${pump > 0 && html`<div class="k pump"><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}<//>`}
+            outer=${water > 0 ? { f: (water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0]), colour: WATER_SCALE } : null}
+            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: OLIVE_SCALE } : null}>
+            ${water > 0 && html`<div class="k water" style=${`--kc:${WATER_SCALE(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Water <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
+            ${pump > 0 && html`<div class="k pump" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}<//>`}
         </div>
         ${(has(s.gpuPower) || has(cpuWatts)) && html`<${PowerStack} cpu=${cpuWatts} gpu=${s.gpuPower} />`}
         ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span><b>${rate((s.netDown || 0) + (s.netUp || 0))}</b></div>`}
