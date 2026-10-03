@@ -239,9 +239,6 @@ const LAMPS = 18;
 const LampBar = ({ label, lit, glow = false, children }) => html`<div class=${`net ${glow ? 'glow' : ''}`}><span>${label}</span>
   <div class="lamps">${Array.from({ length: LAMPS }, (_, k) => html`<i class=${k < lit ? (k === lit - 1 ? 'on tip' : 'on') : k === 0 ? 'pilot' : ''}></i>`)}</div>
   <b>${children}</b></div>`;
-// Network on a square-root scale to 1 Gb/s, so a stream's few megabits still show.
-const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * LAMPS)) : 0}>
-  ${value < 1 ? html`${Math.round(value * 1000)}<small> kb/s</small>` : html`${value >= 10 ? r0(value) : value.toFixed(1)}<small> Mb/s</small>`}<//>`;
 // Power draw as a glowing band against the most the part pulls: the graphics card's, and the whole processor's as
 // the host measures it.
 const GPU_WATTS = 600, CPU_WATTS = 350;
@@ -251,6 +248,11 @@ const PowerBar = ({ label, value, max }) => {
     <div class="track"><i class="fill" style=${`width:${(f * 100).toFixed(1)}%`}></i></div>
     <b>${r0(value)}<small> W</small></b></div>`;
 };
+// Network as one glowing bar like the power bars, in a cool tone: traffic both ways together, on a
+// square-root scale to 1 Gb/s so a stream's few megabits still show.
+const NetBar = ({ value }) => html`<div class="pbar net"><span>Net</span>
+  <div class="track"><i class="fill" style=${`width:${(value > 0.05 ? Math.max(2, Math.sqrt(clamp(value / 1000)) * 100) : 0).toFixed(1)}%`}></i></div>
+  <b>${rate(value)}</b></div>`;
 // Network as a line of text: megabits, or kilobits when under one.
 const rate = (v) => (v < 1 ? html`${Math.round(v * 1000)}<small> kb/s</small>` : html`${v >= 10 ? r0(v) : v.toFixed(1)}<small> Mb/s</small>`);
 
@@ -411,8 +413,7 @@ export function Stats() {
         ${(has(s.gpuPower) || has(cpuWatts)) && html`<h3>Power ${has(s.gpuPower) && has(cpuWatts) && html`<small>${r0(s.gpuPower + cpuWatts)} W in all</small>`}</h3>
           ${has(cpuWatts) && html`<${PowerBar} label="CPU" value=${cpuWatts} max=${CPU_WATTS} />`}
           ${has(s.gpuPower) && html`<${PowerBar} label="GPU" value=${s.gpuPower} max=${GPU_WATTS} />`}`}
-        ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span>
-          ${has(s.netDown) && html`<b>↓ ${rate(s.netDown)}</b>`}${has(s.netUp) && html`<b>↑ ${rate(s.netUp)}</b>`}</div>`}
+        ${(has(s.netDown) || has(s.netUp)) && html`<${NetBar} value=${(s.netDown || 0) + (s.netUp || 0)} />`}
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
