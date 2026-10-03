@@ -518,6 +518,9 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .ptrack .blob em { position: absolute; bottom: 16px; transform: translateX(-50%); white-space: nowrap; font: 600 14px var(--mono); font-style: normal; color: var(--bc); text-shadow: 0 0 10px color-mix(in srgb, var(--bc) 50%, transparent); }
 .stats-view .ptrack .blob.cpu { --bc: #E3A865; }
 .stats-view .ptrack .blob.gpu { --bc: #FF8A4C; }
+/* CPU's label above the bar, GPU's below, so they never collide. */
+.stats-view .ptrack .blob.gpu em { bottom: auto; top: 16px; }
+.stats-view .ptrack { margin-bottom: 30px; }
 .stats-view .netline { display: flex; align-items: baseline; gap: 22px; margin-top: auto; padding-top: 20px; color: #8C7660; font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
 .stats-view .netline b { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #C7B39E; }
 .stats-view .fps { display: flex; align-items: baseline; gap: 8px; margin-right: 10px; color: #C7B39E; font-size: 18px; font-weight: 600; white-space: nowrap; }
