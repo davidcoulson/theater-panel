@@ -75,6 +75,11 @@ export const Pause = ({ size = 24, color = 'currentColor' }) => html`<svg width=
 export const Prev = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14L8 12z" fill=${color} /><rect x="5" y="5" width="2.5" height="14" rx="1" fill=${color} /></svg>`;
 export const Next = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l11-7z" fill=${color} /><rect x="16.5" y="5" width="2.5" height="14" rx="1" fill=${color} /></svg>`;
 
+// A circular arrow with the seconds in the middle: back (-) turns anticlockwise, ahead clockwise.
+export const Skip = ({ seconds = 10, size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true">
+  <path d=${seconds < 0 ? 'M4.6 9A8 8 0 1 1 4 12M4.4 4.6V9h4.4' : 'M19.4 9A8 8 0 1 0 20 12M19.6 4.6V9h-4.4'} fill="none" stroke=${color} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="12" y="14.7" text-anchor="middle" font-size="7.2" font-weight="700" letter-spacing="-.2" font-family="IBM Plex Sans, sans-serif" fill=${color}>${Math.abs(seconds)}</text></svg>`;
+
 // Poster with a title fallback while loading or when there is no art.
 export function Poster({ src, title, children, style }) {
   const [ok, setOk] = useState(true);

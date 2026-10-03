@@ -187,6 +187,13 @@ export async function runAction(ha, body) {
       const simple = { play_pause: 'media_play_pause', next: 'media_next_track', previous: 'media_previous_track' };
       if (simple[body.cmd]) return ha.callService('media_player', simple[body.cmd], {}, { target });
       if (body.cmd === 'volume') return ha.callService('media_player', 'volume_set', { volume_level: clamp(body.level, 0, 1) }, { target });
+      if (body.cmd === 'seek_rel') {
+        const s = ha.states[player]?.attributes || {};
+        const pos = livePosition(s);
+        if (pos == null) throw new Error('Position unknown');
+        const to = Math.max(0, Math.min((s.media_duration || Infinity) - 1, pos + Number(body.seconds || 0)));
+        return ha.callService('media_player', 'media_seek', { seek_position: to }, { target });
+      }
       if (body.cmd === 'shuffle') return ha.callService('media_player', 'shuffle_set', { shuffle: Boolean(body.on) }, { target });
       if (body.cmd === 'repeat') return ha.callService('media_player', 'repeat_set', { repeat: ['off', 'all', 'one'].includes(body.mode) ? body.mode : 'off' }, { target });
       if (body.cmd === 'play_media') {
