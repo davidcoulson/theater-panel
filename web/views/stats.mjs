@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { html, Icon } from '../lib/ui.mjs';
+import { UnraidMark, UnraidWord } from '../lib/unraid.mjs';
 import { get, useStore, useLoad, runtime } from '../lib/api.mjs';
 import { route, go } from '../app.mjs';
 
@@ -470,7 +471,9 @@ export function Stats() {
     <${Steam} heat=${heat} />
     <header class="top">
       <div class="title">
-        <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
+        <div>${/unraid/i.test(g?.pc?.name || '')   // a PC on Unraid gets Unraid's own logo for its title
+          ? html`<h1 class="brand" aria-label=${g.pc.name}><${UnraidMark} height=${56} /><${UnraidWord} height=${44} /></h1>`
+          : html`<h1>${g?.pc?.name || 'Gaming PC'}</h1>`}
           ${(() => { const named = !(playing?.logo && logoShown === playing.logo);
             const line = [demo && 'Demo numbers', named && (playing?.name || s.game || 'Idle'), streamingTo && `streaming to ${streamingTo}`].filter(Boolean).join(' · ');
             return line && html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${named ? line : line[0].toUpperCase() + line.slice(1)}</div>`; })()}

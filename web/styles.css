@@ -452,6 +452,8 @@ canvas.fx { display: block; width: 100%; }
 /* ---------- gaming PC stats ---------- */
 .stats-view { --hot: #E0674A; --warm: #E3A865; --cool: #8FB9A0; color: #F4ECE0; touch-action: pan-y; }
 .stats-view header.top h1 { color: #F4ECE0; }
+.stats-view header.top h1.brand { display: flex; align-items: center; gap: 16px; }
+.stats-view header.top h1.brand svg { flex-shrink: 0; filter: drop-shadow(0 0 14px rgb(255 120 48 / .35)); }
 .stats-view .kicker { color: var(--gold); }
 .dark-chip { background: rgba(0,0,0,.3); color: #F4ECE0; border-color: rgba(244,236,224,.15); text-decoration: none; }
 /* The booth's instruments. --heat (0-1), --acc and --edge are set by the page from the GPU. */
