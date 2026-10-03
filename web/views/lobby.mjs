@@ -28,7 +28,7 @@ export function Lobby() {
   const [requests] = useLoad(() => get('/api/seerr/requests?take=10').catch(() => null), []);
   const downloading = requests?.results?.filter((r) => r.label === 'Downloading').length || 0;
   // Steam downloads on the gaming PC, for a pill of their own.
-  const [gamesHead] = useLoad(() => get('/api/games').catch(() => null), []);
+  const [gamesHead] = useLoad(() => get('/api/games'), []);
   const steamDl = gamesHead?.pc?.downloads || [];
   const arrivals = useArrivals();
   const [streamsOpen, setStreamsOpen] = useState(false);
@@ -273,7 +273,7 @@ function Projector() {
   const apps = useStore((s) => s.projectorApps) || [];
   const proj = useEntity(ents.projector);
   const tv = useEntity(ents.appleTv);
-  const [games, , reload] = useLoad(() => get('/api/games').catch(() => null), []);
+  const [games, gamesErr, reload] = useLoad(() => get('/api/games'), []);
   // What the PC is playing changes; ask again now and then.
   useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
@@ -318,6 +318,7 @@ function Projector() {
       <div class="muted ellipsis" style="font-size:16px">${!on ? 'Tap a source or app to start' : nowPlaying || 'Nothing playing'}</div></div>
     </div>
     <div class="label" style="margin:18px 0 8px">Source</div>
+    ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
     ${apps.length > 0 && html`<div class="label" style="margin:16px 0 8px">Apps</div>
