@@ -103,8 +103,9 @@ export function recordStats(ha) {
 export async function hostClock() {
   const pc = (await loadGames().catch(() => null))?.pc;
   cachedPumpName = pc?.pumpSensor || null;
+  cachedWaterProbe = [1, 2, 3, 4].includes(pc?.waterProbe) ? pc.waterProbe : 1;
   const cpus = pc?.hostCpus;
-  if (!cpus?.length) return { mhz: null, cores: [], temp: null, watts: null, pump: await pumpRpm() };
+  if (!cpus?.length) return { mhz: null, cores: [], temp: null, watts: null, pump: await pumpRpm(), water: await waterTemp() };
   const text = await readFile('/proc/cpuinfo', 'utf8').catch(() => '');
   const byCpu = new Map();
   for (const block of text.split(/\n\s*\n/)) {
@@ -112,8 +113,28 @@ export async function hostClock() {
     if (cpu && speed) byCpu.set(Number(cpu[1]), Math.round(Number(speed[1])));
   }
   const cores = cpus.map((n) => byCpu.get(n) ?? null), known = cores.filter((v) => v != null);
-  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp(), watts: await hostCpuWatts(), pump: await pumpRpm() };
+  return { mhz: known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null, cores, temp: await hostCpuTemp(), watts: await hostCpuWatts(), pump: await pumpRpm(), water: await waterTemp() };
 }
+
+// The water loop's temperature in °C from an Aquacomputer controller on the host (Octo, Quadro,
+// D5 Next...), whose kernel driver lists its probes as temp1..temp4; pc.waterProbe picks one
+// (default 1). Nothing until such a controller is plugged in.
+const AQUA = new Set(['octo', 'quadro', 'd5next', 'highflownext', 'aquaero', 'farbwerk360']);
+let aquaDir;   // undefined: not looked yet; null: none found (looked again every minute)
+let aquaLooked = 0;
+async function waterTemp() {
+  if (aquaDir === undefined || (aquaDir === null && Date.now() - aquaLooked > 60000)) {
+    aquaLooked = Date.now(); aquaDir = null;
+    for (const d of await readdir(HWMON).catch(() => [])) {
+      const name = (await readFile(`${HWMON}/${d}/name`, 'utf8').catch(() => '')).trim();
+      if (AQUA.has(name)) { aquaDir = `${HWMON}/${d}`; break; }
+    }
+  }
+  if (!aquaDir) return null;
+  const milli = Number(await readFile(`${aquaDir}/temp${cachedWaterProbe}_input`, 'utf8').catch(() => ''));
+  return Number.isFinite(milli) && milli > 0 ? Math.round(milli / 100) / 10 : null;
+}
+let cachedWaterProbe = 1;
 
 // The water pump's speed from the host's BMC, when the BMC device is mapped in and pc.pumpSensor
 // names its fan header ("CPU_FAN2/WP"). Read at most every 10 s; the BMC is slow to answer.

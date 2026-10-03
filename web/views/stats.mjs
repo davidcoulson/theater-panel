@@ -254,13 +254,21 @@ const PowerBar = ({ label, value, max }) => {
 // Network as one glowing bar like the power bars, in a cool tone: traffic both ways together, on a
 // square-root scale to 1 Gb/s so a stream's few megabits still show.
 const NetBar = ({ value }) => html`<div class="pbar net"><span>Net</span>
-  <div class="track"><i class="fill" style=${`width:${(value > 0.05 ? Math.max(2, Math.sqrt(clamp(value / 1000)) * 100) : 0).toFixed(1)}%`}></i></div>
+  <div class="track">${value > 0.05 && html`<i class="fill" style=${`width:${(Math.sqrt(clamp(value / 1000)) * 100).toFixed(1)}%`}></i>`}</div>
   <b>${rate(value)}</b></div>`;
 // The water pump as a bar in the dials' teal, against a D5's full speed.
 const PUMP_RPM = 4800;
 const PumpBar = ({ rpm }) => html`<div class="pbar pump"><span>Pump</span>
   <div class="track"><i class="fill" style=${`width:${(clamp(rpm / PUMP_RPM) * 100).toFixed(1)}%`}></i></div>
   <b>${rpm}<small> rpm</small></b></div>`;
+// The loop's water temperature in °F, from cool (77 °F) to hot (113 °F), in the heat ring's colours.
+const WATER_F = [77, 113];
+const WaterBar = ({ c }) => {
+  const f = c * 9 / 5 + 32, t = clamp((f - WATER_F[0]) / (WATER_F[1] - WATER_F[0]));
+  return html`<div class="pbar water" style=${`--hc:${heatColour(t)}`}><span>Water</span>
+    <div class="track"><i class="fill" style=${`width:${Math.max(3, t * 100).toFixed(1)}%`}></i></div>
+    <b>${Math.round(f)}<small> °F</small></b></div>`;
+};
 // Network as a line of text: megabits, or kilobits when under one.
 const rate = (v) => (v < 1 ? html`${Math.round(v * 1000)}<small> kb/s</small>` : html`${v >= 10 ? r0(v) : v.toFixed(1)}<small> Mb/s</small>`);
 
@@ -371,6 +379,7 @@ export function Stats() {
   }, [g, demo]);
   const cpuWatts = demo ? 96 + s.cpuLoad : host?.watts;
   const pump = demo ? 2700 : host?.pump;
+  const water = demo ? 33.5 : host?.water;
   const cpuClock = s.cpuClock || host?.mhz, cpuTemp = s.cpuTemp > 0 ? s.cpuTemp : demo ? s.cpuTemp : host?.temp;
   const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
 
@@ -424,6 +433,7 @@ export function Stats() {
           ${has(s.gpuPower) && html`<${PowerBar} label="GPU" value=${s.gpuPower} max=${GPU_WATTS} />`}`}
         ${(has(s.netDown) || has(s.netUp)) && html`<${NetBar} value=${(s.netDown || 0) + (s.netUp || 0)} />`}
         ${pump > 0 && html`<${PumpBar} rpm=${pump} />`}
+        ${water > 0 && html`<${WaterBar} c=${water} />`}
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
