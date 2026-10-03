@@ -476,7 +476,7 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .st-row { display: flex; gap: 18px; }
 .st-row .big { width: 536px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
 .st-row .big h3 { align-self: stretch; }
-.st-row .side { flex: 1; }
+.st-row .side { flex: 1; display: flex; flex-direction: column; }
 .st-row .side .fuels + h3, .st-row .side .net + h3 { margin-top: 24px; }
 .stats-view svg.dial { width: 408px; height: 408px; display: block; overflow: visible; }
 .stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
@@ -505,6 +505,19 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .net .lamps i { flex: 1; height: 22px; border-radius: 2px; background: #1D140E; transition: background .6s; }
 .stats-view .net .lamps i.on { background: var(--gold); }
 .stats-view .net .lamps i.pilot { background: rgba(227,168,101,.3); }
+/* Power: a band that glows like the dials' load band, a bright tip at the reading. */
+.stats-view .pbar { display: flex; align-items: center; gap: 14px; margin-top: 22px; font-weight: 600; color: #C7B39E; }
+.stats-view .pbar span { width: 52px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+.stats-view .pbar .track { flex: 1; height: 18px; border-radius: 9px; background: #241811; position: relative; }
+.stats-view .pbar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 9px; transition: width 1.6s ease;
+  background: linear-gradient(90deg, #8A5A2B, #E3A865 70%, #FFD9A0);
+  box-shadow: 0 0 14px 2px rgba(227,168,101,.35), 0 0 30px 6px rgba(227,168,101,.14); }
+.stats-view .pbar .fill::after { content: ''; position: absolute; right: -10px; top: 50%; width: 40px; height: 40px; margin-top: -20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,242,220,.85), rgba(227,168,101,.35) 40%, rgba(227,168,101,0) 72%); }
+.stats-view .pbar b { font-family: var(--mono); font-size: 24px; color: #F4ECE0; width: 112px; text-align: right; white-space: nowrap; text-shadow: 0 0 16px rgba(227,168,101,.5); }
+.stats-view .pbar small, .stats-view .netline small { font-size: 14px; color: #8C7660; }
+.stats-view .netline { display: flex; align-items: baseline; gap: 22px; margin-top: auto; padding-top: 20px; color: #8C7660; font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+.stats-view .netline b { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #C7B39E; }
 .stats-view .net.glow .lamps i.on { box-shadow: 0 0 8px rgba(227,168,101,.55); }
 .stats-view .net.glow .lamps i.tip { background: #FFD9A0; box-shadow: 0 0 10px 2px rgba(255,200,130,.8), 0 0 22px 4px rgba(227,168,101,.45); }
 .stats-view .net.glow b { text-shadow: 0 0 16px rgba(227,168,101,.5); }
