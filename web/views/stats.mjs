@@ -214,12 +214,25 @@ const OLIVE_SCALE = ramp([88, 90, 40], [214, 214, 120]);
 const WATER_SCALE = (t) => (t < 0.5 ? mix([70, 140, 225], [235, 215, 175], t * 2) : mix([235, 215, 175], [224, 60, 36], (t - 0.5) * 2));
 function TwinGauge({ id, label, outer, inner, children }) {
   const w = 260, h = 196, cx = w / 2, cy = 160, HALF = 100, ang = (x) => -HALF + 2 * HALF * x;
+  // A comet like the load dials': a tail from about half the reading that widens and brightens into
+  // it, longer and brighter the fuller the ring.
+  const cometTail = (r, v, tip) => {
+    const from = v * 0.5, n = 12, power = Math.pow(v, 0.9);
+    return Array.from({ length: n }, (_, i) => {
+      const a = from + (v - from) * (i / n), b = from + (v - from) * ((i + 1) / n), t = (i + 1) / n;
+      return html`<path d=${arc(cx, cy, r, ang(a), ang(b) + 0.4)} stroke=${tip} stroke-width=${12 + 22 * t * power}
+        stroke-opacity=${(0.08 + 0.62 * t * t * power).toFixed(3)} fill="none" stroke-linecap="butt" />
+        <path d=${arc(cx, cy, r, ang(a), ang(b) + 0.4)} stroke="#FFFFFF" stroke-width="3.5"
+        stroke-opacity=${(0.75 * Math.pow(t, 3) * power).toFixed(3)} fill="none" stroke-linecap="butt" />`;
+    });
+  };
   const ring = (k, r, { f, colour }) => {
     const v = clamp(f), tip = colour(v);
     return html`
       <defs><radialGradient id=${`g${id}${k}`}><stop offset="0" stop-color="#FFF5E6" stop-opacity=".95" /><stop offset=".3" stop-color=${tip} stop-opacity=".6" /><stop offset="1" stop-color=${tip} stop-opacity="0" /></radialGradient></defs>
       ${Array.from({ length: RING_STEPS }, (_, i) => html`<path d=${arc(cx, cy, r, ang(i / RING_STEPS), ang((i + 1) / RING_STEPS) + 0.6)}
         stroke=${colour((i + 0.5) / RING_STEPS)} stroke-width="11" fill="none" opacity=${(i + 0.5) / RING_STEPS <= v ? 1 : 0.22} />`)}
+      ${v > 0.08 && cometTail(r, v, tip)}
       ${f != null && html`<g class="turn" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(v)}deg)`}>
         <circle cx=${cx} cy=${cy - r} r="24" fill=${`url(#g${id}${k})`} /><circle cx=${cx} cy=${cy - r} r="5.5" fill="#FFF5E6" stroke=${tip} stroke-width="2.5" /></g>`}`;
   };
