@@ -226,7 +226,7 @@ export async function steamNow() {
   const q = new URLSearchParams({ key: config.steam.apiKey, steamids: config.steam.id });
   const r = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?${q}`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
   const p = r?.ok ? (await r.json().catch(() => null))?.response?.players?.[0] : null;
-  const v = p?.gameid && /^\d+$/.test(p.gameid) ? { appid: Number(p.gameid), name: p.gameextrainfo || null, header: `/img/steam/${p.gameid}/header.jpg`, poster: `/img/steam/${p.gameid}/library_600x900.jpg` } : null;
+  const v = p?.gameid && /^\d+$/.test(p.gameid) ? { appid: Number(p.gameid), name: p.gameextrainfo || null, header: `/img/steam/${p.gameid}/header.jpg`, hero: `/img/steam/${p.gameid}/library_hero.jpg`, logo: `/img/steam/${p.gameid}/logo.png`, poster: `/img/steam/${p.gameid}/library_600x900.jpg` } : null;
   if (r?.ok) steamNowCache = { t: Date.now(), v };
   return steamNowCache?.v ?? null;
 }

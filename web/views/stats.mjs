@@ -450,7 +450,6 @@ export function Stats() {
   // Steam's word on what is running: the game's proper name and art (the sensor only knows the program).
   const demoApp = route.params.app || '1091500';
   const playing = demo ? { name: route.params.app ? 'Shadow of the Tomb Raider' : 'Cyberpunk 2077', header: `/img/steam/${demoApp}/header.jpg`, hero: `/img/steam/${demoApp}/library_hero.jpg`, logo: `/img/steam/${demoApp}/logo.png` } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
-  const artMode = Number(route.params.art) || 0;   // MOCKUP: which art treatment (0 is the box)
   const streamingTo = s.stream ? (g?.pc?.streamClients?.[s.stream] || s.stream) : null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
@@ -462,17 +461,18 @@ export function Stats() {
   const readout = (list) => html`<div class="sub">${list.filter(Boolean).map(([k, v]) => html`<div><b>${v}</b><span>${k}</span></div>`)}</div>`;
   const style = `--heat:${heat.toFixed(2)};--acc:${mix([184, 118, 58], [224, 88, 43], heat)};--edge:${mix([42, 28, 18], [90, 36, 20], heat)}`;
 
-  return html`<main class=${`view stats-view dark art-${artMode}`} style=${style} onPointerDown=${down} onPointerUp=${up}>
-    ${artMode && artMode !== 2 && playing?.hero ? html`<div class="game-bg"><img src=${playing.hero} alt="" /></div>` : ''}
-    ${artMode === 2 && playing?.hero ? html`<div class="game-bg glow"><img src=${playing.hero} alt="" /></div>` : ''}
+  // The game's wide Steam art, printed in the page's copper, fades in behind the header, its logo
+  // beside the title. A game without either just goes without.
+  const hide = (e) => { e.currentTarget.style.display = 'none'; };
+  return html`<main class="view stats-view dark" style=${style} onPointerDown=${down} onPointerUp=${up}>
+    ${playing?.hero && html`<div class="game-bg" key=${playing.hero}><img src=${playing.hero} alt="" onError=${hide} /></div>`}
     <${Steam} heat=${heat} />
     <header class="top">
       <div class="title">
         <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-          ${artMode === 2 && playing?.logo ? html`<img class="logo" src=${playing.logo} alt=${playing.name} />` : html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>`}
+          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>
           ${session && html`<div class="session">${hm(session.minutes)} · peak ${degF(session.peakC)} · peak ${session.peakW} W · ${session.kwh.toFixed(2)} kWh</div>`}</div>
-        ${playing && !artMode && html`<img class="art" src=${playing.header} alt="" />`}
-        ${playing?.logo && (artMode === 4 || artMode === 6) && html`<img class="logo side" src=${playing.logo} alt="" />`}
+        ${playing?.logo && html`<img class="logo" key=${playing.logo} src=${playing.logo} alt="" onError=${hide} />`}
       </div>
       <div class="right">
       ${s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
