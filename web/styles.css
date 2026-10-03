@@ -463,6 +463,24 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view > * { position: relative; z-index: 1; }
 .stats-view > canvas.steam { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; transition: opacity 2.5s ease; }
 .stats-view .title { display: flex; align-items: center; gap: 22px; }
+/* MOCKUP: game art treatments (art-1..6) */
+.stats-view > .game-bg { position: absolute; z-index: 0; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; overflow: hidden; }
+.stats-view > .game-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+.stats-view .title .logo { display: block; height: 64px; max-width: 520px; object-fit: contain; object-position: left center; margin-top: 8px; filter: drop-shadow(0 0 18px rgb(224 140 60 / .45)); }
+.stats-view .title .logo.side { height: 96px; max-width: 420px; margin: 0 0 0 30px; filter: drop-shadow(0 4px 18px rgba(0,0,0,.8)); }
+.art-1 > .game-bg { bottom: auto; height: 380px; -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent); mask-image: linear-gradient(to bottom, #000 35%, transparent); }
+.art-1 > .game-bg img { opacity: .6; }
+.art-1 > .game-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #0d0907 0%, rgba(13,9,7,.75) 30%, transparent 65%); }
+.art-2 > .game-bg { bottom: auto; height: 300px; -webkit-mask-image: radial-gradient(700px 260px at 18% 25%, #000, transparent); mask-image: radial-gradient(700px 260px at 18% 25%, #000, transparent); }
+.art-2 > .game-bg img { filter: blur(30px) saturate(1.4); opacity: .5; transform: scale(1.2); }
+.art-3 > .game-bg img { filter: blur(44px) saturate(1.35); opacity: .5; transform: scale(1.15); }
+.art-4 > .game-bg { bottom: auto; height: 400px; -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent); mask-image: linear-gradient(to bottom, #000 40%, transparent); }
+.art-4 > .game-bg img { filter: grayscale(1) sepia(1) saturate(2.4) hue-rotate(-14deg) brightness(.55) contrast(1.2); }
+.art-5 > .game-bg { bottom: 32%; -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent); mask-image: linear-gradient(to bottom, #000 45%, transparent); }
+.art-5 > .game-bg img { opacity: .85; }
+.art-5 .tile { background: rgb(18 11 7 / .55); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }
+.art-6 > .game-bg { left: 34%; bottom: auto; height: 300px; -webkit-mask-image: linear-gradient(to right, transparent, #000 40%), linear-gradient(to bottom, #000 45%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 40%), linear-gradient(to bottom, #000 45%, transparent); mask-composite: intersect; }
+.art-6 > .game-bg img { opacity: .75; }
 .stats-view .title .art { height: 72px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
 .stats-view .playing { font-size: 20px; font-weight: 600; letter-spacing: 1px; color: #8C7660; margin-top: 4px; }
 .stats-view .playing.on { color: var(--gold); }

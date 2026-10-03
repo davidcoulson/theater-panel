@@ -59,7 +59,7 @@ function resolve(url) {
   if ((m = u.pathname.match(/^\/img\/tmdb\/(w\d{2,4}|original)(\/[A-Za-z0-9_-]+\.(?:jpg|png))$/))) {
     return { upstream: `https://image.tmdb.org/t/p/${m[1]}${m[2]}` };
   }
-  if ((m = u.pathname.match(/^\/img\/steam\/(\d{1,9})\/(library_600x900\.jpg|header\.jpg)$/))) {
+  if ((m = u.pathname.match(/^\/img\/steam\/(\d{1,9})\/(library_600x900\.jpg|header\.jpg|library_hero\.jpg|logo\.png)$/))) {
     return { upstream: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${m[1]}/${m[2]}` };
   }
   if (u.pathname === '/img/ext') {
