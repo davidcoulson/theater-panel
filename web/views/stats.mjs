@@ -135,8 +135,23 @@ const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
 const heatColour = (h) => (h < 0.5 ? mix([236, 210, 130], [240, 140, 44], h * 2) : mix([240, 140, 44], [224, 60, 36], (h - 0.5) * 2));
 const HEAT_STEPS = 45;
 function Dial({ id, value, heat, trail = [], label = 'Load' }) {
+  const glowScale = true;
   const c = 200, rim = 175;
   const v = clamp(value / 100) * 100;
+  // Glow strength follows the load: faint at idle, strong flat out.
+  const k = glowScale ? 0.12 + 2.4 * Math.pow(v / 100, 1.4) : 1;
+  // A comet along the band: a tail that starts at about half the reading and grows wider and
+  // brighter towards it, as many short pieces, so busier means a longer, brighter tail.
+  const comet = (val) => {
+    const from = val * 0.55, n = 14, power = Math.pow(val / 100, 1.3);
+    return Array.from({ length: n }, (_, i) => {
+      const a = from + (val - from) * (i / n), b = from + (val - from) * ((i + 1) / n), t = (i + 1) / n;
+      return html`<path d=${arc(c, c, rim, dialAngle(a), dialAngle(b) + 0.4)} stroke=${ICE} stroke-width=${14 + 30 * t * power}
+        stroke-opacity=${(0.06 + 0.5 * t * t * power).toFixed(3)} fill="none" stroke-linecap="butt" />
+        <path d=${arc(c, c, rim, dialAngle(a), dialAngle(b) + 0.4)} stroke="#FFFFFF" stroke-width="5"
+        stroke-opacity=${(0.7 * Math.pow(t, 3) * power).toFixed(3)} fill="none" stroke-linecap="butt" />`;
+    });
+  };
   const full = arc(c, c, rim, -SWEEP, SWEEP);
   const lo = trail.length ? Math.min(...trail, v) : v, hi = trail.length ? Math.max(...trail, v) : v;
   // The line is stretched to the range it covers (at least 12 points of load), so small changes show.
@@ -155,12 +170,13 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
     </defs>
     <g transform="translate(200 200) scale(.935) translate(-200 -200)">
     <circle cx=${c} cy=${c} r="188" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="1.5" />
-    <ellipse cx=${c} cy=${c + 66} rx="92" ry="58" fill=${`url(#gv${id})`} />
-    ${v >= 0.5 && html`<g class="turn" style=${`transform:rotate(${dialAngle(value)}deg)`}><circle cx=${c} cy=${c - rim} r="68" fill=${`url(#gl${id})`} /></g>`}
+    <ellipse cx=${c} cy=${c + 66} rx="92" ry="58" fill=${`url(#gv${id})`} opacity=${Math.min(1, k)} />
+    ${v >= 0.5 && html`<g class="turn" style=${`transform:rotate(${dialAngle(value)}deg)`} opacity=${Math.min(1, k)}><circle cx=${c} cy=${c - rim} r=${glowScale ? 40 + 60 * v / 100 : 68} fill=${`url(#gl${id})`} /></g>`}
     ${heat != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(heat * 100)}deg)`}><circle cx=${c} cy=${c - 196} r="60" fill=${`url(#gh${id})`} /></g>`}
     ${heat != null && scale}
     <path d=${full} stroke=${TRACK} stroke-width="11" fill="none" stroke-linecap="round" />
-    ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
+    ${v >= 0.5 && html`<path class="band glow" style=${`opacity:${glowScale ? 0.1 + 0.12 * v / 100 : 0.22}`} d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
+      ${glowScale && v > 8 && comet(v)}
       <path class="band" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="11" fill="none" stroke-linecap="round" />`}
     ${hi - lo >= 1 && html`<path d=${arc(c, c, 140, dialAngle(lo), dialAngle(hi))} stroke=${TEAL} stroke-opacity=".26" stroke-width="12" fill="none" />`}
     ${Array.from({ length: 51 }, (_, i) => {
@@ -170,8 +186,8 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
         ${t % 20 === 0 && html`<text x=${tx} y=${ty} class="num" fill="#9C8672">${t}</text>`}`;
     })}
     <g class="turn needle" style=${`transform:rotate(${dialAngle(value)}deg)`}>
-      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=".16" stroke-width="16" stroke-linecap="round" />
-      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=".3" stroke-width="8" stroke-linecap="round" />
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=${Math.min(0.5, 0.16 * k)} stroke-width="16" stroke-linecap="round" />
+      <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${ICE} stroke-opacity=${Math.min(0.8, 0.3 * k)} stroke-width="8" stroke-linecap="round" />
       <line x1=${c} y1=${c + 22} x2=${c} y2=${c - 144} stroke=${PALE} stroke-width="3.6" stroke-linecap="round" />
     </g>
     <circle cx=${c} cy=${c} r="10.5" fill="#17100B" stroke=${TEAL} stroke-width="2.6" />
