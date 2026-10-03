@@ -466,6 +466,13 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .title .art { height: 72px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
 .stats-view .playing { font-size: 20px; font-weight: 600; letter-spacing: 1px; color: #8C7660; margin-top: 4px; }
 .stats-view .playing.on { color: var(--gold); }
+.stats-view .session { font-size: 15px; font-weight: 600; color: #8C7660; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stats-view svg .mark { font-family: var(--sans); font-weight: 700; font-size: 13px; letter-spacing: 1px; text-anchor: middle; }
+.stats-view .fspark { display: flex; flex-direction: column; align-items: flex-end; margin-right: 18px; }
+.stats-view .fspark svg { width: 170px; height: 44px; }
+.stats-view .fspark span { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #6E5E4E; }
+.stats-view .foot { margin-top: auto; padding-top: 14px; display: grid; gap: 4px; }
+.stats-view .foot .netline { margin: 0; padding: 0; }
 .stats-view .tile { background: rgb(22 14 9 / calc(.92 - var(--heat) * .2)); border: 1px solid var(--edge); border-radius: 20px; padding: 16px 22px; min-width: 0;
   box-shadow: 0 0 34px rgb(224 88 43 / calc(var(--heat) * .34)), inset 0 1px 0 rgba(255,255,255,.04); }
 .stats-view h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
@@ -542,6 +549,8 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .film i::before { top: 7px; }
 .stats-view .film i::after { bottom: 7px; }
 .stats-view .film b { display: block; height: 100%; border-radius: 3px; background: #1a120c; }
+.stats-view .film i { display: flex; align-items: flex-end; }
+.stats-view .film b { width: 100%; }
 .stats-view .ax { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; letter-spacing: 1px; color: #8C7660; margin-top: 5px; padding: 0 14px; }
 
 /* ---------- now showing (idle screen) ---------- */
