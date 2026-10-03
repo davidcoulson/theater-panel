@@ -478,7 +478,7 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .st-row .big h3 { align-self: stretch; }
 .st-row .side { flex: 1; }
 .st-row .side .fuels + h3, .st-row .side .net + h3 { margin-top: 24px; }
-.stats-view svg.dial { width: 408px; height: 408px; display: block; }
+.stats-view svg.dial { width: 408px; height: 408px; display: block; overflow: visible; }
 .stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
 .stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #9C8672; }
 .stats-view svg .temp { font-family: var(--mono); font-weight: 600; font-size: 23px; text-anchor: middle; dominant-baseline: middle; }

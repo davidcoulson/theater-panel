@@ -122,12 +122,13 @@ const arc = (cx, cy, r, a0, a1) => { const [x0, y0] = pt(cx, cy, r, a0), [x1, y1
 const AMBER = '#E3A865', RED = '#E0432B', DIM = '#5A4636', TRACK = '#241811', PALE = '#F4ECE0';
 
 // A load dial, 0-100, on a dark face. Load is drawn in cool colours - a glowing teal band fills
-// round to the reading, the ticks it has passed light up, a faint inner band marks the last
-// minute's range - so that heat can have the warm ones: a thin ring round the outside is a fixed
-// scale from warm (yellow) through orange to hot (red), lit up to a glowing bead that shows where
-// the part is (heat is 0-1) and dim beyond it. Under the hub are the reading and the last minute as a line.
-// The needle, band and bead move with CSS transitions. Drawn on a 400 grid, scaled down a little
-// so the bead has room outside the ring.
+// round to the reading, with a soft light where it ends; the ticks it has passed light up; a faint
+// inner band marks the last minute's range - so that heat can have the warm ones: a thin ring round
+// the outside is a fixed scale from warm (yellow) through orange to hot (red), lit up to a glowing
+// bead that shows where the part is (heat is 0-1) and dim beyond it. Under the hub, lit softly
+// from behind, are the reading and the last minute as a line. The needle, band, bead and both
+// glows move with CSS transitions. Drawn on a 400 grid, scaled down a little so the bead has room
+// outside the ring.
 const SWEEP = 135, DIAL_TOP = 85;
 const TEAL = '#5DBFAE', ICE = '#DDF7F0';
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
@@ -147,10 +148,16 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
   return html`<svg class="dial" viewBox="0 0 400 400" role="img" aria-label=${`${label} ${r0(value)} percent`}>
     <defs>
       <radialGradient id=${`dk${id}`} cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2A1D15" /><stop offset="1" stop-color="#120B07" /></radialGradient>
+      <radialGradient id=${`gl${id}`}><stop offset="0" stop-color=${ICE} stop-opacity=".9" /><stop offset=".35" stop-color=${TEAL} stop-opacity=".45" /><stop offset="1" stop-color=${TEAL} stop-opacity="0" /></radialGradient>
+      <radialGradient id=${`gv${id}`}><stop offset="0" stop-color=${TEAL} stop-opacity=".3" /><stop offset="1" stop-color=${TEAL} stop-opacity="0" /></radialGradient>
+      ${heat != null && html`<radialGradient id=${`gh${id}`}><stop offset="0" stop-color="#FFF5DC" stop-opacity=".8" /><stop offset=".3" stop-color=${heatColour(heat)} stop-opacity=".45" /><stop offset="1" stop-color=${heatColour(heat)} stop-opacity="0" /></radialGradient>`}
       <linearGradient id=${`ld${id}`} gradientUnits="userSpaceOnUse" x1="50" y1="350" x2="350" y2="60"><stop offset="0" stop-color="#3C9C8E" /><stop offset=".6" stop-color="#7FD6C4" /><stop offset="1" stop-color=${ICE} /></linearGradient>
     </defs>
     <g transform="translate(200 200) scale(.935) translate(-200 -200)">
     <circle cx=${c} cy=${c} r="188" fill=${`url(#dk${id})`} stroke="#3A2A1D" stroke-width="1.5" />
+    <ellipse cx=${c} cy=${c + 66} rx="92" ry="58" fill=${`url(#gv${id})`} />
+    ${v >= 0.5 && html`<g class="turn" style=${`transform:rotate(${dialAngle(value)}deg)`}><circle cx=${c} cy=${c - rim} r="68" fill=${`url(#gl${id})`} /></g>`}
+    ${heat != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(heat * 100)}deg)`}><circle cx=${c} cy=${c - 196} r="60" fill=${`url(#gh${id})`} /></g>`}
     ${heat != null && scale}
     <path d=${full} stroke=${TRACK} stroke-width="11" fill="none" stroke-linecap="round" />
     ${v >= 0.5 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${v} 100`} stroke=${`url(#ld${id})`} stroke-width="24" fill="none" stroke-linecap="round" />
