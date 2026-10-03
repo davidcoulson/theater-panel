@@ -39,6 +39,9 @@ function useStats(stats, demo) {
     game: gameName(states[stats?.game]),
     stream: streamAddress(states[stats?.stream]),
     gpuName: partName(names[0]), cpuName: partName(names[1]),
+    gpuHotspot: num('gpuHotspot'), gpuMemTemp: num('gpuMemTemp'),
+    diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'),
+    frames: parseFrames(states[stats?.frames]),
     uptime: states[stats?.uptime],
   };
   return vals;
@@ -53,7 +56,9 @@ function inPanelUnits(role, v, unit) {
     return unit === 'MB' || unit === 'MiB' ? v / 1024 : unit === 'KB' || unit === 'kB' ? v / 1024 ** 2 : unit === 'TB' ? v * 1024 : v;
   }
   if (role === 'netDown' || role === 'netUp') return NET[unit] ? v * NET[unit] : v;
-  if ((role === 'gpuTemp' || role === 'cpuTemp') && unit === '°F') return (v - 32) * 5 / 9;
+  if (['gpuTemp', 'cpuTemp', 'gpuHotspot', 'gpuMemTemp', 'diskTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
+  if (role === 'diskFree' || role === 'diskTotal') return unit === 'MB' ? v / 1024 : unit === 'TB' ? v * 1024 : v;   // GB
+  if (role === 'diskRead' || role === 'diskWrite') return unit === 'KB/s' || unit === 'kB/s' ? v / 1024 : unit === 'B/s' ? v / 1024 ** 2 : unit === 'GB/s' ? v * 1024 : v;   // MB/s
   return v;
 }
 
@@ -68,6 +73,13 @@ function partName(friendly) {
 
 // The streaming sensor gives the Moonlight client's address, or nothing.
 const streamAddress = (v) => (v && !['unknown', 'unavailable', ''].includes(String(v).toLowerCase()) ? String(v) : null);
+
+// The VM's frames sensor: "<1% low fps>|<frame times in ms>", or nothing when no game renders.
+function parseFrames(v) {
+  const [low, list] = String(v || '').split('|');
+  const ms = (list || '').split(',').map(Number).filter((x) => x > 0);
+  return Number(low) > 0 && ms.length > 1 ? { low: Number(low), ms } : null;
+}
 
 // HASS.Agent's active-window sensor gives a window title; keep it short and drop "idle" states.
 function gameName(v) {
@@ -85,10 +97,12 @@ function demoValues() {
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
   d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
   d.ramTotal = 32; d.vramTotal = 24;
-  return { ...d, game: 'Cyberpunk 2077', uptime: null, gpuName: 'GeForce RTX 4090', cpuName: 'Ryzen 7 9800X3D' };
+  return { ...d, gpuHotspot: d.gpuTemp + 11, gpuMemTemp: d.gpuTemp + 8, diskFree: 3650, diskTotal: 3726, diskTemp: 41, diskRead: 212, diskWrite: 18,
+    frames: { low: Math.round(d.fps * 0.78), ms: Array.from({ length: 40 }, (_, i) => 1000 / d.fps + ((i * 7) % 5) * 0.15 + (i % 13 === 0 ? 3.5 : 0)) }, game: 'Cyberpunk 2077', uptime: null, gpuName: 'GeForce RTX 4090', cpuName: 'Ryzen 7 9800X3D' };
 }
 
-const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19));
+const demoHour = () => Array.from({ length: 360 }, (_, k) => k / 6 | 0).map((i) => (i < 6 ? 6 : i < 9 ? 55 : i < 22 ? 78 + (i * 7) % 14 : i < 26 ? 32 : i < 44 ? 86 + (i * 5) % 13 : i < 47 ? 22 : 80 + (i * 11) % 19))
+  .map((l, k) => ({ l, t: 36 + 34 * Math.min(1, (l / 100) * (0.6 + 0.4 * Math.min(1, k / 200))) }));
 
 // The last minute of a value, sampled every 1.5 s, for a dial's history line and range band.
 const TRAIL = 40;
@@ -134,7 +148,7 @@ const TEAL = '#5DBFAE', ICE = '#DDF7F0';
 const dialAngle = (v) => -SWEEP + 2 * SWEEP * clamp(v / 100);
 const heatColour = (h) => (h < 0.5 ? mix([236, 210, 130], [240, 140, 44], h * 2) : mix([240, 140, 44], [224, 60, 36], (h - 0.5) * 2));
 const HEAT_STEPS = 45;
-function Dial({ id, value, heat, trail = [], label = 'Load' }) {
+function Dial({ id, value, heat, trail = [], label = 'Load', marks = [] }) {
   const glowScale = true;
   const c = 200, rim = 175;
   const v = clamp(value / 100) * 100;
@@ -194,6 +208,11 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
     ${heat != null && html`<g class="turn" style=${`transform:rotate(${dialAngle(heat * 100)}deg)`}>
       <circle class="halo" cx=${c} cy=${c - 196} r="14" fill=${heatColour(heat)} opacity=".35" />
       <circle cx=${c} cy=${c - 196} r="7.5" fill="#FFF5DC" stroke=${heatColour(heat)} stroke-width="3" /></g>`}
+    ${heat != null && marks.map((m, i) => { const deg = dialAngle(m.f * 100), col = heatColour(m.f), [lx, ly] = pt(c, c, 222 + i * 22, deg);   // labels stack outward, never on top of each other
+      return html`<g class="turn" style=${`transform:rotate(${deg}deg)`}>
+        <circle class="halo" cx=${c} cy=${c - 196} r="13" fill=${col} opacity=".4" />
+        <circle cx=${c} cy=${c - 196} r="5" fill=${col} stroke="#FFF5DC" stroke-width="1.5" /></g>
+        <text x=${lx} y=${ly} class="mark" fill=${col}>${m.label}</text>`; })}
     <text x=${c} y=${c + 70} class="val">${r0(value)}<tspan class="unit">%</tspan></text>
     <line x1=${c - 76} y1=${c + 160} x2=${c + 76} y2=${c + 160} stroke=${TRACK} stroke-width="1.5" />
     ${line && html`<path d=${line} stroke=${TEAL} stroke-width="2.4" fill="none" stroke-linejoin="round" stroke-linecap="round" />`}
@@ -277,6 +296,11 @@ const PowerStack = ({ cpu, gpu }) => {
     </div>
   </div>`;
 };
+// Frame times over the last seconds as a small line: flat is smooth, spikes are stutters.
+const FrameSpark = ({ ms }) => {
+  const W = 170, H = 44, hi = Math.max(12, ...ms), pts = ms.map((v, i) => `${i ? 'L' : 'M'}${(i / (ms.length - 1) * W).toFixed(1)} ${(H - 4 - (v / hi) * (H - 8)).toFixed(1)}`).join(' ');
+  return html`<div class="fspark"><svg viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true"><path d=${pts} stroke=${TEAL} stroke-width="2" fill="none" vector-effect="non-scaling-stroke" /></svg><span>frame time</span></div>`;
+};
 // The water pump against a D5's full speed, and the water from cool (77 °F) to hot (113 °F).
 const PUMP_RPM = 4800;
 const WATER_F = [77, 113];
@@ -288,11 +312,17 @@ const rate = (v) => (v < 1 ? html`${Math.round(v * 1000)}<small> kb/s</small>` :
 // sample every ten seconds for an hour. A strip that has only just started shows ten seconds a
 // frame, so it fills in ten minutes; as the recording grows each frame covers more, up to a
 // minute a frame for the whole hour.
+// A frame: its height is the load, its colour the GPU's temperature (pale yellow to red), so a
+// hot stretch stands out even when the load was steady. Older recordings without a temperature
+// fall back to amber.
 function frameStyle(v) {
   if (v == null) return '';
-  const f = clamp(v / 100);
-  const col = f > 0.9 ? `rgb(232,${Math.round(96 - 30 * f)},40)` : `rgb(${Math.round(104 + 126 * f)},${Math.round(66 + 100 * f)},${Math.round(30 + 50 * f)})`;
-  return `background:${col};opacity:${(0.5 + 0.5 * f).toFixed(2)}`;
+  const l = typeof v === 'object' ? v.l : v, t = typeof v === 'object' ? v.t : null;
+  const f = clamp(l / 100);
+  const col = t != null ? heatColour(clamp((t * 9 / 5 + 32 - 95) / 90)) : `rgb(${Math.round(104 + 126 * f)},${Math.round(66 + 100 * f)},${Math.round(30 + 50 * f)})`;
+  // The glow grows with the heat: none when cool, a wide bloom when hot.
+  const h = t != null ? clamp((t * 9 / 5 + 32 - 95) / 90) : 0, glow = Math.pow(h, 1.6);
+  return `background:${col};height:${Math.max(6, f * 100).toFixed(0)}%;box-shadow:0 0 ${(2 + 16 * glow).toFixed(1)}px ${(glow * 4).toFixed(1)}px color-mix(in srgb, ${col} ${Math.round(25 + 60 * glow)}%, transparent)`;
 }
 const FRAMES = 60;
 function FilmStrip({ samples }) {
@@ -303,10 +333,12 @@ function FilmStrip({ samples }) {
   const pad = FRAMES * per - shown.length;
   const frames = Array.from({ length: FRAMES }, (_, f) => {
     const vals = shown.slice(Math.max(0, f * per - pad), Math.max(0, (f + 1) * per - pad)).filter((v) => v != null);
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    if (!vals.length) return null;
+    const avg = (k) => { const xs = vals.map((v) => (typeof v === 'object' ? v[k] : k === 'l' ? v : null)).filter((x) => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
+    return { l: avg('l'), t: avg('t') };
   });
   const minutes = per * 10, mark = (f) => `${+(minutes * f).toFixed(1)}`;
-  return html`<h3>${per === 6 ? 'The last hour' : `The last ${minutes} minutes`} <small>${per === 6 ? 'one frame a minute' : `one frame every ${per * 10} seconds`} · brighter is busier</small></h3>
+  return html`<h3>${per === 6 ? 'The last hour' : `The last ${minutes} minutes`} <small>${per === 6 ? 'one frame a minute' : `one frame every ${per * 10} seconds`} · height is load, colour is GPU heat</small></h3>
     <div class="film">${frames.map((v) => html`<i><b style=${frameStyle(v)}></b></i>`)}</div>
     <div class="ax"><span>${minutes} min ago</span><span>${mark(0.75)}</span><span>${mark(0.5)}</span><span>${mark(0.25)}</span><span>now</span></div>`;
 }
@@ -371,11 +403,12 @@ export function Stats() {
   const swipe = useRef(null);
 
   // The hour comes from the server, which records it whether or not this page is open.
+  const [sessionLive, setSession] = useState(null);
   const [hour, setHour] = useState(null);
   useEffect(() => {
     if (demo) { setHour(demoHour()); return undefined; }
-    setHour(g?.pc?.hour || null);
-    const t = setInterval(() => get('/api/games').then((n) => setHour(n?.pc?.hour || null)).catch(() => {}), 10000);
+    setHour(g?.pc?.hour || null); setSession(g?.pc?.session || null);
+    const t = setInterval(() => get('/api/games').then((n) => { setHour(n?.pc?.hour || null); setSession(n?.pc?.session || null); }).catch(() => {}), 10000);
     return () => clearInterval(t);
   }, [g, demo]);
 
@@ -390,6 +423,9 @@ export function Stats() {
   }, [g, demo]);
   const cpuWatts = demo ? 96 + s.cpuLoad : host?.watts;
   const pump = demo ? 2700 : host?.pump;
+  const frameTimes = s.frames?.ms || [], fpsLow = s.frames?.low ?? s.fpsLow;
+  const session = demo ? { minutes: 102, peakC: 69, peakW: 512, kwh: 0.62 } : sessionLive;
+  const hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} m` : `${m} m`);
   const water = demo ? 33.5 : host?.water;
   const cpuClock = s.cpuClock || host?.mhz, cpuTemp = s.cpuTemp > 0 ? s.cpuTemp : demo ? s.cpuTemp : host?.temp;
   const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
@@ -420,11 +456,13 @@ export function Stats() {
     <header class="top">
       <div class="title">
         <div><h1>${g?.pc?.name || 'Gaming PC'}</h1>
-          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div></div>
+          <div class=${`playing ${s.game || playing ? 'on' : ''}`}>${demo ? 'Demo numbers · ' : ''}${playing?.name || s.game || 'Idle'}${streamingTo ? ` · streaming to ${streamingTo}` : ''}</div>
+          ${session && html`<div class="session">${hm(session.minutes)} · peak ${degF(session.peakC)} · peak ${session.peakW} W · ${session.kwh.toFixed(2)} kWh</div>`}</div>
         ${playing && html`<img class="art" src=${playing.header} alt="" />`}
       </div>
       <div class="right">
-      ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${s.fpsLow >= 1 ? html`<small>1% low ${r0(s.fpsLow)}</small>` : ''}</span>`}
+      ${s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
+      ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${fpsLow >= 1 ? html`<small>1% low ${r0(fpsLow)}</small>` : ''}</span>`}
       <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
       </div>
     </header>
@@ -432,7 +470,8 @@ export function Stats() {
     <div class="st-row dials">
       ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
         ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 100, 135)} trail=${gpuTrail} />
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 95, 185)} trail=${gpuTrail}
+          marks=${[has(s.gpuHotspot) && { f: warmth(s.gpuHotspot, 95, 185), label: 'HOT' }, has(s.gpuMemTemp) && { f: warmth(s.gpuMemTemp, 95, 185), label: 'MEM' }].filter(Boolean)} />
         ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
       <section class="tile side">
         <div class="twins">
@@ -448,7 +487,10 @@ export function Stats() {
             ${pump > 0 && html`<div class="k pump" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}<//>`}
         </div>
         ${(has(s.gpuPower) || has(cpuWatts)) && html`<${PowerStack} cpu=${cpuWatts} gpu=${s.gpuPower} />`}
-        ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span><b>${rate((s.netDown || 0) + (s.netUp || 0))}</b></div>`}
+        <div class="foot">
+          ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span><b>${rate((s.netDown || 0) + (s.netUp || 0))}</b></div>`}
+          ${has(s.diskFree) && html`<div class="netline"><span>Disk</span><b>${(s.diskFree / 1024).toFixed(1)}<small> TB free</small></b>${has(s.diskTemp) && html`<b>${degF(s.diskTemp)}</b>`}${(has(s.diskRead) || has(s.diskWrite)) && html`<b>↓${r0(s.diskRead || 0)}<small> MB/s</small> ↑${r0(s.diskWrite || 0)}<small> MB/s</small></b>`}</div>`}
+        </div>
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}

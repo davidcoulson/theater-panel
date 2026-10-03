@@ -61,18 +61,25 @@ export async function gameEntities() {
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
 // Anything left out simply doesn't appear on the page.
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
-  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream', 'downloads', 'updates'];
+  'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream', 'downloads', 'updates',
+  'gpuHotspot', 'gpuMemTemp', 'diskFree', 'diskTotal', 'diskTemp', 'diskRead', 'diskWrite', 'frames'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
 }
 
-// The Stats page's film strip: the last hour as one number every ten seconds - the busier of GPU
-// and CPU load, in percent, or null for ten seconds with no reading (the PC was off). The page
+// The Stats page's film strip: the last hour as one sample every ten seconds - the busier of GPU
+// and CPU load in percent (l) and the GPU's temperature in °C (t), or null for ten seconds with no
+// reading (the PC was off). The page
 // groups them into its 60 frames. Kept in memory, so it starts again with the server.
 const SAMPLES = 360;
 const hour = [];
 let bucket = [];
+// The game being played now: when it started, its hottest GPU, its peak draw and its energy.
+let session = null;
+const sessionNow = () => session && {
+  minutes: Math.round((Date.now() - session.start) / 60000), peakC: Math.round(session.peakC), peakW: Math.round(session.peakW), kwh: Math.round(session.wh) / 1000,
+};
 export function recordStats(ha) {
   haRef = ha;
   const load = (id) => {
@@ -80,14 +87,26 @@ export function recordStats(ha) {
     const v = typeof st === 'string' ? Number(st) : NaN;
     return Number.isFinite(v) ? v : null;
   };
+  const celsius = (id) => { const v = load(id); return v != null && ha.states[id]?.attributes?.unit_of_measurement === '°F' ? (v - 32) * 5 / 9 : v; };
   setInterval(async () => {
     const st = (await loadGames().catch(() => null))?.pc?.stats;
     if (!st) return;
-    const gpu = load(st.gpuLoad), cpu = load(st.cpuLoad);
-    if (gpu != null || cpu != null) bucket.push(Math.max(gpu ?? 0, cpu ?? 0));
+    const gpu = load(st.gpuLoad), cpu = load(st.cpuLoad), temp = celsius(st.gpuTemp);
+    if (gpu != null || cpu != null) bucket.push({ l: Math.max(gpu ?? 0, cpu ?? 0), t: temp });
+    // The session: from the first rendered frame until two minutes without one.
+    const playing = (load(st.fps) || 0) >= 1, now = Date.now();
+    if (playing) {
+      const watts = (load(st.gpuPower) || 0) + ((await hostCpuWatts().catch(() => null)) || 0);
+      if (!session) session = { start: now, peakC: 0, peakW: 0, wh: 0 };
+      session.last = now;
+      if (temp != null) session.peakC = Math.max(session.peakC, temp);
+      session.peakW = Math.max(session.peakW, watts);
+      session.wh += watts * 5 / 3600;
+    } else if (session && now - session.last > 120000) session = null;
   }, 5000).unref();
   setInterval(() => {
-    hour.push(bucket.length ? Math.round(bucket.reduce((a, b) => a + b, 0) / bucket.length) : null);
+    const avg = (k) => { const xs = bucket.map((b) => b[k]).filter((x) => x != null); return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length * 10) / 10 : null; };
+    hour.push(bucket.length ? { l: Math.round(avg('l')), t: avg('t') } : null);
     bucket = [];
     while (hour.length > SAMPLES) hour.shift();
   }, 10000).unref();
@@ -301,6 +320,7 @@ export async function gamesState() {
       canLaunch: Boolean(g.pc.launchScript),
       stats: g.pc.stats || null,
       hour: g.pc.stats ? [...hour] : null,
+      session: sessionNow(),
       hostClock: Boolean(g.pc.hostCpus?.length),
       vm: vmConfigured() ? await vmState().catch((e) => ({ state: 'unknown', error: e.message })) : null,
       playing: await steamNow(),
