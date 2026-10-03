@@ -235,8 +235,9 @@ function CoreMeters({ loads, clocks = [] }) {
 
 // A row of lamps with its reading. With nothing lit the first lamp glows dimly, as a pilot light.
 const LAMPS = 18;
-const LampBar = ({ label, lit, children }) => html`<div class="net"><span>${label}</span>
-  <div class="lamps">${Array.from({ length: LAMPS }, (_, k) => html`<i class=${k < lit ? 'on' : k === 0 ? 'pilot' : ''}></i>`)}</div>
+// A glowing bar lights its lamps softly, the last lit one brightest, and lights its reading.
+const LampBar = ({ label, lit, glow = false, children }) => html`<div class=${`net ${glow ? 'glow' : ''}`}><span>${label}</span>
+  <div class="lamps">${Array.from({ length: LAMPS }, (_, k) => html`<i class=${k < lit ? (k === lit - 1 ? 'on tip' : 'on') : k === 0 ? 'pilot' : ''}></i>`)}</div>
   <b>${children}</b></div>`;
 // Network on a square-root scale to 1 Gb/s, so a stream's few megabits still show.
 const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value > 0.05 ? Math.max(1, Math.round(Math.sqrt(clamp(value / 1000)) * LAMPS)) : 0}>
@@ -244,7 +245,7 @@ const NetBar = ({ label, value }) => html`<${LampBar} label=${label} lit=${value
 // Power draw against the most the part pulls: the graphics card's, and the whole processor's as
 // the host measures it.
 const GPU_WATTS = 600, CPU_WATTS = 350;
-const PowerBar = ({ label, value, max }) => html`<${LampBar} label=${label} lit=${Math.round(clamp(value / max) * LAMPS)}>${r0(value)}<small> W</small><//>`;
+const PowerBar = ({ label, value, max }) => html`<${LampBar} label=${label} glow lit=${Math.round(clamp(value / max) * LAMPS)}>${r0(value)}<small> W</small><//>`;
 
 // The PC's recent load as a film strip of 60 frames: brighter is busier, red is flat out; an idle
 // frame is a faint amber and one with no reading (the PC was off) stays dark. The server keeps a
