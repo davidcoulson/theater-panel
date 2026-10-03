@@ -477,7 +477,6 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .st-row .big { width: 536px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
 .st-row .big h3 { align-self: stretch; }
 .st-row .side { flex: 1; display: flex; flex-direction: column; }
-.st-row .side .fuels + h3, .st-row .side .net + h3 { margin-top: 18px; }
 .stats-view svg.dial { width: 408px; height: 408px; display: block; overflow: visible; }
 .stats-view svg .num { font-family: var(--disp); font-weight: 800; font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
 .stats-view svg .lbl { font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 4px; text-transform: uppercase; text-anchor: middle; fill: #9C8672; }
@@ -493,46 +492,36 @@ main.stats-view { --heat: 0; --acc: #B8763A; --edge: #2A1C12; gap: 14px; padding
 .stats-view .sub div { text-align: center; }
 .stats-view .sub b { display: block; font-family: var(--mono); font-weight: 600; font-size: 23px; color: #F4ECE0; white-space: nowrap; }
 .stats-view .sub span { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #8C7660; font-weight: 600; }
-.stats-view .fuels { display: flex; gap: 16px; margin-top: 10px; justify-content: center; }
-.stats-view .fuel { margin: 0; text-align: center; }
-.stats-view .fuel svg { width: 262px; display: block; overflow: visible; }
-.stats-view .fuel .num { font-size: 16px; }
-.stats-view .fuel figcaption { font-family: var(--mono); font-weight: 600; font-size: 24px; color: #F4ECE0; margin-top: 6px; text-shadow: 0 0 18px rgba(227,168,101,.45); }
-.stats-view .fuel small, .stats-view .net small { font-size: 14px; color: #8C7660; }
-.stats-view .net { display: flex; align-items: center; gap: 14px; margin-top: 16px; font-weight: 600; color: #C7B39E; }
-.stats-view .net span { width: 52px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
-.stats-view .net .lamps { display: flex; gap: 4px; flex: 1; }
-.stats-view .net .lamps i { flex: 1; height: 22px; border-radius: 2px; background: #1D140E; transition: background .6s; }
-.stats-view .net .lamps i.on { background: var(--gold); }
-.stats-view .net .lamps i.pilot { background: rgba(227,168,101,.3); }
-/* Power: a band that glows like the dials' load band, a bright tip at the reading. */
-.stats-view .pbar { display: flex; align-items: center; gap: 14px; margin-top: 13px; font-weight: 600; color: #C7B39E; }
-.stats-view .pbar span { width: 52px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
-.stats-view .pbar .track { flex: 1; height: 18px; border-radius: 9px; background: #241811; position: relative; }
-.stats-view .pbar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 9px; min-width: 18px; /* a full rounded cap, so the glow sits at its end */ transition: width 1.6s ease;
-  background: linear-gradient(90deg, #8A5A2B, #E3A865 70%, #FFD9A0);
-  box-shadow: 0 0 14px 2px rgba(227,168,101,.35), 0 0 30px 6px rgba(227,168,101,.14); }
-.stats-view .pbar .fill::after { content: ''; position: absolute; right: -10px; top: 50%; width: 40px; height: 40px; margin-top: -20px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,242,220,.85), rgba(227,168,101,.35) 40%, rgba(227,168,101,0) 72%); }
-.stats-view .pbar b { font-family: var(--mono); font-size: 24px; color: #F4ECE0; width: 112px; text-align: right; white-space: nowrap; text-shadow: 0 0 16px rgba(227,168,101,.5); }
-.stats-view .pbar small, .stats-view .netline small { font-size: 14px; color: #8C7660; }
-/* Network: a power-style bar in a cool tone, set a little apart from the power bars. */
-.stats-view .pbar.net { margin-top: 24px; }
-.stats-view .pbar.pump .fill { background: linear-gradient(90deg, #2E6E64, #5DBFAE 70%, #DDF7F0); box-shadow: 0 0 14px 2px rgba(93,191,174,.35), 0 0 30px 6px rgba(93,191,174,.14); }
-.stats-view .pbar.pump .fill::after { background: radial-gradient(circle, rgba(221,247,240,.85), rgba(93,191,174,.35) 40%, rgba(93,191,174,0) 72%); }
-.stats-view .pbar.water .fill { background: linear-gradient(90deg, rgb(236 210 130), var(--hc)); box-shadow: 0 0 14px 2px color-mix(in srgb, var(--hc) 40%, transparent), 0 0 30px 6px color-mix(in srgb, var(--hc) 16%, transparent); }
-.stats-view .pbar.water .fill::after { background: radial-gradient(circle, rgba(255,245,220,.85), color-mix(in srgb, var(--hc) 40%, transparent) 40%, transparent 72%); }
-.stats-view .pbar.water b { text-shadow: 0 0 16px color-mix(in srgb, var(--hc) 55%, transparent); }
-.stats-view .pbar.pump b { color: #DDF7F0; text-shadow: 0 0 16px rgba(93,191,174,.5); }
-.stats-view .pbar.net .fill { background: linear-gradient(90deg, #3E6A80, #9CCFE6 70%, #E6F6FF); box-shadow: 0 0 14px 2px rgba(140,190,220,.35), 0 0 30px 6px rgba(140,190,220,.14); }
-.stats-view .pbar.net .fill::after { background: radial-gradient(circle, rgba(240,250,255,.85), rgba(140,190,220,.35) 40%, rgba(140,190,220,0) 72%); }
-.stats-view .pbar.net b { color: #DDEBF0; text-shadow: 0 0 16px rgba(140,190,220,.5); }
+/* The right tile: two ring gauges side by side, the power bar, the network line. */
+.stats-view .twins { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stats-view .twin { margin: 0; }
+.stats-view .twin svg { width: 100%; display: block; overflow: visible; }
+.stats-view .twin .lbl { font-size: 15px; }
+.stats-view .twin figcaption { display: grid; gap: 4px; margin-top: 10px; padding-left: 6px; font-size: 14px; font-weight: 600; color: #8C7660; letter-spacing: .5px; }
+.stats-view .twin .k { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.stats-view .twin .k i { width: 10px; height: 10px; border-radius: 50%; background: var(--kc); box-shadow: 0 0 8px var(--kc); align-self: center; }
+.stats-view .twin .k b { font-family: var(--mono); font-size: 24px; color: #F4ECE0; margin-left: 4px; }
+.stats-view .twin .k small { font-size: 13px; color: #8C7660; }
+.stats-view .twin .k.ram { --kc: #E3A865; }
+.stats-view .twin .k.vram, .stats-view .twin .k.pump { --kc: #7FD6C4; }
+.stats-view .pstack { margin-top: 26px; }
+.stats-view .pstack .ph { display: flex; align-items: baseline; justify-content: space-between; }
+.stats-view .pstack .ph h3 { margin: 0; }
+.stats-view .pstack .ph b { font-family: var(--mono); font-size: 30px; color: #F4ECE0; text-shadow: 0 0 18px rgba(227,168,101,.5); }
+.stats-view .pstack .ph small { font-size: 15px; color: #8C7660; }
+.stats-view .ptrack { position: relative; margin-top: 34px; height: 16px; }
+.stats-view .ptrack .bed { position: absolute; inset: 0; border-radius: 8px; background: #241811; }
+.stats-view .ptrack .sec { position: absolute; top: 0; bottom: 0; transition: left 1.6s ease, width 1.6s ease; }
+.stats-view .ptrack .sec.cpu { border-radius: 8px 0 0 8px; background: linear-gradient(90deg, #8A5A2B, #E3A865); box-shadow: 0 0 14px 2px rgba(227,168,101,.3); }
+.stats-view .ptrack .sec.gpu { border-radius: 0 8px 8px 0; background: linear-gradient(90deg, #B4472A, #FF8A4C); box-shadow: 0 0 14px 2px rgba(255,138,76,.3); }
+.stats-view .ptrack .blob { position: absolute; top: 8px; width: 0; transition: left 1.6s ease; }
+.stats-view .ptrack .blob::before { content: ''; position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,245,225,.95) 0, var(--bc) 30%, color-mix(in srgb, var(--bc) 25%, transparent) 55%, transparent 72%); }
+.stats-view .ptrack .blob em { position: absolute; bottom: 16px; transform: translateX(-50%); white-space: nowrap; font: 600 14px var(--mono); font-style: normal; color: var(--bc); text-shadow: 0 0 10px color-mix(in srgb, var(--bc) 50%, transparent); }
+.stats-view .ptrack .blob.cpu { --bc: #E3A865; }
+.stats-view .ptrack .blob.gpu { --bc: #FF8A4C; }
 .stats-view .netline { display: flex; align-items: baseline; gap: 22px; margin-top: auto; padding-top: 20px; color: #8C7660; font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
 .stats-view .netline b { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #C7B39E; }
-.stats-view .net.glow .lamps i.on { box-shadow: 0 0 8px rgba(227,168,101,.55); }
-.stats-view .net.glow .lamps i.tip { background: #FFD9A0; box-shadow: 0 0 10px 2px rgba(255,200,130,.8), 0 0 22px 4px rgba(227,168,101,.45); }
-.stats-view .net.glow b { text-shadow: 0 0 16px rgba(227,168,101,.5); }
-.stats-view .net b { font-family: var(--mono); font-size: 22px; color: #F4ECE0; width: 112px; text-align: right; white-space: nowrap; }
 .stats-view .fps { display: flex; align-items: baseline; gap: 8px; margin-right: 10px; color: #C7B39E; font-size: 18px; font-weight: 600; white-space: nowrap; }
 .stats-view .fps b { font-family: var(--disp); font-weight: 800; font-size: 60px; line-height: .8; color: #F4ECE0; }
 .stats-view .fps small { font-size: 15px; font-weight: 500; color: #8C7660; margin-left: 8px; }

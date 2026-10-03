@@ -185,38 +185,29 @@ function Dial({ id, value, heat, trail = [], label = 'Load' }) {
   </svg>`;
 }
 
-// A fuel gauge in the same dress: a scale from empty to full, amber warming to red, bright up to the
-// reading and dim beyond it,
-// on a 0-100 % scale whose ticks light up to the reading, with a glowing needle and a soft light
-// where the band ends; the reading sits under it, lit softly.
-// The memory scale: amber, warming to red over the last stretch.
-const FUEL_STEPS = 30;
-const fuelColour = (t) => (t < 0.7 ? mix([227, 168, 101], [232, 140, 60], t / 0.7) : mix([232, 140, 60], [224, 67, 43], (t - 0.7) / 0.3));
-function Fuel({ label, value, max, children }) {
-  const id = `f${label}`;
-  const w = 260, h = 150, cx = w / 2, cy = 134, r = 92, HALF = 75;
-  const f = max > 0 ? clamp(value / max) : 0, ang = (x) => -HALF + 2 * HALF * x;
-  const full = arc(cx, cy, r, -HALF, HALF), col = fuelColour(f);
-  return html`<figure class="fuel">
+// A half gauge with two readings on rings, one inside the other: each ring is a scale bright up to
+// its reading and dim beyond, with a glowing blob at the reading. Its name sits at the top; the two
+// readings go under it in their own colours.
+const RING_STEPS = 28;
+const TEAL_SCALE = (t) => mix([46, 110, 100], [221, 247, 240], t);
+const AMBER_SCALE = (t) => (t < 0.7 ? mix([227, 168, 101], [232, 140, 60], t / 0.7) : mix([232, 140, 60], [224, 67, 43], (t - 0.7) / 0.3));
+function TwinGauge({ id, label, outer, inner, children }) {
+  const w = 260, h = 196, cx = w / 2, cy = 160, HALF = 100, ang = (x) => -HALF + 2 * HALF * x;
+  const ring = (k, r, { f, colour }) => {
+    const v = clamp(f), tip = colour(v);
+    return html`
+      <defs><radialGradient id=${`g${id}${k}`}><stop offset="0" stop-color="#FFF5E6" stop-opacity=".95" /><stop offset=".3" stop-color=${tip} stop-opacity=".6" /><stop offset="1" stop-color=${tip} stop-opacity="0" /></radialGradient></defs>
+      ${Array.from({ length: RING_STEPS }, (_, i) => html`<path d=${arc(cx, cy, r, ang(i / RING_STEPS), ang((i + 1) / RING_STEPS) + 0.6)}
+        stroke=${colour((i + 0.5) / RING_STEPS)} stroke-width="11" fill="none" opacity=${(i + 0.5) / RING_STEPS <= v ? 1 : 0.22} />`)}
+      ${f != null && html`<g class="turn" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(v)}deg)`}>
+        <circle cx=${cx} cy=${cy - r} r="24" fill=${`url(#g${id}${k})`} /><circle cx=${cx} cy=${cy - r} r="5.5" fill="#FFF5E6" stroke=${tip} stroke-width="2.5" /></g>`}`;
+  };
+  return html`<figure class="twin">
     <svg viewBox=${`0 0 ${w} ${h}`} aria-hidden="true">
-      <defs><radialGradient id=${`g${id}`}><stop offset="0" stop-color="#FFF2DC" stop-opacity=".85" /><stop offset=".35" stop-color=${col} stop-opacity=".45" /><stop offset="1" stop-color=${col} stop-opacity="0" /></radialGradient></defs>
       <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
-      ${f > 0.005 && html`<g class="turn" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}><circle cx=${cx} cy=${cy - r} r="46" fill=${`url(#g${id})`} /></g>`}
-      ${f > 0.005 && html`<path class="band glow" d=${full} pathLength="100" stroke-dasharray=${`${f * 100} 100`} stroke=${col} stroke-width="22" fill="none" stroke-linecap="round" />`}
-      ${Array.from({ length: FUEL_STEPS }, (_, i) => html`<path d=${arc(cx, cy, r, ang(i / FUEL_STEPS), ang((i + 1) / FUEL_STEPS) + 0.6)}
-        stroke=${fuelColour((i + 0.5) / FUEL_STEPS)} stroke-width="10" fill="none" opacity=${(i + 0.5) / FUEL_STEPS <= f ? 1 : 0.3} />`)}
-      ${Array.from({ length: 11 }, (_, i) => {
-        const t = i / 10, major = i % 5 === 0, a = ang(t), on = t <= f + 0.001;
-        const [x0, y0] = pt(cx, cy, r - 12, a), [x1, y1] = pt(cx, cy, r - (major ? 24 : 19), a), [tx, ty] = pt(cx, cy, r - 38, a);
-        return html`<line x1=${x0} y1=${y0} x2=${x1} y2=${y1} stroke=${on ? (t >= 0.875 ? RED : AMBER) : DIM} stroke-width=${major ? 2.6 : 1.4} stroke-linecap="round" />
-          ${major && html`<text x=${tx} y=${ty} class="num" fill=${t >= 0.875 ? '#E0674A' : '#9C8672'}>${i * 10}</text>`}`;
-      })}
-      <text x=${cx} y="26" class="lbl">${label}</text>
-      ${max > 0 && html`<g class="turn needle" style=${`transform-origin:${cx}px ${cy}px;transform:rotate(${ang(f)}deg)`}>
-        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${col} stroke-opacity=".18" stroke-width="14" stroke-linecap="round" />
-        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${col} stroke-opacity=".35" stroke-width="7" stroke-linecap="round" />
-        <line x1=${cx} y1=${cy} x2=${cx} y2=${cy - r + 16} stroke=${PALE} stroke-width="3.2" stroke-linecap="round" /></g>`}
-      <circle cx=${cx} cy=${cy} r="8" fill="#17100B" stroke=${AMBER} stroke-width="2.4" />
+      ${outer && ring('o', 104, outer)}
+      ${inner && ring('i', 80, inner)}
+      <text x=${cx} y="150" class="lbl">${label}</text>
     </svg>
     <figcaption>${children}</figcaption>
   </figure>`;
@@ -236,39 +227,25 @@ function CoreMeters({ loads, clocks = [] }) {
     })}</div><span>${clocks[i] > 0 ? html`${(clocks[i] / 1000).toFixed(1)}<small> GHz</small>` : i + 1}</span></div>`)}</div>`;
 }
 
-// A row of lamps with its reading. With nothing lit the first lamp glows dimly, as a pilot light.
-const LAMPS = 18;
-// A glowing bar lights its lamps softly, the last lit one brightest, and lights its reading.
-const LampBar = ({ label, lit, glow = false, children }) => html`<div class=${`net ${glow ? 'glow' : ''}`}><span>${label}</span>
-  <div class="lamps">${Array.from({ length: LAMPS }, (_, k) => html`<i class=${k < lit ? (k === lit - 1 ? 'on tip' : 'on') : k === 0 ? 'pilot' : ''}></i>`)}</div>
-  <b>${children}</b></div>`;
-// Power draw as a glowing band against the most the part pulls: the graphics card's, and the whole processor's as
-// the host measures it.
+// Power: the most the graphics card and the whole processor (as the host measures it) can draw.
 const GPU_WATTS = 600, CPU_WATTS = 350;
-const PowerBar = ({ label, value, max }) => {
-  const f = clamp(value / max);
-  return html`<div class="pbar"><span>${label}</span>
-    <div class="track"><i class="fill" style=${`width:${(f * 100).toFixed(1)}%`}></i></div>
-    <b>${r0(value)}<small> W</small></b></div>`;
+// Power as one bar in two sections: the CPU's watts, then the GPU's on top, each in its own colour
+// with a glowing blob at its end and its label above, against what the two can draw together.
+const PowerStack = ({ cpu, gpu }) => {
+  const max = CPU_WATTS + GPU_WATTS, c = cpu || 0, g = gpu || 0, pc = (w) => (clamp(w / max) * 100).toFixed(1);
+  return html`<div class="pstack">
+    <div class="ph"><h3>Power</h3><b>${r0(c + g)}<small> W</small></b></div>
+    <div class="ptrack"><div class="bed"></div>
+      ${c > 0 && html`<i class="sec cpu" style=${`left:0;width:${pc(c)}%`}></i>`}
+      ${g > 0 && html`<i class="sec gpu" style=${`left:${pc(c)}%;width:${pc(g)}%`}></i>`}
+      ${cpu != null && html`<div class="blob cpu" style=${`left:${pc(c)}%`}><em>CPU ${r0(c)}</em></div>`}
+      ${gpu != null && html`<div class="blob gpu" style=${`left:${pc(c + g)}%`}><em>GPU ${r0(g)}</em></div>`}
+    </div>
+  </div>`;
 };
-// Network as one glowing bar like the power bars, in a cool tone: traffic both ways together, on a
-// square-root scale to 1 Gb/s so a stream's few megabits still show.
-const NetBar = ({ value }) => html`<div class="pbar net"><span>Net</span>
-  <div class="track">${value > 0.05 && html`<i class="fill" style=${`width:${(Math.sqrt(clamp(value / 1000)) * 100).toFixed(1)}%`}></i>`}</div>
-  <b>${rate(value)}</b></div>`;
-// The water pump as a bar in the dials' teal, against a D5's full speed.
+// The water pump against a D5's full speed, and the water from cool (77 °F) to hot (113 °F).
 const PUMP_RPM = 4800;
-const PumpBar = ({ rpm }) => html`<div class="pbar pump"><span>Pump</span>
-  <div class="track"><i class="fill" style=${`width:${(clamp(rpm / PUMP_RPM) * 100).toFixed(1)}%`}></i></div>
-  <b>${rpm}<small> rpm</small></b></div>`;
-// The loop's water temperature in °F, from cool (77 °F) to hot (113 °F), in the heat ring's colours.
 const WATER_F = [77, 113];
-const WaterBar = ({ c }) => {
-  const f = c * 9 / 5 + 32, t = clamp((f - WATER_F[0]) / (WATER_F[1] - WATER_F[0]));
-  return html`<div class="pbar water" style=${`--hc:${heatColour(t)}`}><span>Water</span>
-    <div class="track"><i class="fill" style=${`width:${Math.max(3, t * 100).toFixed(1)}%`}></i></div>
-    <b>${Math.round(f)}<small> °F</small></b></div>`;
-};
 // Network as a line of text: megabits, or kilobits when under one.
 const rate = (v) => (v < 1 ? html`${Math.round(v * 1000)}<small> kb/s</small>` : html`${v >= 10 ? r0(v) : v.toFixed(1)}<small> Mb/s</small>`);
 
@@ -424,16 +401,20 @@ export function Stats() {
       ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 100, 135)} trail=${gpuTrail} />
         ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
       <section class="tile side">
-        ${(has(s.ramUsed) || has(s.vramUsed)) && html`<h3 class="lead">Memory</h3><div class="fuels">
-          ${has(s.ramUsed) && html`<${Fuel} label="RAM" value=${s.ramUsed} max=${ramTotal}>${s.ramUsed.toFixed(1)}<small> ${ramTotal ? `/ ${r0(ramTotal)} ` : ''}GB</small><//>`}
-          ${has(s.vramUsed) && html`<${Fuel} label="VRAM" value=${s.vramUsed} max=${s.vramTotal}>${s.vramUsed.toFixed(1)}<small> ${s.vramTotal ? `/ ${r0(s.vramTotal)} ` : ''}GB</small><//>`}
-        </div>`}
-        ${(has(s.gpuPower) || has(cpuWatts)) && html`<h3>Power ${has(s.gpuPower) && has(cpuWatts) && html`<small>${r0(s.gpuPower + cpuWatts)} W in all</small>`}</h3>
-          ${has(cpuWatts) && html`<${PowerBar} label="CPU" value=${cpuWatts} max=${CPU_WATTS} />`}
-          ${has(s.gpuPower) && html`<${PowerBar} label="GPU" value=${s.gpuPower} max=${GPU_WATTS} />`}`}
-        ${(has(s.netDown) || has(s.netUp)) && html`<${NetBar} value=${(s.netDown || 0) + (s.netUp || 0)} />`}
-        ${pump > 0 && html`<${PumpBar} rpm=${pump} />`}
-        ${water > 0 && html`<${WaterBar} c=${water} />`}
+        <div class="twins">
+          ${(has(s.ramUsed) || has(s.vramUsed)) && html`<${TwinGauge} id="m" label="Memory"
+            outer=${has(s.ramUsed) && ramTotal ? { f: s.ramUsed / ramTotal, colour: AMBER_SCALE } : null}
+            inner=${has(s.vramUsed) && s.vramTotal ? { f: s.vramUsed / s.vramTotal, colour: TEAL_SCALE } : null}>
+            ${has(s.ramUsed) && html`<div class="k ram"><i></i>RAM <b>${s.ramUsed.toFixed(1)}</b><small> / ${ramTotal ? r0(ramTotal) : '?'} GB</small></div>`}
+            ${has(s.vramUsed) && html`<div class="k vram"><i></i>VRAM <b>${s.vramUsed.toFixed(1)}</b><small> / ${s.vramTotal ? r0(s.vramTotal) : '?'} GB</small></div>`}<//>`}
+          ${(water > 0 || pump > 0) && html`<${TwinGauge} id="c" label="Cooling"
+            outer=${water > 0 ? { f: (water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0]), colour: heatColour } : null}
+            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: TEAL_SCALE } : null}>
+            ${water > 0 && html`<div class="k water" style=${`--kc:${heatColour(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Water <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
+            ${pump > 0 && html`<div class="k pump"><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}<//>`}
+        </div>
+        ${(has(s.gpuPower) || has(cpuWatts)) && html`<${PowerStack} cpu=${cpuWatts} gpu=${s.gpuPower} />`}
+        ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span><b>${rate((s.netDown || 0) + (s.netUp || 0))}</b></div>`}
       </section>
     </div>
     ${s.cores.length > 0 && html`<section class="tile"><h3>CPU cores</h3><${CoreMeters} loads=${s.cores} clocks=${coreClocks} /></section>`}
