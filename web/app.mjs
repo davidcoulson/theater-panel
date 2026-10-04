@@ -3,9 +3,9 @@
 // and back to the Lobby when playback ends.
 
 import { render } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useErrorBoundary, useRef, useState } from 'preact/hooks';
 import { html, Icon } from './lib/ui.mjs';
-import { startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
+import { report, startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -352,6 +352,19 @@ function Rail({ current }) {
   </nav>`;
 }
 
+// One broken piece stays broken on its own. Without this, an exception while drawing (a sheet, a
+// card, the weather) leaves Preact's idea of the page out of step with the page itself, every later
+// update fails with "insertBefore ... not a child", and the panel shows nothing new until reloaded.
+// A page shows a way back; a sheet closes itself; decoration just goes.
+function Guard({ name, quiet = false, onError, children }) {
+  const [err, reset] = useErrorBoundary((e) => { report('error', `${name} crashed: ${e?.message || e}`); onError?.(); });
+  if (!err) return children;
+  if (quiet) return null;
+  return html`<main class="view"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center">
+    <div>Something on this page went wrong. It has been logged.</div>
+    <button type="button" class="btn primary" onClick=${reset}>Try again</button></div></main>`;
+}
+
 function App() {
   const [r, setR] = useState(route);
   setRoute = setR;
@@ -440,22 +453,22 @@ function App() {
   const View = VIEWS[r.name] || Lobby;
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
-  if (r.name === 'showtime' || r.name === 'showing' || r.name === 'intermission') return html`<${View} key=${r.name} />
-    ${r.name === 'showing' && html`<${Weather} decor="tree" />`}
-    <${DogAtDoor} />
-    <${RateCard} />
+  if (r.name === 'showtime' || r.name === 'showing' || r.name === 'intermission') return html`<${Guard} key=${r.name} name=${r.name}><${View} /><//>
+    ${r.name === 'showing' && html`<${Guard} name="weather" quiet><${Weather} decor="tree" /><//>`}
+    <${Guard} name="dog" quiet><${DogAtDoor} /><//>
+    <${Guard} name="rate card" quiet><${RateCard} /><//>
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
-    <${View} key=${r.name + JSON.stringify(r.params)} />
-    ${tweaks && html`<${TweaksSheet} onClose=${closeTweaks} />`}
-    ${tonightOpen && html`<${TonightSheet} item=${tonightOpen.item} onClose=${closeTonight} />`}
-    ${guestOpen && html`<${GuestSheet} onClose=${closeGuest} />`}
-    ${soundOpen && html`<${SoundSheet} onClose=${closeSound} />`}
-    <${Weather} key=${`fx-${r.name}`} />
-    <${Celebration} />
-    <${DogAtDoor} />
-    <${RateCard} />
+    <${Guard} key=${r.name + JSON.stringify(r.params)} name=${r.name}><${View} /><//>
+    ${tweaks && html`<${Guard} name="tweaks sheet" quiet onError=${closeTweaks}><${TweaksSheet} onClose=${closeTweaks} /><//>`}
+    ${tonightOpen && html`<${Guard} name="tonight sheet" quiet onError=${closeTonight}><${TonightSheet} item=${tonightOpen.item} onClose=${closeTonight} /><//>`}
+    ${guestOpen && html`<${Guard} name="guest sheet" quiet onError=${closeGuest}><${GuestSheet} onClose=${closeGuest} /><//>`}
+    ${soundOpen && html`<${Guard} name="sound sheet" quiet onError=${closeSound}><${SoundSheet} onClose=${closeSound} /><//>`}
+    <${Guard} key=${`fx-${r.name}`} name="weather" quiet><${Weather} /><//>
+    <${Guard} name="celebration" quiet><${Celebration} /><//>
+    <${Guard} name="dog" quiet><${DogAtDoor} /><//>
+    <${Guard} name="rate card" quiet><${RateCard} /><//>
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
