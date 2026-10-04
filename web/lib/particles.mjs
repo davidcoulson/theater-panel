@@ -334,6 +334,41 @@ function drawSleigh(ctx, x, y, s, t, dir) {
 }
 
 // The glitter they leave behind, brightest where it was dropped.
+// A lit tree in the corner of the idle board, its bulbs twinkling out of step.
+function drawTree(ctx, x, base, h, t) {
+  const w = h * 0.52;
+  ctx.fillStyle = '#4A3018';
+  ctx.fillRect(x - h * 0.045, base - h * 0.1, h * 0.09, h * 0.1);       // trunk
+  ctx.fillStyle = '#2F5E2A';
+  for (let i = 0; i < 3; i++) {                                         // three tiers
+    const top = base - h * (0.28 + i * 0.24), half = (w / 2) * (1 - i * 0.24);
+    ctx.beginPath();
+    ctx.moveTo(x, top - h * 0.16);
+    ctx.lineTo(x + half, base - h * (0.08 + i * 0.24));
+    ctx.lineTo(x - half, base - h * (0.08 + i * 0.24));
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#F2D69B';                                            // star
+  const sx = x, sy = base - h * 0.94;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? h * 0.03 : h * 0.075, a = -Math.PI / 2 + (i * Math.PI) / 5;
+    ctx[i ? 'lineTo' : 'moveTo'](sx + r * Math.cos(a), sy + r * Math.sin(a));
+  }
+  ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 22; i++) {                                        // bulbs, twinkling out of step
+    const tier = i % 3, f = (i * 0.37) % 1;
+    const half = (w / 2) * (1 - tier * 0.24) * (0.2 + f * 0.8);
+    const bx = x + (i % 2 ? half : -half);
+    const by = base - h * (0.1 + tier * 0.24) - f * h * 0.16;
+    const lit = 0.45 + 0.55 * Math.max(0, Math.sin(t * 1.6 + i * 1.9));
+    ctx.globalAlpha = lit;
+    ctx.fillStyle = BULBS[i % BULBS.length];
+    ctx.beginPath(); ctx.arc(bx, by, h * 0.022, 0, 6.29); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
 function drawTrail(ctx, trail) {
   for (const p of trail) {
     const life = 1 - p.age / p.span;
