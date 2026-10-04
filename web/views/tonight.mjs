@@ -17,7 +17,7 @@ function slots() {
   d.setSeconds(0, 0);
   d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0);
   const end = new Date(); end.setHours(23, 59, 0, 0);
-  while (d <= end && out.length < 12) { out.push(d.getTime()); d = new Date(d.getTime() + 30 * 60e3); }
+  while (d <= end && out.length < 12) { out.push(d.getTime()); d.setTime(d.getTime() + 30 * 60e3); }
   return out;
 }
 
