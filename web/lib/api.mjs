@@ -33,6 +33,18 @@ export function report(kind, message) {
   fetch('/api/client-log', { method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
     body: JSON.stringify({ kind, message: String(message).slice(0, 500), page: location.hash.slice(0, 120) }) }).catch(() => {});
 }
+// Requests that were slow, with where the time went (queued before it could go, DNS, connect,
+// TLS, waiting on the server, downloading), so a page that is slow to fill shows why in the log.
+try {
+  new PerformanceObserver((list) => {
+    for (const r of list.getEntries()) {
+      if (r.duration < 3000 || r.name.includes('/api/client-log')) continue;
+      const ms = (a, b) => Math.max(0, Math.round(b - a));
+      const start = r.connectStart || r.domainLookupStart || r.requestStart || r.fetchStart;
+      report('slow', `${new URL(r.name).pathname} ${Math.round(r.duration)} ms (${r.nextHopProtocol || '?'}): queued ${ms(r.fetchStart, start)}, dns ${ms(r.domainLookupStart, r.domainLookupEnd)}, connect ${ms(r.connectStart, r.secureConnectionStart || r.connectEnd)}, tls ${r.secureConnectionStart ? ms(r.secureConnectionStart, r.connectEnd) : 0}, to request ${ms(r.connectEnd || r.fetchStart, r.requestStart)}, server ${ms(r.requestStart, r.responseStart)}, download ${ms(r.responseStart, r.responseEnd)}`);
+    }
+  }).observe({ type: 'resource', buffered: true });
+} catch { /* an old WebView without resource timing */ }
 addEventListener('error', (e) => report('error', `${e.message} at ${(e.filename || '').split('/').pop()}:${e.lineno}`));
 addEventListener('unhandledrejection', (e) => report('rejection', e.reason?.message || String(e.reason)));
 
