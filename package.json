@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/index.mjs",
     "dev": "node --env-file-if-exists=.env --watch server/index.mjs",
-    "push": "docker buildx build --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg BUILD_VERSION=$npm_package_version.$(git rev-parse --short HEAD) --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%MZ) --output type=image,name=ghcr.io/davidcoulson/theater-panel:latest,push=true,oci-mediatypes=false ."
+    "push": "docker buildx build --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --build-arg BUILD_VERSION=$(date +%Y.%-m.%-d).$(git rev-parse --short HEAD) --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%MZ) --output type=image,name=ghcr.io/davidcoulson/theater-panel:latest,push=true,oci-mediatypes=false ."
   },
   "dependencies": {
     "@fontsource/big-shoulders-display": "^5.1.0",
