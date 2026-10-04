@@ -625,7 +625,7 @@ const server = createServer(async (req, res) => {
     checkPost(req);
 
     if (path === '/api/events') {
-      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });   // nginx in front passes each event straight on
       res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, build: config.build.version })}\n\n`);
       clients.add(res);
       hass.panelsChanged();
