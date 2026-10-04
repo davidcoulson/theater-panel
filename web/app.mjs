@@ -454,7 +454,7 @@ function App() {
   // Showtime, the idle screen and the intermission snack bar fill the panel on their own.
   // The idle board is mostly empty floor, so it gets the weather and, at Christmas, a lit tree.
   if (r.name === 'showtime' || r.name === 'showing' || r.name === 'intermission') return html`<${Guard} key=${r.name} name=${r.name}><${View} /><//>
-    ${r.name === 'showing' && html`<${Guard} name="weather" quiet><${Weather} decor="tree" /><//>`}
+    ${r.name === 'showing' && html`<${Guard} name="weather" quiet><${Weather} decor=${currentAccent()?.id === 'christmas' ? 'tree' : ''} /><//>`}
     <${Guard} name="dog" quiet><${DogAtDoor} /><//>
     <${Guard} name="rate card" quiet><${RateCard} /><//>
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
