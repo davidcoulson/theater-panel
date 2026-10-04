@@ -323,13 +323,16 @@ get(/^\/api\/habits$/, () => taste.habits());
 // The guest remote. Start and end need the panel; state and act need the evening's token.
 // The panel's own errors (see report() in web/lib/api.mjs), into this log.
 const clientLogAt = [];
-post(/^\/api\/client-log$/, (m, q, body = {}) => {
+post(/^\/api\/client-log$/, (m, q, body = {}, req) => {
   const now = Date.now();
   while (clientLogAt.length && now - clientLogAt[0] > 60000) clientLogAt.shift();
   if (clientLogAt.length >= 30) return { ok: false };
   clientLogAt.push(now);
   const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, n);
-  console.warn(`[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'}: ${clean(body.message, 500)}`);
+  // Which screen said it: the address behind any proxy, and a word for the browser.
+  const from = clean(String(req?.headers['x-forwarded-for'] || req?.socket.remoteAddress || '').split(',')[0].trim(), 46);
+  const ua = String(req?.headers['user-agent'] || ''), kind = /; wv\)/.test(ua) ? 'webview' : /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : /iPhone|iPad/.test(ua) ? 'ios' : /Windows/.test(ua) ? 'windows' : 'other';
+  console.warn(`[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'} from ${from} (${kind}): ${clean(body.message, 500)}`);
   return { ok: true };
 });
 post(/^\/api\/guest\/start$/, () => guest.start(config.tonight.guestHours));
@@ -695,7 +698,7 @@ const server = createServer(async (req, res) => {
         const m = path.match(re);
         if (!m || method !== req.method) continue;
         const body = method === 'POST' ? await readBody(req) : undefined;
-        return json(res, 200, await fn(m, url.searchParams, body));
+        return json(res, 200, await fn(m, url.searchParams, body, req));
       }
       return json(res, 404, { error: 'Not found' });
     }
