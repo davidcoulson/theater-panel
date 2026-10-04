@@ -45,6 +45,19 @@ try {
     }
   }).observe({ type: 'resource', buffered: true });
 } catch { /* an old WebView without resource timing */ }
+// A watchdog for a page the browser has quietly slowed down: every 15 s, how late a 0 ms timer and
+// the next frame come, and whether the page thinks it is visible. Past a second either way it goes
+// to the server's log, since a throttled page draws but starts its data requests late.
+setInterval(() => {
+  const t0 = performance.now(); let timer = null, frame = null;
+  const done = () => {
+    if (timer == null || frame == null) return;
+    if (timer > 1000 || frame > 1000) report('lag', `timer ${timer} ms, frame ${frame} ms, ${document.visibilityState}${document.hasFocus() ? ', focused' : ''}`);
+  };
+  setTimeout(() => { timer = Math.round(performance.now() - t0); done(); }, 0);
+  requestAnimationFrame(() => { frame = Math.round(performance.now() - t0); done(); });
+}, 15000);
+document.addEventListener('visibilitychange', () => report('visibility', document.visibilityState));
 addEventListener('error', (e) => report('error', `${e.message} at ${(e.filename || '').split('/').pop()}:${e.lineno}`));
 addEventListener('unhandledrejection', (e) => report('rejection', e.reason?.message || String(e.reason)));
 
