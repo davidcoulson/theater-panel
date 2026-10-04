@@ -335,6 +335,7 @@ function drawSleigh(ctx, x, y, s, t, dir) {
 
 // The glitter they leave behind, brightest where it was dropped.
 // A lit tree in the corner of the idle board, its bulbs twinkling out of step.
+const BULBS = ['#E24B4B', '#F2C94C', '#6FB7E8', '#7FB63C', '#F2A0B2'];
 function drawTree(ctx, x, base, h, t) {
   const w = h * 0.52;
   ctx.fillStyle = '#4A3018';
