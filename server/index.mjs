@@ -3,12 +3,12 @@
 // No framework and no build step; Node's http module is enough for one wall panel.
 
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, appendFile, rename, stat } from 'node:fs/promises';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
-import { config, watchedEntities } from './config.mjs';
+import { config, watchedEntities, SETTINGS_FILE } from './config.mjs';
 import * as accents from './accents.mjs';
 import { HomeAssistant } from './ha.mjs';
 import * as plex from './plex.mjs';
@@ -321,6 +321,18 @@ get(/^\/api\/plex\/related\/(\d+)$/, async (m) => {
 get(/^\/api\/habits$/, () => taste.habits());
 
 // The guest remote. Start and end need the panel; state and act need the evening's token.
+// The same lines kept in client-log.txt beside settings.json, because each deploy replaces the
+// container and its log with it. At 2 MB the file moves to client-log.1.txt and starts again.
+const CLIENT_LOG = join(dirname(SETTINGS_FILE), 'client-log.txt');
+let clientLogChain = Promise.resolve();
+function keepClientLog(text) {
+  clientLogChain = clientLogChain.then(async () => {
+    const size = await stat(CLIENT_LOG).then((s) => s.size, () => 0);
+    if (size > 2 * 1024 * 1024) await rename(CLIENT_LOG, CLIENT_LOG.replace(/\.txt$/, '.1.txt')).catch(() => {});
+    await appendFile(CLIENT_LOG, text, { mode: 0o600 });
+  }).catch((e) => console.warn(`[client-log] ${e.message}`));
+}
+
 // The panel's own errors (see report() in web/lib/api.mjs), into this log.
 const clientLogAt = [];
 post(/^\/api\/client-log$/, (m, q, body = {}, req) => {
@@ -332,7 +344,9 @@ post(/^\/api\/client-log$/, (m, q, body = {}, req) => {
   // Which screen said it: the address behind any proxy, and a word for the browser.
   const from = clean(String(req?.headers['x-forwarded-for'] || req?.socket.remoteAddress || '').split(',')[0].trim(), 46);
   const ua = String(req?.headers['user-agent'] || ''), kind = /; wv\)/.test(ua) ? 'webview' : /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : /iPhone|iPad/.test(ua) ? 'ios' : /Windows/.test(ua) ? 'windows' : 'other';
-  console.warn(`[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'} from ${from} (${kind}): ${clean(body.message, 500)}`);
+  const line = `[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'} from ${from} (${kind}): ${clean(body.message, 500)}`;
+  console.warn(line);
+  keepClientLog(`${new Date().toISOString()} ${line}\n`);
   return { ok: true };
 });
 post(/^\/api\/guest\/start$/, () => guest.start(config.tonight.guestHours));
