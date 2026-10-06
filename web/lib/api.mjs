@@ -50,11 +50,13 @@ try {
 // to the server's log, since a throttled page draws but starts its data requests late.
 // A hidden page gets no frames at all, so a frame that has not come in 5 s is reported as missing.
 let leaving = false;
+// A browser tab in the background is always throttled; that is only news from a kiosk's WebView.
+const kiosk = /; wv\)/.test(navigator.userAgent);
 addEventListener('pagehide', () => { leaving = true; });
 setInterval(() => {
   const t0 = performance.now(); let timer = null, frame = null, told = false;
   const done = (force) => {
-    if (told || leaving || timer == null || (frame == null && !force)) return;
+    if (told || leaving || timer == null || (frame == null && !force) || (!kiosk && document.visibilityState === 'hidden')) return;
     told = true;
     if (timer > 1000 || frame == null || frame > 1000) report('lag', `timer ${timer} ms, frame ${frame == null ? 'none in 5 s' : `${frame} ms`}, ${document.visibilityState}${document.hasFocus() ? ', focused' : ''}`);
   };
@@ -63,7 +65,7 @@ setInterval(() => {
   setTimeout(() => done(true), 5000);
 }, 15000);
 // A page closing (a reload, a new build) goes hidden on its way out; only the ones while it stays count.
-document.addEventListener('visibilitychange', () => setTimeout(() => { if (!leaving) report('visibility', document.visibilityState); }, 0));
+document.addEventListener('visibilitychange', () => setTimeout(() => { if (!leaving && kiosk) report('visibility', document.visibilityState); }, 0));
 addEventListener('error', (e) => report('error', `${e.message} at ${(e.filename || '').split('/').pop()}:${e.lineno}`));
 addEventListener('unhandledrejection', (e) => report('rejection', e.reason?.message || String(e.reason)));
 
