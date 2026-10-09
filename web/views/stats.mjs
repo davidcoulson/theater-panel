@@ -41,7 +41,7 @@ function useStats(stats, demo) {
     stream: streamAddress(states[stats?.stream]),
     gpuName: partName(names[0]), cpuName: partName(names[1]),
     gpuMemTemp: num('gpuMemTemp'),
-    diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'), coolantFlow: num('coolantFlow'),
+    diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'), coolantTemp: num('coolantTemp'), coolantFlow: num('coolantFlow'),
     frames: parseFrames(states[stats?.frames]),
     uptime: states[stats?.uptime],
   };
@@ -57,7 +57,7 @@ function inPanelUnits(role, v, unit) {
     return unit === 'MB' || unit === 'MiB' ? v / 1024 : unit === 'KB' || unit === 'kB' ? v / 1024 ** 2 : unit === 'TB' ? v * 1024 : v;
   }
   if (role === 'netDown' || role === 'netUp') return NET[unit] ? v * NET[unit] : v;
-  if (['gpuTemp', 'cpuTemp', 'gpuMemTemp', 'diskTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
+  if (['gpuTemp', 'cpuTemp', 'gpuMemTemp', 'diskTemp', 'coolantTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
   if (role === 'diskFree' || role === 'diskTotal') return unit === 'MB' ? v / 1024 : unit === 'TB' ? v * 1024 : v;   // GB
   if (role === 'coolantFlow') return unit === 'L/h' ? v / 60 : unit === 'gal/min' || unit === 'gpm' ? v * 3.785 : v;   // L/min
   if (role === 'diskRead' || role === 'diskWrite') return unit === 'KB/s' || unit === 'kB/s' ? v / 1024 : unit === 'B/s' ? v / 1024 ** 2 : unit === 'GB/s' ? v * 1024 : v;   // MB/s
@@ -439,7 +439,7 @@ export function Stats() {
   const frameTimes = s.frames?.ms || [], fpsLow = s.frames?.low ?? s.fpsLow;
   const session = demo ? { minutes: 102, peakC: 69, peakW: 512, kwh: 0.62 } : sessionLive;
   const hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} m` : `${m} m`);
-  const water = demo ? 33.5 : host?.water;
+  const water = demo ? 33.5 : s.coolantTemp;   // °C
   const cpuClock = s.cpuClock || host?.mhz, cpuTemp = s.cpuTemp > 0 ? s.cpuTemp : demo ? s.cpuTemp : host?.temp;
   const coreClocks = demo ? s.cores.map((l) => 3200 + l * 14) : host?.cores || [];
 
