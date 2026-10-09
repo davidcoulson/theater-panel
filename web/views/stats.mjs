@@ -235,7 +235,7 @@ function Dial({ id, value, heat, heatLabel, trail = [], label = 'Load', marks = 
 // its reading and dim beyond, with a glowing blob at the reading. Its name sits at the top; the two
 // readings go under it in their own colours.
 const RING_STEPS = 28;
-// The two-ring gauges: copper outside (RAM) and olive inside (VRAM, the pump), colours that say
+// The two-ring gauges: copper outside (RAM) and olive inside (VRAM), colours that say
 // nothing about hot or cold. The water ring keeps its own blue-to-red, since it is a temperature.
 const ramp = (lo, hi) => (t) => mix(lo, hi, t);
 const COPPER_SCALE = ramp([130, 70, 40], [240, 160, 110]);
@@ -245,7 +245,7 @@ const OLIVE_SCALE = ramp([88, 90, 40], [214, 214, 120]);
 const FLOW_SCALE = ramp([30, 90, 100], [150, 235, 225]);
 const FLOW_LPM = 4;   // the ring's top, L/min (the loop runs about 2.5)
 const WATER_SCALE = (t) => (t < 0.5 ? mix([70, 140, 225], [235, 215, 175], t * 2) : mix([235, 215, 175], [224, 60, 36], (t - 0.5) * 2));
-function TwinGauge({ id, label, outer, inner, third, children }) {
+function TwinGauge({ id, label, outer, inner, children }) {
   const w = 260, h = 196, cx = w / 2, cy = 160, HALF = 100, ang = (x) => -HALF + 2 * HALF * x;
   // A comet like the load dials': a tail from about half the reading that widens and brightens into
   // it, longer and brighter the fuller the ring.
@@ -274,8 +274,7 @@ function TwinGauge({ id, label, outer, inner, third, children }) {
       <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
       ${outer && ring('o', 104, outer)}
       ${inner && ring('i', 80, inner)}
-      ${third && ring('t', 56, third)}
-      <text x=${cx} y="188" class="lbl">${label}</text>
+      <text x=${cx} y="150" class="lbl">${label}</text>
     </svg>
     <figcaption>${children}</figcaption>
   </figure>`;
@@ -316,8 +315,7 @@ const FrameSpark = ({ ms }) => {
   const W = 170, H = 44, hi = Math.max(12, ...ms), pts = ms.map((v, i) => `${i ? 'L' : 'M'}${(i / (ms.length - 1) * W).toFixed(1)} ${(H - 4 - (v / hi) * (H - 8)).toFixed(1)}`).join(' ');
   return html`<div class="fspark"><svg viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true"><path d=${pts} stroke=${TEAL} stroke-width="2" fill="none" vector-effect="non-scaling-stroke" /></svg><span>frame time</span></div>`;
 };
-// The water pump against a D5's full speed, and the water from cool (77 °F) to hot (113 °F).
-const PUMP_RPM = 4800;
+// The water from cool (77 °F) to hot (113 °F).
 const WATER_F = [77, 113];
 // Network as a line of text: megabits, or kilobits when under one.
 const rate = (v) => (v < 1 ? html`${Math.round(v * 1000)}<small> kb/s</small>` : html`${v >= 10 ? r0(v) : v.toFixed(1)}<small> Mb/s</small>`);
@@ -438,7 +436,6 @@ export function Stats() {
     return () => clearInterval(t);
   }, [g, demo]);
   const cpuWatts = demo ? 96 + s.cpuLoad : host?.watts;
-  const pump = demo ? 2700 : host?.pump;
   const frameTimes = s.frames?.ms || [], fpsLow = s.frames?.low ?? s.fpsLow;
   const session = demo ? { minutes: 102, peakC: 69, peakW: 512, kwh: 0.62 } : sessionLive;
   const hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} m` : `${m} m`);
@@ -505,12 +502,10 @@ export function Stats() {
             inner=${has(s.vramUsed) && s.vramTotal ? { f: s.vramUsed / s.vramTotal, colour: OLIVE_SCALE } : null}>
             ${has(s.ramUsed) && html`<div class="k ram" style=${`--kc:${COPPER_SCALE(0.85)}`}><i></i>RAM <b>${s.ramUsed.toFixed(1)}</b><small> / ${ramTotal ? r0(ramTotal) : '?'} GB</small></div>`}
             ${has(s.vramUsed) && html`<div class="k vram" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>VRAM <b>${s.vramUsed.toFixed(1)}</b><small> / ${s.vramTotal ? r0(s.vramTotal) : '?'} GB</small></div>`}<//>`}
-          ${(water > 0 || pump > 0 || s.coolantFlow > 0) && html`<${TwinGauge} id="c" label="Cooling"
+          ${(water > 0 || s.coolantFlow > 0) && html`<${TwinGauge} id="c" label="Cooling"
             outer=${water > 0 ? { f: (water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0]), colour: WATER_SCALE } : null}
-            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: OLIVE_SCALE } : null}
-            third=${s.coolantFlow > 0 ? { f: s.coolantFlow / FLOW_LPM, colour: FLOW_SCALE } : null}>
-            ${water > 0 && html`<div class="k water" style=${`--kc:${WATER_SCALE(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Water <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
-            ${pump > 0 && html`<div class="k pump" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}
+            inner=${s.coolantFlow > 0 ? { f: s.coolantFlow / FLOW_LPM, colour: FLOW_SCALE } : null}>
+            ${water > 0 && html`<div class="k water" style=${`--kc:${WATER_SCALE(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Temp <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
             ${s.coolantFlow > 0 && html`<div class="k flow" style=${`--kc:${FLOW_SCALE(0.85)}`}><i></i>Flow <b>${s.coolantFlow.toFixed(1)}</b><small> L/min</small></div>`}<//>`}
         </div>
         ${(has(s.gpuPower) || has(cpuWatts)) && html`<${PowerStack} cpu=${cpuWatts} gpu=${s.gpuPower} />`}
