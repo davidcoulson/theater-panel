@@ -62,7 +62,7 @@ export async function gameEntities() {
 // Anything left out simply doesn't appear on the page.
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
   'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream', 'downloads', 'updates',
-  'gpuMemTemp', 'diskFree', 'diskTotal', 'diskTemp', 'diskRead', 'diskWrite', 'frames'];
+  'gpuMemTemp', 'diskFree', 'diskTotal', 'diskTemp', 'diskRead', 'diskWrite', 'frames', 'coolantFlow'];
 function statEntities(g) {
   const st = g?.pc?.stats || {};
   return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');

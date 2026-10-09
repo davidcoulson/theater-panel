@@ -41,7 +41,7 @@ function useStats(stats, demo) {
     stream: streamAddress(states[stats?.stream]),
     gpuName: partName(names[0]), cpuName: partName(names[1]),
     gpuMemTemp: num('gpuMemTemp'),
-    diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'),
+    diskFree: num('diskFree'), diskTotal: num('diskTotal'), diskTemp: num('diskTemp'), diskRead: num('diskRead'), diskWrite: num('diskWrite'), coolantFlow: num('coolantFlow'),
     frames: parseFrames(states[stats?.frames]),
     uptime: states[stats?.uptime],
   };
@@ -59,6 +59,7 @@ function inPanelUnits(role, v, unit) {
   if (role === 'netDown' || role === 'netUp') return NET[unit] ? v * NET[unit] : v;
   if (['gpuTemp', 'cpuTemp', 'gpuMemTemp', 'diskTemp'].includes(role) && unit === '°F') return (v - 32) * 5 / 9;
   if (role === 'diskFree' || role === 'diskTotal') return unit === 'MB' ? v / 1024 : unit === 'TB' ? v * 1024 : v;   // GB
+  if (role === 'coolantFlow') return unit === 'L/h' ? v / 60 : unit === 'gal/min' || unit === 'gpm' ? v * 3.785 : v;   // L/min
   if (role === 'diskRead' || role === 'diskWrite') return unit === 'KB/s' || unit === 'kB/s' ? v / 1024 : unit === 'B/s' ? v / 1024 ** 2 : unit === 'GB/s' ? v * 1024 : v;   // MB/s
   return v;
 }
@@ -98,7 +99,7 @@ function demoValues() {
   for (const k of Object.keys(b)) d[k] = walk(d[k], b[k], b[k] * 0.12, 0, k.endsWith('Load') ? 100 : b[k] * 2);
   d.cores = d.cores.map((c, i) => walk(c, i < 2 ? 88 : 40, 25, 0, 100));
   d.ramTotal = 32; d.vramTotal = 24;
-  return { ...d, gpuMemTemp: d.gpuTemp + 8, diskFree: 3650, diskTotal: 3726, diskTemp: 41, diskRead: 212, diskWrite: 18,
+  return { ...d, coolantFlow: 2.6, gpuMemTemp: d.gpuTemp + 8, diskFree: 3650, diskTotal: 3726, diskTemp: 41, diskRead: 212, diskWrite: 18,
     frames: { low: Math.round(d.fps * 0.78), ms: Array.from({ length: 40 }, (_, i) => 1000 / d.fps + ((i * 7) % 5) * 0.15 + (i % 13 === 0 ? 3.5 : 0)) }, game: 'Cyberpunk 2077', uptime: null, gpuName: 'GeForce RTX 4090', cpuName: 'Ryzen 7 9800X3D' };
 }
 
@@ -240,8 +241,11 @@ const ramp = (lo, hi) => (t) => mix(lo, hi, t);
 const COPPER_SCALE = ramp([130, 70, 40], [240, 160, 110]);
 const OLIVE_SCALE = ramp([88, 90, 40], [214, 214, 120]);
 // The water ring is a temperature, so it runs cold blue through a pale middle to hot red.
+// Coolant flow gets its own aqua, deep when it barely moves to bright at full flow.
+const FLOW_SCALE = ramp([30, 90, 100], [150, 235, 225]);
+const FLOW_LPM = 4;   // the ring's top, L/min (the loop runs about 2.5)
 const WATER_SCALE = (t) => (t < 0.5 ? mix([70, 140, 225], [235, 215, 175], t * 2) : mix([235, 215, 175], [224, 60, 36], (t - 0.5) * 2));
-function TwinGauge({ id, label, outer, inner, children }) {
+function TwinGauge({ id, label, outer, inner, third, children }) {
   const w = 260, h = 196, cx = w / 2, cy = 160, HALF = 100, ang = (x) => -HALF + 2 * HALF * x;
   // A comet like the load dials': a tail from about half the reading that widens and brightens into
   // it, longer and brighter the fuller the ring.
@@ -270,7 +274,8 @@ function TwinGauge({ id, label, outer, inner, children }) {
       <rect x="1" y="1" width=${w - 2} height=${h - 2} rx="18" fill="#17100B" stroke="#3A2A1D" stroke-width="2" />
       ${outer && ring('o', 104, outer)}
       ${inner && ring('i', 80, inner)}
-      <text x=${cx} y="150" class="lbl">${label}</text>
+      ${third && ring('t', 56, third)}
+      <text x=${cx} y="188" class="lbl">${label}</text>
     </svg>
     <figcaption>${children}</figcaption>
   </figure>`;
@@ -500,16 +505,18 @@ export function Stats() {
             inner=${has(s.vramUsed) && s.vramTotal ? { f: s.vramUsed / s.vramTotal, colour: OLIVE_SCALE } : null}>
             ${has(s.ramUsed) && html`<div class="k ram" style=${`--kc:${COPPER_SCALE(0.85)}`}><i></i>RAM <b>${s.ramUsed.toFixed(1)}</b><small> / ${ramTotal ? r0(ramTotal) : '?'} GB</small></div>`}
             ${has(s.vramUsed) && html`<div class="k vram" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>VRAM <b>${s.vramUsed.toFixed(1)}</b><small> / ${s.vramTotal ? r0(s.vramTotal) : '?'} GB</small></div>`}<//>`}
-          ${(water > 0 || pump > 0) && html`<${TwinGauge} id="c" label="Cooling"
+          ${(water > 0 || pump > 0 || s.coolantFlow > 0) && html`<${TwinGauge} id="c" label="Cooling"
             outer=${water > 0 ? { f: (water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0]), colour: WATER_SCALE } : null}
-            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: OLIVE_SCALE } : null}>
+            inner=${pump > 0 ? { f: pump / PUMP_RPM, colour: OLIVE_SCALE } : null}
+            third=${s.coolantFlow > 0 ? { f: s.coolantFlow / FLOW_LPM, colour: FLOW_SCALE } : null}>
             ${water > 0 && html`<div class="k water" style=${`--kc:${WATER_SCALE(clamp((water * 9 / 5 + 32 - WATER_F[0]) / (WATER_F[1] - WATER_F[0])))}`}><i></i>Water <b>${Math.round(water * 9 / 5 + 32)}</b><small> °F</small></div>`}
-            ${pump > 0 && html`<div class="k pump" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}<//>`}
+            ${pump > 0 && html`<div class="k pump" style=${`--kc:${OLIVE_SCALE(0.85)}`}><i></i>Pump <b>${pump}</b><small> rpm</small></div>`}
+            ${s.coolantFlow > 0 && html`<div class="k flow" style=${`--kc:${FLOW_SCALE(0.85)}`}><i></i>Flow <b>${s.coolantFlow.toFixed(1)}</b><small> L/min</small></div>`}<//>`}
         </div>
         ${(has(s.gpuPower) || has(cpuWatts)) && html`<${PowerStack} cpu=${cpuWatts} gpu=${s.gpuPower} />`}
         <div class="foot">
           ${(has(s.netDown) || has(s.netUp)) && html`<div class="netline"><span>Network</span><b>${rate((s.netDown || 0) + (s.netUp || 0))}</b></div>`}
-          ${has(s.diskFree) && html`<div class="netline"><span>Disk</span><b>${(s.diskFree / 1024).toFixed(1)}<small> TB free</small></b>${has(s.diskTemp) && html`<b>${degF(s.diskTemp)}</b>`}${(has(s.diskRead) || has(s.diskWrite)) && html`<b>↓${r0(s.diskRead || 0)}<small> MB/s</small> ↑${r0(s.diskWrite || 0)}<small> MB/s</small></b>`}</div>`}
+          ${has(s.diskFree) && html`<div class="netline"><span>Disk</span><b>${(s.diskFree / 1024).toFixed(1)}<small> TB free</small></b>${(has(s.diskRead) || has(s.diskWrite)) && html`<b>↓${r0(s.diskRead || 0)}<small> MB/s</small> ↑${r0(s.diskWrite || 0)}<small> MB/s</small></b>`}</div>`}
         </div>
       </section>
     </div>
