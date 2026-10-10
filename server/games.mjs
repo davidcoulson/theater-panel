@@ -8,8 +8,10 @@
 // Everything goes through Home Assistant; the panel never talks to the hardware itself.
 // Either kind may also run an HA script (wake a console, start Steam Big Picture...).
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { request } from 'node:https';
+import { connect as tlsConnect } from 'node:tls';
+import { join } from 'node:path';
 import { config, settings } from './config.mjs';
 
 const file = process.env.GAMES_CONFIG || './config/games.json';
@@ -191,16 +193,49 @@ export async function steamNow() {
 // ---------- the PC as an Unraid VM ----------
 
 // Unraid's GraphQL API: the VM's state, and start / stop (stop asks Windows to shut down).
-// Unraid answers on HTTPS with a certificate for its unraid.net name, not its address, so the
-// request is made with node:https and the certificate is not checked: the key, not the
-// certificate, is what proves we are talking to the right server on the house network.
-function unraid(query, variables) {
+// Unraid answers on HTTPS with its own self-signed certificate (for unraid.local, not its address),
+// which no CA vouches for. So the certificate is pinned: the first contact fetches it without
+// sending anything, keeps it as unraid-cert.pem in the cache folder and logs its fingerprint, and
+// every request after that trusts that certificate and nothing else - an impostor on the network
+// never sees the API key. Delete the file if Unraid's certificate is ever replaced.
+const certFile = () => join(config.cacheDir, 'unraid-cert.pem');
+let pinned = null;   // { pem, fingerprint256 }
+async function unraidCert(host, port) {
+  if (pinned) return pinned;
+  const pem = await readFile(certFile(), 'utf8').catch(() => null);
+  if (pem) {
+    const { X509Certificate } = await import('node:crypto');
+    return (pinned = { pem, fingerprint256: new X509Certificate(pem).fingerprint256 });
+  }
+  const cert = await new Promise((resolve, reject) => {
+    const s = tlsConnect({ host, port, servername: host.match(/^[\d.]+$|:/) ? undefined : host, rejectUnauthorized: false, timeout: 8000 }, () => {
+      const c = s.getPeerCertificate(); s.end();
+      c?.raw ? resolve(c) : reject(new Error('Unraid sent no certificate'));
+    });
+    s.on('timeout', () => s.destroy(new Error('Unraid did not answer')));
+    s.on('error', reject);
+  });
+  const out = `-----BEGIN CERTIFICATE-----\n${cert.raw.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----\n`;
+  await mkdir(config.cacheDir, { recursive: true });
+  await writeFile(certFile(), out, { mode: 0o600 });
+  console.log(`[unraid] pinned ${host}'s certificate ${cert.subject?.CN || ''} (SHA-256 ${cert.fingerprint256})`);
+  return (pinned = { pem: out, fingerprint256: cert.fingerprint256 });
+}
+
+async function unraid(query, variables) {
   const { url, apiKey } = config.unraid;
   const target = new URL('/graphql', url.startsWith('http') ? url : `https://${url}`);
   if (target.protocol === 'http:') target.protocol = 'https:';
+  const pin = await unraidCert(target.hostname, Number(target.port) || 443);
   const body = JSON.stringify({ query, variables });
   return new Promise((resolve, reject) => {
-    const req = request(target, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), 'x-api-key': apiKey }, rejectUnauthorized: false, timeout: 8000 }, (res) => {
+    const req = request(target, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), 'x-api-key': apiKey }, timeout: 8000,
+      // Verified against the pinned certificate only; its name (unraid.local) is not the address
+      // we dial, so the name check becomes "is this exactly the pinned certificate".
+      ca: pin.pem, rejectUnauthorized: true,
+      checkServerIdentity: (_host, cert) => (cert.fingerprint256 === pin.fingerprint256 ? undefined : new Error(`Unraid's certificate changed (SHA-256 ${cert.fingerprint256}); delete ${certFile()} if that was expected`)),
+    }, (res) => {
       let text = '';
       res.setEncoding('utf8');
       res.on('data', (c) => { text += c; });

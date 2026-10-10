@@ -663,7 +663,8 @@ const server = createServer(async (req, res) => {
       hass.panelsChanged();
       if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll
       const ping = setInterval(() => res.write(': ping\n\n'), 25000);
-      req.on('close', () => { clearInterval(ping); clients.delete(res); hass.panelsChanged(); });
+      // The response closing is the panel going away (a request's own 'close' can come early).
+      res.on('close', () => { clearInterval(ping); clients.delete(res); hass.panelsChanged(); });
       return;
     }
 
