@@ -14,6 +14,8 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir, stat, unlink, rename } from 'node:fs/promises';
 import { join } from 'node:path';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { config } from './config.mjs';
 
 // Stable across restarts (so image links in an open page keep working), derived from the
@@ -67,7 +69,7 @@ function resolve(url) {
     // Only URLs this server signed itself: the proxy cannot be pointed at an arbitrary host.
     const given = Buffer.from(u.searchParams.get('s') || ''); const want = Buffer.from(target ? sign(target) : '');
     if (!target || given.length !== want.length || !timingSafeEqual(given, want)) return null;
-    return { upstream: target };
+    return { upstream: target, checked: true };
   }
   return null;
 }
@@ -88,7 +90,7 @@ export async function serveImage(req, res) {
   } catch {}
   let job = inflight.get(key);
   if (!job) {
-    job = fetchImage(r.upstream).finally(() => inflight.delete(key));
+    job = (r.checked ? fetchChecked(r.upstream) : fetchImage(r.upstream)).finally(() => inflight.delete(key));
     inflight.set(key, job);
     job.then((body) => store(file, body)).catch(() => {});
   }
@@ -99,10 +101,47 @@ export async function serveImage(req, res) {
   }
 }
 
+// Where a signed /img/ext URL may lead. A signature only proves this server handed the URL out; the
+// URL itself came from Home Assistant or Music Assistant. So: http(s) only, Home Assistant's own
+// host (where Music Assistant's image proxy lives too) may be on the LAN, and anything else must
+// resolve to a public address - checked on every redirect, so a public host can't bounce the
+// proxy onto the LAN, a router or a cloud metadata address.
+const isPrivate = (ip) => {
+  const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+  if (isIP(v4) === 4) {
+    const [a, b] = v4.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
+      || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19)) || a >= 224;
+  }
+  const x = ip.toLowerCase();
+  return x === '::' || x === '::1' || /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || /^ff/.test(x);
+};
+async function allowed(url) {
+  let u; try { u = new URL(url); } catch { return false; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  const haHost = (() => { try { return new URL(config.ha.url).hostname; } catch { return null; } })();
+  if (haHost && host === haHost) return true;
+  const addrs = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map((a) => a.address);
+  return addrs.length > 0 && !addrs.some(isPrivate);
+}
+async function fetchChecked(url) {
+  for (let hop = 0; hop < 4; hop++) {
+    if (!(await allowed(url))) throw Object.assign(new Error('destination not allowed'), { status: 403 });
+    const up = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    const next = up.status >= 300 && up.status < 400 && up.headers.get('location');
+    if (!next) return readImage(up);
+    url = new URL(next, url).href;
+  }
+  throw Object.assign(new Error('too many redirects'), { status: 502 });
+}
+
 // The upstream image, refused unless it really is an image and of a sane size: an error page
 // answered with 200 must never be cached and served as a poster for a year.
 async function fetchImage(url) {
-  const up = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  return readImage(await fetch(url, { signal: AbortSignal.timeout(15000) }));
+}
+async function readImage(up) {
   if (!up.ok) throw Object.assign(new Error(`upstream ${up.status}`), { status: up.status === 404 ? 404 : 502 });
   if (Number(up.headers.get('content-length')) > MAX_BYTES) throw Object.assign(new Error('too large'), { status: 502 });
   const body = Buffer.from(await up.arrayBuffer());
