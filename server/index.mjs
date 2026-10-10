@@ -419,8 +419,10 @@ post(/^\/api\/vote\/start$/, (m, q, body) => {
   return st;
 });
 
-// A phone (with the round's token) gets the round without its token; the panel gets all of it.
-get(/^\/api\/vote$/, (m, q) => (q.get('t') ? vote.publicState() : vote.state()) || { items: [] });
+// The round without its token, for anyone allowed here. The token itself only travels on the
+// panel's own event stream (the 'vote' events), so it can't be read off this endpoint even when
+// the panel key is off (ALLOW_OPEN).
+get(/^\/api\/vote$/, () => vote.publicState() || { items: [] });
 
 // Voting always needs the round's token, even where the panel key is off (ALLOW_OPEN), so only
 // phones that scanned the QR on the screen can vote.
