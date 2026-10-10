@@ -152,8 +152,8 @@ const heatColour = (h) => (h < 0.5 ? mix([236, 210, 130], [240, 140, 44], h * 2)
 const HEAT_STEPS = 45;
 // Where a bubble's label goes: out past it down the sides, but beside it across the top, where
 // above would run into the tile's heading. side (-1 left, 1 right) keeps two close labels apart.
-function markAt(c, deg, side) {
-  if (Math.abs(deg) >= 45) return [...pt(c, c, 222, deg), 'middle'];
+function markAt(c, deg, side, out = 0) {
+  if (Math.abs(deg) >= 45) return [...pt(c, c, 222 + out, deg), 'middle'];
   const [bx, by] = pt(c, c, 196, deg), sd = side ?? (deg >= 0 ? 1 : -1);
   return [bx + sd * 20, by + 5, sd > 0 ? 'start' : 'end'];   // starts just past the bubble's glow, whatever the word
 }
@@ -219,7 +219,10 @@ function Dial({ id, value, heat, heatLabel, trail = [], label = 'Load', marks = 
       <circle cx=${c} cy=${c - 196} r="7.5" fill="#FFF5DC" stroke=${heatColour(heat)} stroke-width="3" /></g>`}
     ${heat != null && heatLabel && (() => { const [lx, ly, an] = markAt(c, dialAngle(heat * 100), marks[0] && marks[0].f > heat ? -1 : 1); return html`<text x=${lx} y=${ly} class="mark" style=${`text-anchor:${an}`} fill=${heatColour(heat)}>${heatLabel}</text>`; })()}
     ${heat != null && marks.map((m) => { const deg = dialAngle(m.f * 100), col = heatColour(m.f);
-      const [lx, ly, an] = markAt(c, deg, heatLabel ? (m.f > heat ? 1 : -1) : null);
+      // Down the sides two close labels would sit on each other (both pinned at the top of the scale,
+      // say): this one moves further out.
+      const near = heatLabel && Math.abs(deg - dialAngle(heat * 100)) < 14;
+      const [lx, ly, an] = markAt(c, deg, heatLabel ? (m.f > heat ? 1 : -1) : null, near ? 26 : 0);
       return html`<g class="turn" style=${`transform:rotate(${deg}deg)`}>
         <circle class="halo" cx=${c} cy=${c - 196} r="13" fill=${col} opacity=".4" />
         <circle cx=${c} cy=${c - 196} r="5" fill=${col} stroke="#FFF5DC" stroke-width="1.5" /></g>
@@ -315,6 +318,9 @@ const FrameSpark = ({ ms }) => {
   const W = 170, H = 44, hi = Math.max(12, ...ms), pts = ms.map((v, i) => `${i ? 'L' : 'M'}${(i / (ms.length - 1) * W).toFixed(1)} ${(H - 4 - (v / hi) * (H - 8)).toFixed(1)}`).join(' ');
   return html`<div class="fspark"><svg viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true"><path d=${pts} stroke=${TEAL} stroke-width="2" fill="none" vector-effect="non-scaling-stroke" /></svg><span>frame time</span></div>`;
 };
+// The GPU's heat ring, as tuned for this card (it rarely passes 135 °F); the memory bubble shares it
+// and simply sits at the top when the memory runs hotter.
+const GPU_F = [100, 135];
 // The water from cool (77 °F) to hot (113 °F).
 const WATER_F = [77, 113];
 // Network as a line of text: megabits, or kilobits when under one.
@@ -479,7 +485,7 @@ export function Stats() {
           ${(() => { const named = !(playing?.logo && logoShown === playing.logo);
             const line = [demo && 'Demo numbers', named && (playing?.name || s.game || 'Idle'), streamingTo && `streaming to ${streamingTo}`].filter(Boolean).join(' · ');
             return line && html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${named ? line : line[0].toUpperCase() + line.slice(1)}</div>`; })()}
-          ${session && html`<div class="session">${hm(session.minutes)} · peak ${degF(session.peakC)} · peak ${session.peakW} W · ${session.kwh.toFixed(2)} kWh</div>`}</div>
+          ${session && html`<div class="session">${[hm(session.minutes), session.peakC != null && `peak ${degF(session.peakC)}`, `peak ${session.peakW} W`, `${session.kwh.toFixed(2)} kWh`].filter(Boolean).join(' · ')}</div>`}</div>
         ${playing?.logo && html`<img class="logo" key=${playing.logo} src=${playing.logo} alt=${playing.name || ''} onLoad=${() => setLogoShown(playing.logo)} onError=${hide} />`}
       </div>
       <div class="right">
@@ -492,8 +498,8 @@ export function Stats() {
     <div class="st-row dials">
       ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
         ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
-      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, 95, 185)} trail=${gpuTrail}
-          heatLabel=${has(s.gpuMemTemp) ? 'CORE' : null} marks=${has(s.gpuMemTemp) ? [{ f: warmth(s.gpuMemTemp, 95, 185), label: 'MEM' }] : []} />
+      ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, GPU_F[0], GPU_F[1])} trail=${gpuTrail}
+          heatLabel=${has(s.gpuMemTemp) ? 'CORE' : null} marks=${has(s.gpuMemTemp) ? [{ f: warmth(s.gpuMemTemp, GPU_F[0], GPU_F[1]), label: 'MEM' }] : []} />
         ${readout([has(s.gpuClock) && [has(s.gpuMemClock) ? 'Core' : 'Clock', `${r0(s.gpuClock)} MHz`], has(s.gpuMemClock) && ['Memory', `${r0(s.gpuMemClock)} MHz`]])}</section>`}
       <section class="tile side">
         <div class="twins">

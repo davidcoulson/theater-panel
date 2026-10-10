@@ -358,6 +358,9 @@ function Rail({ current }) {
 // A page shows a way back; a sheet closes itself; decoration just goes.
 function Guard({ name, quiet = false, onError, children }) {
   const [err, reset] = useErrorBoundary((e) => { report('error', `${name} crashed: ${e?.message || e}`); onError?.(); });
+  // Decoration that broke tries again a minute later, so one bad moment doesn't lose the rate card
+  // or the celebration until the page reloads.
+  useEffect(() => { if (!err || !quiet) return undefined; const t = setTimeout(reset, 60000); return () => clearTimeout(t); }, [err]);
   if (!err) return children;
   if (quiet) return null;
   return html`<main class="view"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center">

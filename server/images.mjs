@@ -126,8 +126,11 @@ async function store(file, body) {
 }
 
 function send(res, body) {
+  const type = sniff(body);
   res.writeHead(200, {
-    'content-type': sniff(body),
+    'content-type': type,
+    // An SVG is a document: it may draw, never run anything, even if opened on its own.
+    ...(type === 'image/svg+xml' ? { 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox" } : {}),
     'content-length': body.length,
     // Posters, backdrops and logos are effectively permanent, and each URL carries its own
     // identifiers, so the panel's browser can keep them for a year and never re-ask.
@@ -143,6 +146,9 @@ function sniff(b) {
   if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
   if (b.toString('latin1', 0, 3) === 'GIF') return 'image/gif';
   if (b.toString('latin1', 4, 12) === 'ftypavif') return 'image/avif';
+  // SVG (station and provider logos): text that opens with <svg, or an XML prolog before it.
+  const head = b.toString('utf8', 0, 1024).replace(/^\uFEFF/, '').trimStart();
+  if (/^<svg[\s>]/i.test(head) || (/^<\?xml/i.test(head) && /<svg[\s>]/i.test(head))) return 'image/svg+xml';
   return null;
 }
 

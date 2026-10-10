@@ -77,7 +77,7 @@ let bucket = [];
 // The game being played now: when it started, its hottest GPU, its peak draw and its energy.
 let session = null;
 const sessionNow = () => session && {
-  minutes: Math.round((Date.now() - session.start) / 60000), peakC: Math.round(session.peakC), peakW: Math.round(session.peakW), kwh: Math.round(session.wh) / 1000,
+  minutes: Math.round((Date.now() - session.start) / 60000), peakC: session.peakC == null ? null : Math.round(session.peakC), peakW: Math.round(session.peakW), kwh: Math.round(session.wh) / 1000,
 };
 export function recordStats(ha) {
   haRef = ha;
@@ -96,9 +96,9 @@ export function recordStats(ha) {
     const playing = (load(st.fps) || 0) >= 1, now = Date.now();
     if (playing) {
       const watts = (load(st.gpuPower) || 0) + ((await hostCpuWatts().catch(() => null)) || 0);
-      if (!session) session = { start: now, peakC: 0, peakW: 0, wh: 0 };
+      if (!session) session = { start: now, peakC: null, peakW: 0, wh: 0 };   // peakC stays null until a temperature comes in
       session.last = now;
-      if (temp != null) session.peakC = Math.max(session.peakC, temp);
+      if (temp != null) session.peakC = Math.max(session.peakC ?? temp, temp);
       session.peakW = Math.max(session.peakW, watts);
       session.wh += watts * 5 / 3600;
     } else if (session && now - session.last > 120000) session = null;
