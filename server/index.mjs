@@ -336,12 +336,19 @@ function keepClientLog(text) {
 }
 
 // The panel's own errors (see report() in web/lib/api.mjs), into this log.
-const clientLogAt = [];
+// At most 20 a minute from each sender (and 120 in all), so one noisy page can't crowd out the
+// wall panel's own reports.
+const clientLogAt = new Map();   // sender -> times in the last minute
 post(/^\/api\/client-log$/, (m, q, body = {}, req) => {
-  const now = Date.now();
-  while (clientLogAt.length && now - clientLogAt[0] > 60000) clientLogAt.shift();
-  if (clientLogAt.length >= 30) return { ok: false };
-  clientLogAt.push(now);
+  const now = Date.now(), sender = clientIp(req, isProxy) || req?.socket.remoteAddress || '?';
+  let total = 0;
+  for (const [k, times] of clientLogAt) {
+    while (times.length && now - times[0] > 60000) times.shift();
+    if (!times.length) clientLogAt.delete(k); else total += times.length;
+  }
+  const mine = clientLogAt.get(sender) || [];
+  if (mine.length >= 20 || total >= 120) return { ok: false };
+  mine.push(now); clientLogAt.set(sender, mine);
   const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, n);
   // Which screen said it: the address behind any proxy, and a word for the browser.
   // Forwarded addresses count only from a trusted proxy (TRUSTED_PROXIES), as everywhere else.
@@ -651,7 +658,7 @@ const server = createServer(async (req, res) => {
 
     if (path === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });   // nginx in front passes each event straight on
-      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, build: config.build.version })}\n\n`);
+      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, vote: vote.state(), build: config.build.version })}\n\n`);   // a panel that reloads mid-vote gets the round (and its QR) back
       clients.add(res);
       hass.panelsChanged();
       if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll

@@ -56,7 +56,9 @@ addEventListener('pagehide', () => { leaving = true; });
 setInterval(() => {
   const t0 = performance.now(); let timer = null, frame = null, told = false;
   const done = (force) => {
-    if (told || leaving || timer == null || (frame == null && !force) || (!kiosk && document.visibilityState === 'hidden')) return;
+    // A hidden page is meant to be throttled (the kiosk's screensaver freeze, a background tab): that
+    // shows up as the 'visibility' report below. Lag only counts while the page is visible.
+    if (told || leaving || timer == null || (frame == null && !force) || document.visibilityState === 'hidden') return;
     told = true;
     if (timer > 1000 || frame == null || frame > 1000) report('lag', `timer ${timer} ms, frame ${frame == null ? 'none in 5 s' : `${frame} ms`}, ${document.visibilityState}${document.hasFocus() ? ', focused' : ''}`);
   };
@@ -148,7 +150,7 @@ export async function startLive({ navigate } = {}) {
         bootBuild ??= d.build;
         if (d.build !== bootBuild) set({ stale: d.build });
       }
-      set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [] });
+      set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [], vote: d.vote ?? null });
     });
     es.addEventListener('states', (e) => {
       const changed = JSON.parse(e.data);
