@@ -624,7 +624,7 @@ export const seedDetails = (ratingKey) => cached(`seed:${ratingKey}`, 12 * 3600e
 // item, which is what the panel's popcorn boxes write after a film.
 export async function rate(ratingKey, rating) {
   const r = Math.max(-1, Math.min(10, Number(rating)));
-  await plex('/:/rate', { key: Number(ratingKey), identifier: 'com.plexapp.plugins.library', rating: r }, 'PUT');
+  await plex('/:/rate', { key: Number(ratingKey), identifier: 'com.plexapp.plugins.library', rating: r }, { method: 'PUT' });
   staleMovies();
   return { ratingKey: String(ratingKey), rating: r };
 }

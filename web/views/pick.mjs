@@ -21,7 +21,7 @@ export function Pick() {
   const [source, setSource] = useState(null);      // the season shelf the shortlist came from
   const [season, setSeason] = useState(true);      // draw from the season while one is up
   const votes = useStore((s) => s.vote);
-  const voteUrl = `${location.origin}/vote`;
+  const voteUrl = `${location.origin}/vote${votes?.token ? `?t=${encodeURIComponent(votes.token)}` : ''}`;
 
   async function shuffle() {
     setBusy(true);

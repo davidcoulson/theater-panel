@@ -163,21 +163,25 @@ export function isAdmin(req) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-// Wrong passwords lock the page for a while; parallel guesses hit the same counter.
-let fails = 0;
-let lockedUntil = 0;
+// Wrong passwords lock the page for a while - for the address they came from, so someone
+// hammering the sign-in can't lock the owner out from their own device. Parallel guesses from one
+// address hit the same counter. At most 500 addresses are remembered (the oldest go first).
+const attempts = new Map();   // address -> { fails, lockedUntil }
 
-export async function login(res, body, https = true) {
+export async function login(res, body, https = true, from = 'unknown') {
   if (!config.adminPassword) throw httpError(403, 'Set ADMIN_PASSWORD on the container to use the admin page.');
-  if (Date.now() < lockedUntil) throw httpError(429, `Too many attempts. Try again in ${Math.ceil((lockedUntil - Date.now()) / 1000)}s.`);
-  const a = Buffer.from(String(body.password || '')); const b = Buffer.from(config.adminPassword);
+  const who = attempts.get(from) || { fails: 0, lockedUntil: 0 };
+  if (Date.now() < who.lockedUntil) throw httpError(429, `Too many attempts. Try again in ${Math.ceil((who.lockedUntil - Date.now()) / 1000)}s.`);
+  const a = Buffer.from(String(body?.password || '')); const b = Buffer.from(config.adminPassword);
   if (!(a.length === b.length && timingSafeEqual(a, b))) {
-    fails += 1;
-    if (fails >= 5) { lockedUntil = Date.now() + Math.min(15 * 60e3, 30e3 * 2 ** (fails - 5)); }
+    who.fails += 1;
+    if (who.fails >= 5) who.lockedUntil = Date.now() + Math.min(15 * 60e3, 30e3 * 2 ** (who.fails - 5));
+    attempts.delete(from); attempts.set(from, who);
+    while (attempts.size > 500) attempts.delete(attempts.keys().next().value);
     await new Promise((r) => setTimeout(r, 800));
     throw httpError(401, 'Wrong password');
   }
-  fails = 0; lockedUntil = 0;
+  attempts.delete(from);
   const exp = Date.now() + 30 * DAY; const nonce = randomBytes(9).toString('base64url');
   const v = `${exp}.${nonce}.${sign(`${exp}.${nonce}`)}`;
   res.setHeader('set-cookie', `${COOKIE}=${encodeURIComponent(v)}; Path=/; Max-Age=${30 * 86400}; HttpOnly; SameSite=Strict${https ? '; Secure' : ''}`);

@@ -72,6 +72,10 @@ function resolve(url) {
   return null;
 }
 
+// Concurrent misses for the same image share one upstream fetch.
+const inflight = new Map();   // cache key -> Promise<Buffer>
+const MAX_BYTES = 15 * 1024 * 1024;
+
 export async function serveImage(req, res) {
   const r = resolve(req.url);
   if (!r) { res.writeHead(404).end(); return; }
@@ -79,19 +83,31 @@ export async function serveImage(req, res) {
   const file = join(dir, key);
   try {
     const body = await readFile(file);
-    return send(res, body);
+    if (sniff(body)) return send(res, body);
+    unlink(file).catch(() => {});   // something that is not an image got cached once: drop it
   } catch {}
-  try {
-    const up = await fetch(r.upstream, { signal: AbortSignal.timeout(15000) });
-    if (!up.ok) { res.writeHead(up.status === 404 ? 404 : 502).end(); return; }
-    const body = Buffer.from(await up.arrayBuffer());
-    // The type comes from the bytes both now and on later hits from disk, so the same image
-    // never changes type between the first view and the cached one.
-    send(res, body);
-    await store(file, body);
-  } catch (e) {
-    if (!res.headersSent) res.writeHead(502).end();
+  let job = inflight.get(key);
+  if (!job) {
+    job = fetchImage(r.upstream).finally(() => inflight.delete(key));
+    inflight.set(key, job);
+    job.then((body) => store(file, body)).catch(() => {});
   }
+  try {
+    send(res, await job);
+  } catch (e) {
+    if (!res.headersSent) res.writeHead(e.status || 502).end();
+  }
+}
+
+// The upstream image, refused unless it really is an image and of a sane size: an error page
+// answered with 200 must never be cached and served as a poster for a year.
+async function fetchImage(url) {
+  const up = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!up.ok) throw Object.assign(new Error(`upstream ${up.status}`), { status: up.status === 404 ? 404 : 502 });
+  if (Number(up.headers.get('content-length')) > MAX_BYTES) throw Object.assign(new Error('too large'), { status: 502 });
+  const body = Buffer.from(await up.arrayBuffer());
+  if (body.length > MAX_BYTES || !sniff(body)) throw Object.assign(new Error('not an image'), { status: 502 });
+  return body;
 }
 
 // Written under a temporary name and renamed into place, so a request arriving mid-write reads
@@ -119,11 +135,15 @@ function send(res, body) {
   });
   res.end(body);
 }
+// The image type from its first bytes, or null when it is not an image at all.
 function sniff(b) {
-  if (b[0] === 0x89 && b[1] === 0x50) return 'image/png';
-  if (b[0] === 0x52 && b[1] === 0x49) return 'image/webp';
-  if (b[0] === 0x47 && b[1] === 0x49) return 'image/gif';
-  return 'image/jpeg';
+  if (b.length < 12) return null;
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
+  if (b.toString('latin1', 0, 3) === 'GIF') return 'image/gif';
+  if (b.toString('latin1', 4, 12) === 'ftypavif') return 'image/avif';
+  return null;
 }
 
 // Keep the cache under IMAGE_CACHE_MB by deleting the least recently written files.

@@ -162,7 +162,7 @@ function checkPost(req) {
 }
 
 // The app icons are public so Unraid's Docker page and bookmarks can show them.
-const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/assets/preroll.mp3', '/assets/preroll-spooky.mp3', '/assets/intermission.mp3', '/vote', '/vote/', '/api/vote', '/healthz']);
+const PUBLIC = new Set(['/assets/icon.png', '/assets/apple-touch-icon.png', '/assets/preroll.mp3', '/assets/preroll-spooky.mp3', '/assets/intermission.mp3', '/vote', '/vote/', '/healthz']);
 
 // Trusted networks skip the key entirely (see TRUST_NETWORKS on the settings page).
 let isProxy = netList(config.trustedProxies);
@@ -174,6 +174,8 @@ function authorized(req, url, res) {
   if (!config.panelKey || PUBLIC.has(url.pathname)) return true;
   // The guest remote: its page and its two calls open with the evening's token, nothing else.
   if ((url.pathname === '/guest' || url.pathname === '/api/guest/state' || url.pathname === '/api/guest/act') && guest.valid(url.searchParams.get('t') || '')) return true;
+  // Movie night: a phone that scanned this round's QR can read and vote, nothing else.
+  if (url.pathname === '/api/vote' && vote.validToken(url.searchParams.get('t') || '')) return true;
   if (config.trustedNetworks.length && isTrusted(clientIp(req, isProxy))) return true;
   const cookie = /(?:^|;\s*)tp_key=([^;]+)/.exec(req.headers.cookie || '')?.[1];
   const given = url.searchParams.get('key') || (cookie && decodeURIComponent(cookie)) || '';
@@ -342,7 +344,8 @@ post(/^\/api\/client-log$/, (m, q, body = {}, req) => {
   clientLogAt.push(now);
   const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, n);
   // Which screen said it: the address behind any proxy, and a word for the browser.
-  const from = clean(String(req?.headers['x-forwarded-for'] || req?.socket.remoteAddress || '').split(',')[0].trim(), 46);
+  // Forwarded addresses count only from a trusted proxy (TRUSTED_PROXIES), as everywhere else.
+  const from = clean(clientIp(req, isProxy) || `${req?.socket.remoteAddress} (forwarded by an untrusted proxy)`, 80);
   const ua = String(req?.headers['user-agent'] || ''), kind = /; wv\)/.test(ua) ? 'webview' : /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : /iPhone|iPad/.test(ua) ? 'ios' : /Windows/.test(ua) ? 'windows' : 'other';
   const line = `[page] ${clean(body.kind, 20)} on ${clean(body.page, 120) || '#/'} from ${from} (${kind}): ${clean(body.message, 500)}`;
   console.warn(line);
@@ -388,8 +391,8 @@ get(/^\/api\/rate$/, () => verdict || { id: null });
 post(/^\/api\/rate$/, async (m, q, body) => {
   if (body?.dismiss) { verdict = null; broadcast('rate', { id: null }); return { ok: true }; }
   const id = String(body?.id || verdict?.id || '');
-  const stars = Math.max(1, Math.min(5, Number(body?.stars) || 0));
-  if (!id || !stars) throw new Error('Which film, and how many?');
+  const stars = Number(body?.stars);
+  if (!/^\d+$/.test(id) || !Number.isFinite(stars) || stars < 1 || stars > 5) throw admin.httpError(400, 'Which film, and how many stars (1-5)?');
   // Everyone in the room can add a star rating; Plex is told the average, so the last word is
   // the room's, not whoever tapped last.
   if (!verdict || verdict.id !== id) verdict = { id, title: body?.title || '', year: body?.year, poster: null, at: Date.now(), votes: [] };
@@ -416,13 +419,16 @@ post(/^\/api\/vote\/start$/, (m, q, body) => {
   return st;
 });
 
-get(/^\/api\/vote$/, () => vote.state() || { items: [] });
+// A phone (with the round's token) gets the round without its token; the panel gets all of it.
+get(/^\/api\/vote$/, (m, q) => (q.get('t') ? vote.publicState() : vote.state()) || { items: [] });
 
-
+// Voting always needs the round's token, even where the panel key is off (ALLOW_OPEN), so only
+// phones that scanned the QR on the screen can vote.
 post(/^\/api\/vote$/, (m, q, body) => {
+  if (!vote.validToken(q.get('t') || body?.t || '')) throw admin.httpError(403, 'Scan the QR on the theater panel to vote');
   const st = vote.vote(body.round, body.voter, body.item);
   broadcast('vote', st);
-  return st;
+  return vote.publicState();
 });
 
 post(/^\/api\/vote\/end$/, () => { const w = vote.winner(); vote.clear(); broadcast('vote', null); return { winner: w }; });
@@ -594,7 +600,7 @@ const frameAncestors = (path) => (path.startsWith('/admin') || path.startsWith('
 async function adminApi(req, res, path) {
   const method = req.method;
   const body = method === 'POST' ? await readBody(req) : undefined;
-  if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body, isHttps(req));
+  if (path === '/api/admin/login' && method === 'POST') return admin.login(res, body, isHttps(req), clientIp(req, isProxy) || req.socket.remoteAddress);
   if (path === '/api/admin/logout' && method === 'POST') return admin.logout(res);
   if (path === '/api/admin/session') return { admin: admin.isAdmin(req), configured: Boolean(config.adminPassword) };
   if (!admin.isAdmin(req)) throw admin.httpError(401, 'Sign in first');
