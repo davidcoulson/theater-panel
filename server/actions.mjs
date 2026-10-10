@@ -51,6 +51,10 @@ export async function runAction(ha, body) {
       // down and the film follows a few seconds later. Returns at once so the panel is not held
       // open for the length of the swell. A film gets it; the next episode of a sitcom does not,
       // unless the Play button says otherwise (body.preroll true or false decides).
+      // Checked before anything happens in the room: a bad request must not dim the lights.
+      // Both ids become path segments on the Plex server, so only plain numbers are accepted.
+      if (!/^\d+$/.test(String(body.ratingKey))) throw httpError(400, 'Bad ratingKey');
+      if (body.partId != null && !/^\d+$/.test(String(body.partId))) throw httpError(400, 'Bad partId');
       if (!body.noPreroll && wantsPreroll(body)) {
         // The theater's speaker is the Apple TV over AirPlay, which is asleep whenever a film
         // plays on the projector. Then the lights still go down and the panel plays the swell.
@@ -64,9 +68,6 @@ export async function runAction(ha, body) {
       }
       // Store the chosen tracks on the Plex part first, then hand over to HA, which wakes the
       // projector, opens Plex on the Apple TV, starts playback and runs Movie time.
-      // Both ids become path segments on the Plex server, so only plain numbers are accepted.
-      if (!/^\d+$/.test(String(body.ratingKey))) throw httpError(400, 'Bad ratingKey');
-      if (body.partId != null && !/^\d+$/.test(String(body.partId))) throw httpError(400, 'Bad partId');
       if (body.partId && (body.audioStreamID != null || body.subtitleStreamID != null)) {
         await plex.setStreams(body.partId, body).catch((err) => console.warn('[plex] setStreams', err.message));
       }
@@ -136,11 +137,7 @@ export async function runAction(ha, body) {
       if (map[body.cmd]) return ha.callService('media_player', map[body.cmd], {}, { target });
       if (body.cmd === 'mute') return ha.callService('media_player', 'volume_mute', { is_volume_muted: Boolean(body.muted) }, { target });
       if (body.cmd === 'seek_rel') {
-        const s = ha.states[e.appleTv]?.attributes || {};
-        const pos = livePosition(s);
-        if (pos == null) throw new Error('Position unknown');
-        const to = Math.max(0, Math.min((s.media_duration || Infinity) - 1, pos + Number(body.seconds || 0)));
-        return ha.callService('media_player', 'media_seek', { seek_position: to }, { target });
+        return seekBy(ha, e.appleTv, body.seconds);
       }
       throw new Error('Unknown transport command');
     }
@@ -151,8 +148,11 @@ export async function runAction(ha, body) {
       if (body.on === false) return ha.callService('light', 'turn_off', {}, { target });
       const data = {};
       if (body.brightness_pct != null) data.brightness_pct = clamp(body.brightness_pct, 1, 100);
-      if (body.rgb_color) data.rgb_color = body.rgb_color.slice(0, 3).map((n) => clamp(n, 0, 255));
-      if (body.color_temp_kelvin) data.color_temp_kelvin = clamp(body.color_temp_kelvin, 2000, 6500);
+      if (body.rgb_color != null) {
+        if (!Array.isArray(body.rgb_color) || body.rgb_color.length !== 3) throw httpError(400, 'rgb_color must be three numbers');
+        data.rgb_color = body.rgb_color.map((n) => clamp(n, 0, 255));
+      }
+      if (body.color_temp_kelvin != null) data.color_temp_kelvin = clamp(body.color_temp_kelvin, 2000, 6500);
       return ha.callService('light', 'turn_on', data, { target });
     }
 
@@ -188,11 +188,7 @@ export async function runAction(ha, body) {
       if (simple[body.cmd]) return ha.callService('media_player', simple[body.cmd], {}, { target });
       if (body.cmd === 'volume') return ha.callService('media_player', 'volume_set', { volume_level: clamp(body.level, 0, 1) }, { target });
       if (body.cmd === 'seek_rel') {
-        const s = ha.states[player]?.attributes || {};
-        const pos = livePosition(s, ha.states[player]?.state);
-        if (pos == null) throw new Error('Position unknown');
-        const to = Math.max(0, Math.min((s.media_duration || Infinity) - 1, pos + Number(body.seconds || 0)));
-        return ha.callService('media_player', 'media_seek', { seek_position: to }, { target });
+        return seekBy(ha, player, body.seconds);
       }
       if (body.cmd === 'shuffle') return ha.callService('media_player', 'shuffle_set', { shuffle: Boolean(body.on) }, { target });
       if (body.cmd === 'repeat') return ha.callService('media_player', 'repeat_set', { repeat: ['off', 'all', 'one'].includes(body.mode) ? body.mode : 'off' }, { target });
@@ -244,6 +240,17 @@ function projectorKey(ha, body) {
   return ha.callService('androidtv', 'adb_command', { command: `input keyevent ${code}` }, { target: { entity_id: config.entities.projector } });
 }
 
+// A relative skip on a media player: from where it really is now (paused players stay put), kept
+// inside the item.
+function seekBy(ha, player, seconds) {
+  const st = ha.states[player];
+  const a = st?.attributes || {};
+  const pos = livePosition(a, st?.state);
+  if (pos == null) throw new Error('Position unknown');
+  const to = Math.max(0, Math.min((a.media_duration || Infinity) - 1, pos + num(seconds || 0, 'seconds')));
+  return ha.callService('media_player', 'media_seek', { seek_position: to }, { target: { entity_id: player } });
+}
+
 // HA reports media_position as of media_position_updated_at; add the time since then when playing.
 export function livePosition(a, state) {
   if (a.media_position == null) return null;
@@ -254,7 +261,14 @@ export function livePosition(a, state) {
   return pos;
 }
 
-const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Number(n)));
+// Numbers from the panel: anything that is not a finite number is the caller's mistake (400),
+// never a NaN passed on to Home Assistant.
+const num = (n, what = 'value') => {
+  const v = typeof n === 'string' && n.trim() === '' ? NaN : Number(n);
+  if (!Number.isFinite(v)) throw httpError(400, `${what} must be a number`);
+  return v;
+};
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, num(n)));
 
 // The soundbar, through the JBL integration's entities: volume as a number, the modes as
 // switches, the EQ as a select and seven numbers, the rest as buttons the bar's remote has.

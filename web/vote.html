@@ -34,6 +34,9 @@
 let voter = localStorage.getItem('tp-voter');
 if (!voter) { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem('tp-voter', voter); } catch {} }
 let mine = null;
+// The round's token, from the QR on the panel: without it the server answers nobody.
+const t = new URLSearchParams(location.search).get('t') || '';
+const tq = `?t=${encodeURIComponent(t)}`;
 
 const list = document.getElementById('list');
 const note = document.getElementById('note');
@@ -69,15 +72,15 @@ function draw(state) {
 async function send(round, item) {
   mine = item;
   try {
-    const r = await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ round, voter, item }) });
+    const r = await fetch(`/api/vote${tq}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ round, voter, item }) });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Could not vote');
     draw(d);
     note.textContent = 'Voted. Tap another to change your mind.';
-  } catch (e) { note.innerHTML = `<span class="err">${e.message}</span>`; }
+  } catch (e) { mine = null; const s = document.createElement('span'); s.className = 'err'; s.textContent = e.message; note.replaceChildren(s); }
 }
 
-const load = () => fetch('/api/vote').then((r) => r.json()).then(draw).catch(() => {});
+const load = () => fetch(`/api/vote${tq}`).then((r) => (r.ok ? r.json() : null)).then(draw).catch(() => {});
 load();
 // The panel drives the round; polling keeps this page honest without a socket.
 setInterval(load, 4000);

@@ -22,5 +22,7 @@ export function state() {
 export function valid(token) {
   const g = state();
   // Constant time, like every other secret here.
-  return Boolean(g && token && token.length === g.token.length && timingSafeEqual(Buffer.from(token), Buffer.from(g.token)));
+  if (!g || !token) return false;
+  const a = Buffer.from(String(token)), b = Buffer.from(g.token);
+  return a.length === b.length && timingSafeEqual(a, b);   // byte lengths: a multibyte token can't throw
 }
