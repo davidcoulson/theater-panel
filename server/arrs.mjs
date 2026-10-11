@@ -80,7 +80,11 @@ let interestCache = null, interestRun = null;
 function interest() {
   const fresh = interestCache && Date.now() - interestCache.at < 10 * 60000;
   if (!fresh && !interestRun) interestRun = lookInterest().finally(() => { interestRun = null; });
-  return interestCache ? Promise.resolve(interestCache.data) : interestRun;
+  if (interestCache) return Promise.resolve(interestCache.data);
+  // Nothing yet (a cold start, or Plex slow to answer): wait a moment at most, then show the
+  // calendar unflagged rather than let the page's request time out. The flags arrive on a later visit.
+  const none = { watchlist: new Set(), watching: new Set() };
+  return Promise.race([interestRun.catch(() => none), new Promise((r) => setTimeout(r, 2500, none))]);
 }
 async function lookInterest() {
   const data = { watchlist: new Set(), watching: new Set() };
@@ -141,7 +145,7 @@ export async function calendar(back = 7, ahead = 21) {
     return pick ? { ...e, pick } : e;
   });
   const data = { events, errors, services: { tv: Boolean(sonarr.url), movies: Boolean(radarr.url || radarr4k.url) } };
-  // A partial answer is kept for a minute only, so a service that comes back shows up soon.
-  cache.set(key, { at: errors.length ? Date.now() - 4 * 60000 : Date.now(), data });
+  // A partial answer (a service down, or Plex flags not worked out yet) is kept for a minute only.
+  cache.set(key, { at: errors.length || !interestCache ? Date.now() - 4 * 60000 : Date.now(), data });
   return data;
 }
