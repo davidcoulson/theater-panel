@@ -199,7 +199,7 @@ function Settings({ page, signOut }) {
   <//>`;
 }
 
-const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', TMDB: 'tmdb', 'Year in review': 'wrapped' };
+const TESTS = { 'Home Assistant': 'ha', Plex: 'plex', Seerr: 'seerr', TMDB: 'tmdb', Calendar: 'arrs', 'Year in review': 'wrapped' };
 const TEST_LABELS = { wrapped: 'Send it now (test)' };
 
 // Tries the connection with the values on screen, saved or not.

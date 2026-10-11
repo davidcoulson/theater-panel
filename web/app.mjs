@@ -13,6 +13,7 @@ import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
 import { Watch } from './views/watch.mjs';
 import { Request } from './views/request.mjs';
+import { Calendar } from './views/calendar.mjs';
 import { Music } from './views/music.mjs';
 import { Showtime } from './views/showtime.mjs';
 import { Games } from './views/games.mjs';
@@ -25,8 +26,8 @@ import { TweaksSheet } from './views/tweaks.mjs';
 import { TonightSheet, GuestSheet } from './views/tonight.mjs';
 import { SoundSheet } from './views/soundbar.mjs';
 
-const VIEWS = { lobby: Lobby, watch: Watch, request: Request, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
-const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
+const VIEWS = { lobby: Lobby, watch: Watch, request: Request, calendar: Calendar, music: Music, games: Games, showtime: Showtime, stats: Stats, showing: Showing, pick: Pick, year: Year, intermission: Intermission };
+const NAV = [['lobby', 'Home', 'home'], ['watch', 'Watch', 'film'], ['request', 'Request', 'plus'], ['calendar', 'Calendar', 'calendar'], ['music', 'Music', 'music'], ['games', 'Games', 'pad']];
 
 // Hash routes, with optional query params: #/watch?lib=networks&brand=netflix
 function parseHash() {
@@ -327,6 +328,7 @@ function Rail({ current }) {
     if (taps.current.length >= 7) { taps.current = []; openTweaks(); }
   };
   const build = useStore((s) => s.build) || {};
+  const services = useStore((s) => s.services) || {};
   const ha = useStore((s) => ({ ok: s.haConnected, configured: s.haConfigured, live: s.connected }));
   // The holiday accent: its glow fills the rail while the accents are off, and its glyph sits
   // over the clock. An override from the route only knows the id, so look the rest up.
@@ -337,7 +339,7 @@ function Rail({ current }) {
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
     <${RailGlow} name=${route.params.glow || (lightsOn ? accent.attributes?.effect : hol?.glow || null)} speed=${lightsOn ? speed : 0.3}
       opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : lightsOn ? glow : 0.3)} paused=${theater} />
-    ${NAV.map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
+    ${NAV.filter(([name]) => name !== 'calendar' || services.calendar).map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}
     <a href="#/lobby?mystery=1" title="Mystery box" onClick=${(e) => { e.preventDefault(); go('lobby', { mystery: '1' }); }}><${Icon} name="sparkle" size=${32} /><span>Mystery</span></a>
     <div class="grow"></div>

@@ -13,6 +13,7 @@ import * as accents from './accents.mjs';
 import { HomeAssistant } from './ha.mjs';
 import * as plex from './plex.mjs';
 import * as seerr from './seerr.mjs';
+import * as arrs from './arrs.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
 import * as seasonal from './seasonal.mjs';
@@ -248,7 +249,7 @@ get(/^\/api\/state$/, () => ({
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl) },
-  services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url) },
+  services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url), calendar: arrs.configured() },
 }));
 
 get(/^\/api\/plex\/libraries$/, () => plex.libraries());
@@ -526,6 +527,7 @@ get(/^\/api\/pick$/, async (m, q) => {
 
 // The holiday shelves on their own (the For you tab), and Coming soon.
 get(/^\/api\/seasonal$/, async (m, q) => ({ shelves: config.plex.url ? await seasonal.shelves(seasonParam(q)) : [] }));
+get(/^\/api\/calendar$/, (m, q) => (arrs.configured() ? arrs.calendar(q.get('back'), q.get('ahead')) : { events: [], errors: [], services: {} }));
 get(/^\/api\/coming$/, async () => ({ items: config.seerr.url ? await seasonal.coming(8) : [] }));
 
 get(/^\/api\/plex\/search$/, (m, q) => plex.search(q.get('q') || ''));
