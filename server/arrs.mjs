@@ -4,6 +4,7 @@
 
 import { config } from './config.mjs';
 import { tmdbImage, extImage } from './images.mjs';
+import * as plex from './plex.mjs';
 
 async function arr(svc, path, params) {
   const res = await fetch(`${svc.url}/api/v3${path}?${new URLSearchParams(params)}`, {
@@ -28,6 +29,7 @@ function episodes(list) {
     id: `e${e.id}`,
     kind: 'tv',
     seriesId: e.seriesId,
+    tmdbId: e.series?.tmdbId || null,
     // A real instant: the page puts it on its own local day and shows the time.
     at: e.airDateUtc,
     title: e.series?.title || 'Unknown series',
@@ -69,6 +71,38 @@ function movies(hd, uhd, start, end) {
   return out;
 }
 
+// What the house cares about, by TMDB id: the Plex watchlist (shows and films), and shows someone
+// has watched an episode of lately. Either failing just means nothing is flagged.
+const WATCHING_DAYS = 120;
+// Looking up every watched show's ids takes seconds the first time, so after the first answer a
+// stale one is served while a fresh one is worked out behind it.
+let interestCache = null, interestRun = null;
+function interest() {
+  const fresh = interestCache && Date.now() - interestCache.at < 10 * 60000;
+  if (!fresh && !interestRun) interestRun = lookInterest().finally(() => { interestRun = null; });
+  return interestCache ? Promise.resolve(interestCache.data) : interestRun;
+}
+async function lookInterest() {
+  const data = { watchlist: new Set(), watching: new Set() };
+  if (config.plex.url) {
+    const [list, hist] = await Promise.allSettled([
+      plex.watchlist(),
+      plex.history({ size: 3000, since: Date.now() - WATCHING_DAYS * 86400000 }),
+    ]);
+    for (const w of (list.status === 'fulfilled' && list.value) || []) if (w.tmdbId) data.watchlist.add(`${w.mediaType}:${w.tmdbId}`);
+    const shows = hist.status === 'fulfilled' ? hist.value.filter((h) => h.type === 'show').slice(0, 150) : [];
+    const details = await Promise.allSettled(shows.map((h) => plex.seedDetails(h.key)));
+    for (const d of details) if (d.status === 'fulfilled' && d.value?.tmdbId) data.watching.add(d.value.tmdbId);
+    if (list.status === 'rejected') console.warn(`[calendar] watchlist: ${list.reason?.message}`);
+    if (hist.status === 'rejected') console.warn(`[calendar] history: ${hist.reason?.message}`);
+  }
+  interestCache = { at: Date.now(), data };
+  return data;
+}
+
+// Started a little after boot, so the first visit to the page does not wait for Plex.
+export const warm = () => { if (configured()) interest().catch(() => {}); };
+
 export const configured = () => Boolean(config.arrs.sonarr.url || config.arrs.radarr.url || config.arrs.radarr4k.url);
 
 // Days are whole UTC days around today, padded by one on each side so every local day the page
@@ -97,10 +131,15 @@ export async function calendar(back = 7, ahead = 21) {
     errors.push(`${name} did not answer`);
     return [];
   };
+  const care = await interest();
   const events = [
     ...episodes(take(tv, 'Sonarr')),
     ...movies(take(hd, 'Radarr'), take(uhd, 'Radarr 4K'), day(start), day(end)),
-  ];
+  ].map((e) => {
+    const type = e.kind === 'tv' ? 'tv' : 'movie';
+    const pick = care.watchlist.has(`${type}:${e.tmdbId}`) ? 'watchlist' : type === 'tv' && care.watching.has(e.tmdbId) ? 'watching' : null;
+    return pick ? { ...e, pick } : e;
+  });
   const data = { events, errors, services: { tv: Boolean(sonarr.url), movies: Boolean(radarr.url || radarr4k.url) } };
   // A partial answer is kept for a minute only, so a service that comes back shows up soon.
   cache.set(key, { at: errors.length ? Date.now() - 4 * 60000 : Date.now(), data });

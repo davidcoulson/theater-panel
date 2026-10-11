@@ -12,6 +12,8 @@ const pad = (n) => String(n).padStart(2, '0');
 const localDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const timeOf = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const RELEASE = { cinema: 'In cinemas', digital: 'Digital', physical: 'Disc' };
+const PICK = { watchlist: 'Watchlist', watching: 'Watching' };
+const Pick = ({ pick }) => pick && html`<span class="pill pick">${PICK[pick]}</span>`;
 
 // Episodes of one show on one day become one entry ("S2 · E1-6"), so a season drop is one card.
 function group(events, kind) {
@@ -19,7 +21,7 @@ function group(events, kind) {
   const add = (day, item) => { if (!days.has(day)) days.set(day, []); days.get(day).push(item); };
   const shows = new Map();
   for (const e of events) {
-    if (kind !== 'all' && e.kind !== kind) continue;
+    if (kind === 'ours' ? !e.pick : kind !== 'all' && e.kind !== kind) continue;
     if (e.kind === 'movie') { add(e.date, e); continue; }
     const day = localDay(new Date(e.at));
     const key = `${day}:${e.seriesId}`;
@@ -30,8 +32,11 @@ function group(events, kind) {
     add(day, show);
   }
   for (const s of shows.values()) s.eps.sort((a, b) => a.season - b.season || a.episode - b.episode);
-  // Films first (they have no time of day), then shows by air time.
-  for (const list of days.values()) list.sort((a, b) => (a.kind === b.kind ? (a.at || '').localeCompare(b.at || '') || a.title.localeCompare(b.title) : a.kind === 'movie' ? -1 : 1));
+  // What the house follows first; then films (they have no time of day), then shows by air time.
+  const rank = (x) => (x.pick ? 0 : 1);
+  for (const list of days.values()) {
+    list.sort((a, b) => rank(a) - rank(b) || (a.kind === b.kind ? (a.at || '').localeCompare(b.at || '') || a.title.localeCompare(b.title) : a.kind === 'movie' ? -1 : 1));
+  }
   return days;
 }
 
@@ -47,12 +52,12 @@ function Show({ s, now }) {
   const got = s.eps.filter((e) => e.hasFile).length;
   const st = got === s.eps.length ? ['ok', 'Downloaded'] : aired ? ['miss', got ? `${got} of ${s.eps.length}` : 'Missing'] : ['soon', timeOf(s.at)];
   const flag = s.eps.some((e) => e.finale) ? 'Finale' : s.eps.some((e) => e.premiere) ? (s.eps[0].season === 1 ? 'New show' : 'Premiere') : null;
-  return html`<div class="cal-item">
+  return html`<div class=${`cal-item ${s.pick ? 'picked' : ''}`}>
     <${Thumb} src=${s.poster} title=${s.title} />
     <div class="txt">
       <div class="t">${s.title}</div>
       <div class="sub">${epLabel(s.eps)}${s.eps.length === 1 && s.name ? html` · <span>${s.name}</span>` : ''}</div>
-      <div class="tags">${flag && html`<span class="pill flag">${flag}</span>`}<span class=${`pill ${st[0]}`}>${st[1]}</span>${s.network && !aired ? html`<span class="net">${s.network}</span>` : ''}</div>
+      <div class="tags"><${Pick} pick=${s.pick} />${flag && html`<span class="pill flag">${flag}</span>`}<span class=${`pill ${st[0]}`}>${st[1]}</span>${s.network && !aired ? html`<span class="net">${s.network}</span>` : ''}</div>
     </div>
   </div>`;
 }
@@ -60,12 +65,12 @@ function Show({ s, now }) {
 function Movie({ m, today }) {
   const out = m.date <= today;
   const st = m.hasFile ? ['ok', 'Downloaded'] : out && m.release !== 'cinema' ? ['miss', 'Missing'] : null;
-  return html`<div class=${`cal-item ${m.release === 'cinema' && !m.hasFile ? 'dim' : ''}`}>
+  return html`<div class=${`cal-item ${m.release === 'cinema' && !m.hasFile ? 'dim' : ''} ${m.pick ? 'picked' : ''}`}>
     <${Thumb} src=${m.poster} title=${m.title} />
     <div class="txt">
       <div class="t">${m.title}</div>
       <div class="sub">Movie${m.year ? ` · ${m.year}` : ''}</div>
-      <div class="tags"><span class=${`pill rel ${m.release}`}>${RELEASE[m.release]}</span>${st && html`<span class=${`pill ${st[0]}`}>${st[1]}</span>`}${m.in4k && html`<span class=${`pill k4 ${m.has4k ? 'ok' : ''}`}>4K</span>`}</div>
+      <div class="tags"><${Pick} pick=${m.pick} /><span class=${`pill rel ${m.release}`}>${RELEASE[m.release]}</span>${st && html`<span class=${`pill ${st[0]}`}>${st[1]}</span>`}${m.in4k && html`<span class=${`pill k4 ${m.has4k ? 'ok' : ''}`}>4K</span>`}</div>
     </div>
   </div>`;
 }
@@ -98,10 +103,10 @@ export function Calendar() {
   const page = (n) => strip.current?.scrollBy({ left: n * 7 * (COL + GAP), behavior: 'smooth' });
 
   const services = data?.services || {};
-  const kinds = [{ value: 'all', label: 'All' }, { value: 'tv', label: 'TV', disabled: services.tv === false }, { value: 'movie', label: 'Movies', disabled: services.movies === false }];
+  const kinds = [{ value: 'all', label: 'All' }, { value: 'ours', label: 'Ours' }, { value: 'tv', label: 'TV', disabled: services.tv === false }, { value: 'movie', label: 'Movies', disabled: services.movies === false }];
   return html`<main class="view cal-view">
     <${Header} title="Calendar" kicker="Sonarr · Radarr">
-      <div style="width:400px"><${Seg} cls="tall" options=${kinds} value=${kind} onChange=${setKind} /></div>
+      <div style="width:520px"><${Seg} cls="tall" options=${kinds} value=${kind} onChange=${setKind} /></div>
       <button type="button" class="filter" aria-label="Previous week" onClick=${() => page(-1)}><${Icon} name="left" size=${20} /></button>
       <button type="button" class="filter" onClick=${() => toToday(true)}>Today</button>
       <button type="button" class="filter" aria-label="Next week" onClick=${() => page(1)}><span style="display:inline-flex;transform:scaleX(-1)"><${Icon} name="left" size=${20} /></span></button>
