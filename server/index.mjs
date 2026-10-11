@@ -765,4 +765,5 @@ server.listen(config.port, () => {
   console.log(`[panel] theater-panel ${config.build.version}${config.build.time ? ` (${config.build.time})` : ''}`);
   console.log(`[panel] listening on :${config.port}`);
   console.log(`[panel] HA ${config.ha.url || '(not set)'} | Plex ${config.plex.url || '(not set)'} | Seerr ${config.seerr.url || '(not set)'}`);
+  setTimeout(arrs.warm, 20000);
 });
