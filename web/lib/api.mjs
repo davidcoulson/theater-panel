@@ -91,12 +91,19 @@ export function useStore(select = (s) => s) {
   sel.current = select;           // the selector changes when its inputs do (useEntity(id))
   const value = select(state);
   last.current = value;
-  useEffect(() => subscribe(() => {
-    const next = sel.current(state);
-    if (next === last.current) return;                       // same object: nothing to do
-    if (typeof next === 'object' && next !== null && JSON.stringify(next) === JSON.stringify(last.current)) return;
-    force((x) => x + 1);
-  }), []);
+  useEffect(() => {
+    const check = () => {
+      const next = sel.current(state);
+      if (next === last.current) return;                       // same object: nothing to do
+      if (typeof next === 'object' && next !== null && JSON.stringify(next) === JSON.stringify(last.current)) return;
+      force((x) => x + 1);
+    };
+    const off = subscribe(check);
+    // The store may have changed between this render and the subscription (a fast /api/state
+    // answer lands before effects run), and that change would otherwise never reach us.
+    check();
+    return off;
+  }, []);
   return value;
 }
 export const getState = () => state;

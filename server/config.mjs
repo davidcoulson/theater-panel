@@ -95,6 +95,14 @@ function build(env) {
     region: env.SEERR_REGION || 'US',
   },
 
+  // Sonarr and Radarr, read directly for the release calendar (Seerr has no calendar). A second
+  // Radarr for 4K is optional; a film in both shows once with a 4K badge.
+  arrs: {
+    sonarr: { url: (env.SONARR_URL || '').replace(/\/$/, ''), apiKey: env.SONARR_API_KEY || '' },
+    radarr: { url: (env.RADARR_URL || '').replace(/\/$/, ''), apiKey: env.RADARR_API_KEY || '' },
+    radarr4k: { url: (env.RADARR4K_URL || '').replace(/\/$/, ''), apiKey: env.RADARR4K_API_KEY || '' },
+  },
+
   entities: {
     appleTv: env.ENTITY_APPLE_TV || 'media_player.home_theater',
     appleTvRemote: env.ENTITY_APPLE_TV_REMOTE || 'remote.home_theater',

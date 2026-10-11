@@ -25,6 +25,7 @@ Kiosk Satellite ──http──▶ theater-panel ──▶ Plex        (library
 | **Home** | Continue watching (Plex on deck), scenes, projector power, lights, just added, music bar |
 | **Watch** | Plex libraries as a poster grid with 4K / HDR / Atmos badges and filters (unwatched, under 2 hours, family friendly, 4K, HDR, random pick), browse by network, "You'll love this", details, subtitles, "ends at" time, Play on projector |
 | **Request** | Seerr trending, upcoming (with release dates), what's streaming on each network, and search; request sheet (seasons, 1080p/4K), your request queue with download progress |
+| **Calendar** | Sonarr and Radarr releases a day at a time: three days back to three ahead on screen, scrolling two weeks back and four ahead; season drops folded into one card, downloaded / missing / air time, digital, disc and cinema dates, 4K badge from a second Radarr |
 | **Games** | Console and PC buttons (HDMI switcher and projector input, through Home Assistant), Steam library with launch, gaming PC stats from HA |
 | **Music** | Music Assistant now playing, albums/playlists/artists/radio, search, queue, which player to use |
 | **Showtime** | The dark screen while something plays: pause, skip, volume, intermission, lights up, sleep timer. Opens by itself when the Apple TV starts playing and dims the panel's backlight through Kiosk Satellite. |

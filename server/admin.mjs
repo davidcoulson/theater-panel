@@ -52,6 +52,13 @@ export const FIELDS = [
   { group: 'Seerr', key: 'SEERR_USER_ID', label: 'Request as user id', type: 'text' },
   { group: 'Seerr', key: 'SEERR_REGION', label: 'Streaming region', type: 'text', placeholder: 'US' },
 
+  { group: 'Calendar', key: 'SONARR_URL', label: 'Sonarr URL', type: 'text', placeholder: 'http://10.2.6.10:8989', help: 'The Calendar tab reads Sonarr and Radarr directly. Each one is optional; leave a URL blank to skip it.' },
+  { group: 'Calendar', key: 'SONARR_API_KEY', label: 'Sonarr API key', type: 'secret', help: 'Sonarr > Settings > General > API Key.' },
+  { group: 'Calendar', key: 'RADARR_URL', label: 'Radarr URL', type: 'text', placeholder: 'http://10.2.6.8:7878' },
+  { group: 'Calendar', key: 'RADARR_API_KEY', label: 'Radarr API key', type: 'secret' },
+  { group: 'Calendar', key: 'RADARR4K_URL', label: 'Radarr 4K URL', type: 'text', placeholder: 'http://10.2.6.9:7878', help: 'A second Radarr that keeps 4K copies. A film in both shows once, with a 4K badge.' },
+  { group: 'Calendar', key: 'RADARR4K_API_KEY', label: 'Radarr 4K API key', type: 'secret' },
+
   { group: 'TMDB', key: 'TMDB_API_KEY', label: 'API key', type: 'secret', help: 'Free, from themoviedb.org > Settings > API (the v3 key or the v4 read access token, either works). Only public lists are read. Blank: the holiday shelves come from Kometa\'s collections and TMDB\'s tags instead.' },
   { group: 'TMDB', key: 'TMDB_LIST_HALLOWEEN', label: 'Halloween list', type: 'text', placeholder: '7061968', help: 'The number from the list\'s address on themoviedb.org (themoviedb.org/list/7061968-halloween). Only films you own are shown, in the list\'s order.' },
   { group: 'TMDB', key: 'TMDB_LIST_CHRISTMAS', label: 'Christmas list', type: 'text', placeholder: '5915', help: 'Default: "The Best of Christmas", 105 films.' },
@@ -126,7 +133,7 @@ const BY_KEY = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
 
 // Fields that must hold an http(s) URL. A bare "10.2.3.6:8123" would be saved happily and then
 // make the HA websocket constructor throw on every reconnect, so it is refused here instead.
-const URL_KEYS = new Set(['HA_URL', 'PLEX_URL', 'SEERR_URL']);
+const URL_KEYS = new Set(['HA_URL', 'PLEX_URL', 'SEERR_URL', 'SONARR_URL', 'RADARR_URL', 'RADARR4K_URL']);
 function checkUrl(key, s) {
   let u;
   try { u = new URL(s); } catch { u = null; }
@@ -392,7 +399,7 @@ export async function test(service, values = {}) {
   const v = { ...effectiveVars() };
   for (const [k, val] of Object.entries(values)) if (typeof val === 'string' && val.trim()) v[k] = val.trim();
   const t = AbortSignal.timeout(8000);
-  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'], tmdb: ['TMDB_API_KEY'], wrapped: ['WRAPPED_NOTIFY'] }[service];
+  const need = { ha: ['HA_URL', 'HA_TOKEN'], plex: ['PLEX_URL', 'PLEX_TOKEN'], seerr: ['SEERR_URL', 'SEERR_API_KEY'], tmdb: ['TMDB_API_KEY'], wrapped: ['WRAPPED_NOTIFY'], arrs: [] }[service];
   if (!need) throw httpError(400, 'Unknown service');
   const gone = need.filter((k) => !v[k]);
   if (gone.length) return { ok: false, detail: `${gone.join(' and ')} not set` };
@@ -411,6 +418,18 @@ export async function test(service, values = {}) {
     if (service === 'seerr') {
       const r = await fetch(`${v.SEERR_URL.replace(/\/$/, '')}/api/v1/settings/main`, { headers: { 'X-Api-Key': v.SEERR_API_KEY || '' }, signal: t });
       return r.ok ? { ok: true, detail: (await r.json()).applicationTitle || 'Connected' } : { ok: false, detail: `HTTP ${r.status}` };
+    }
+    if (service === 'arrs') {
+      // Each one that has a URL: its name and version, or why it failed.
+      const svcs = [['Sonarr', 'SONARR'], ['Radarr', 'RADARR'], ['Radarr 4K', 'RADARR4K']].filter(([, k]) => v[`${k}_URL`]);
+      if (!svcs.length) return { ok: false, detail: 'No Sonarr or Radarr URL set' };
+      const res = await Promise.all(svcs.map(async ([name, k]) => {
+        try {
+          const r = await fetch(`${v[`${k}_URL`].replace(/\/$/, '')}/api/v3/system/status`, { headers: { 'X-Api-Key': v[`${k}_API_KEY`] || '' }, signal: t });
+          return r.ok ? { ok: true, text: `${name} ${(await r.json()).version}` } : { ok: false, text: `${name}: ${r.status === 401 ? 'wrong API key' : `HTTP ${r.status}`}` };
+        } catch (e) { return { ok: false, text: `${name}: ${e.message}` }; }
+      }));
+      return { ok: res.every((r) => r.ok), detail: res.map((r) => r.text).join(' · ') };
     }
     if (service === 'tmdb') {
       // Read the Christmas list: proves the key and that the list exists.
