@@ -2,7 +2,7 @@
 
 A wall-panel app for the home theater: browse Plex and play on the projector, request titles
 through Seerr, run Music Assistant, and control the room's lights and scenes. It is built for a
-1920x1080 Android panel running [Kiosk Satellite](../kiosk-satellite), and scales to fit any
+1920x1080 Android panel running [Kiosk Satellite](https://github.com/davidcoulson/kiosk-satellite), and scales to fit any
 other screen.
 
 It runs as its own container, next to Plex and Seerr, so it adds no load to Home Assistant. HA
