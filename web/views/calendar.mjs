@@ -112,7 +112,7 @@ export function Calendar() {
       <button type="button" class="filter" aria-label="Next week" onClick=${() => page(1)}><span style="display:inline-flex;transform:scaleX(-1)"><${Icon} name="left" size=${20} /></span></button>
     <//>
     ${data?.errors?.length ? html`<div class="cal-note">${data.errors.join(' · ')}. Showing what the rest sent.</div>` : null}
-    ${err ? html`<div class="empty" style="flex-grow:1">${err.message}</div>`
+    ${err && !data ? html`<div class="empty" style="flex-grow:1">${err.message}</div>`
       : !data ? html`<div class="empty" style="flex-grow:1">Loading…</div>`
       : html`<div class="cal-strip" ref=${strip}>
         ${days.map((d) => {

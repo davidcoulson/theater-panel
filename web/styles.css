@@ -947,3 +947,8 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .cal-item.picked { margin: 0 -8px; padding: 10px 8px; border-radius: 12px; background: color-mix(in srgb, var(--gold) 16%, transparent); box-shadow: inset 4px 0 0 var(--gold); border-top-color: transparent; }
 .cal-item.picked + .cal-item { border-top-color: transparent; }
 .cal-item .pill.pick { background: var(--acc); color: #FFF8EE; text-transform: uppercase; letter-spacing: .5px; font-size: 11.5px; }
+
+/* A page drawn out of sight to warm its data and posters (Prewarm in app.mjs). Transparent and
+   under the real page rather than hidden: Chrome skips lazy images under display: none or
+   visibility: hidden, and loading those posters is half the point. */
+.prewarm { position: absolute; inset: 0 0 0 142px; display: flex; opacity: 0; pointer-events: none; z-index: -1; overflow: hidden; contain: strict; }
