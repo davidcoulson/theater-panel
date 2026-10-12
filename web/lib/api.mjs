@@ -18,7 +18,9 @@ async function call(path, init) {
     throw e.name === 'TimeoutError' ? new Error('The panel server did not answer') : e;
   }
 }
-export const get = (path) => call(path);
+// While a loader starts (see useLoad), the paths it asks for are noted: they name its answer.
+let noting = null;
+export const get = (path) => { noting?.push(path); return call(path); };
 export const post = (path, data) => call(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
 
 // Errors in the page - a failed request, an exception, a promise nobody caught - go to the
@@ -231,27 +233,48 @@ export function playbackState(s = state) {
 // page is shown again: a wall panel waking from its screensaver reloads while its network and
 // Plex are still coming up, and without this a row sat at "Loading Plex..." until someone
 // cleared the cache. A refresh that fails keeps what was already showing.
-// Every load remembers its last answer (keyed by the loader's own source and its deps), so a page
-// opened again - or warmed in the background by the app - draws at once from what it had and
-// then refreshes. A loader that reads outside state not in its deps may show the old answer for
-// a moment before the fresh one replaces it.
+// Every load remembers its last answer, so a page opened again - or warmed in the background by
+// the app - draws at once from what it had and then refreshes. The answer is filed under the
+// paths the loader asked for as it started (two loads that fetch the same thing share it; a movie
+// and a show with the same id do not), so nothing a loader leaves out of its deps can mix them
+// up. A loader that fetches nothing up front (a ready value, or a request made only later) is
+// simply not remembered.
 const remembered = new Map();
+function begin(fn) {
+  const paths = [];
+  noting = paths;
+  let promise;
+  try { promise = Promise.resolve(fn()); } catch (e) { promise = Promise.reject(e); } finally { noting = null; }
+  const key = paths.length ? paths.join('\n') : null;
+  if (key) promise = promise.then((d) => { remembered.set(key, d); return d; });
+  promise.catch(() => {});     // a page closed before its load failed: nobody is left to tell
+  return { key, promise };
+}
 export function useLoad(fn, deps) {
-  const key = `${fn}|${JSON.stringify(deps)}`;
-  const [res, setRes] = useState(() => ({ data: remembered.get(key), error: null }));
+  // The first load starts while drawing, so its remembered answer can be drawn straight away.
+  const first = useRef(null);
+  const [res, setRes] = useState(() => {
+    first.current = begin(fn);
+    return { data: first.current.key ? remembered.get(first.current.key) : undefined, error: null };
+  });
   const [n, setN] = useState(0);
   const failed = useRef(false);
   useEffect(() => {
     let live = true; let timer; let wait = 3000;
-    const run = () => fn().then(
-      (data) => { remembered.set(key, data); if (!live) return; failed.current = false; setRes({ data, error: null }); },
-      (error) => {
-        if (!live) return;
-        failed.current = true;
-        setRes((r) => ({ data: r.data ?? null, error }));
-        timer = setTimeout(run, wait); wait = Math.min(wait * 2, 60000);
-      });
-    setRes((r) => ({ data: remembered.has(key) ? remembered.get(key) : r.data, error: null }));
+    const run = () => {
+      const load = first.current || begin(fn);
+      if (!first.current && load.key && remembered.has(load.key)) setRes((r) => ({ data: remembered.get(load.key), error: r.error }));
+      first.current = null;
+      load.promise.then(
+        (data) => { if (!live) return; failed.current = false; setRes({ data, error: null }); },
+        (error) => {
+          if (!live) return;
+          failed.current = true;
+          setRes((r) => ({ data: r.data ?? null, error }));
+          timer = setTimeout(run, wait); wait = Math.min(wait * 2, 60000);
+        });
+    };
+    setRes((r) => ({ data: r.data, error: null }));
     run();
     return () => { live = false; clearTimeout(timer); };
   }, [...deps, n]);
