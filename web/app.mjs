@@ -370,6 +370,49 @@ function Guard({ name, quiet = false, onError, children }) {
     <button type="button" class="btn primary" onClick=${reset}>Try again</button></div></main>`;
 }
 
+// While the panel sits on Home or the Now Showing board with nothing playing, each rail page is
+// drawn once out of sight, one at a time, for a few seconds: its loads leave their answers with
+// useLoad and the browser fetches its posters, so opening it later shows it at once (refreshing
+// behind). The round runs shortly after the page loads and then every fifteen minutes.
+const WARM = ['lobby', 'watch', 'request', 'calendar', 'music', 'games'];
+const WARM_EACH_MS = 6000, WARM_EVERY_MS = 15 * 60000;
+function Prewarm({ current, playing }) {
+  const [page, setPage] = useState(null);
+  const services = useStore((s) => s.services) || {};
+  const idle = (current === 'lobby' || current === 'showing') && !playing;
+  useEffect(() => {
+    if (!idle) { setPage(null); return undefined; }
+    let timer, i = 0;
+    const pages = WARM.filter((p) => p !== current && (p !== 'calendar' || services.calendar));
+    const step = () => {
+      if (i >= pages.length) { setPage(null); i = 0; timer = setTimeout(step, WARM_EVERY_MS); return; }
+      setPage(pages[i++]);
+      timer = setTimeout(step, WARM_EACH_MS);
+    };
+    timer = setTimeout(step, 20000);
+    return () => { clearTimeout(timer); setPage(null); };
+  }, [idle, current, Boolean(services.calendar)]);
+  // Shortly before moving on, fetch the posters that would be on screen. Lazy images load only
+  // once painted, and a panel with its screen off paints nothing; the layout is there either way.
+  const box = useRef(null);
+  useEffect(() => {
+    if (!page) return undefined;
+    const t = setTimeout(() => {
+      const el = box.current; if (!el) return;
+      const area = el.getBoundingClientRect();
+      for (const img of el.querySelectorAll('img')) {
+        const r = img.getBoundingClientRect();
+        if (img.complete || !img.src || r.right < area.left || r.left > area.right || r.bottom < area.top || r.top > area.bottom) continue;
+        const pre = new Image(); pre.decoding = 'async'; pre.src = img.src;
+      }
+    }, WARM_EACH_MS - 1500);
+    return () => clearTimeout(t);
+  }, [page]);
+  if (!page) return null;
+  const View = VIEWS[page];
+  return html`<div class="prewarm" ref=${box} aria-hidden="true" inert><${Guard} key=${page} name=${`${page} (warming)`} quiet><${View} /><//></div>`;
+}
+
 function App() {
   const [r, setR] = useState(route);
   setRoute = setR;
@@ -462,6 +505,7 @@ function App() {
     ${r.name === 'showing' && html`<${Guard} name="weather" quiet><${Weather} decor=${currentAccent()?.id === 'christmas' ? 'tree' : ''} /><//>`}
     <${Guard} name="dog" quiet><${DogAtDoor} /><//>
     <${Guard} name="rate card" quiet><${RateCard} /><//>
+    <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
@@ -474,6 +518,7 @@ function App() {
     <${Guard} name="celebration" quiet><${Celebration} /><//>
     <${Guard} name="dog" quiet><${DogAtDoor} /><//>
     <${Guard} name="rate card" quiet><${RateCard} /><//>
+    <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;

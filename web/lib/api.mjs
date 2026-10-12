@@ -231,21 +231,27 @@ export function playbackState(s = state) {
 // page is shown again: a wall panel waking from its screensaver reloads while its network and
 // Plex are still coming up, and without this a row sat at "Loading Plex..." until someone
 // cleared the cache. A refresh that fails keeps what was already showing.
+// Every load remembers its last answer (keyed by the loader's own source and its deps), so a page
+// opened again - or warmed in the background by the app - draws at once from what it had and
+// then refreshes. A loader that reads outside state not in its deps may show the old answer for
+// a moment before the fresh one replaces it.
+const remembered = new Map();
 export function useLoad(fn, deps) {
-  const [res, setRes] = useState({ data: undefined, error: null });
+  const key = `${fn}|${JSON.stringify(deps)}`;
+  const [res, setRes] = useState(() => ({ data: remembered.get(key), error: null }));
   const [n, setN] = useState(0);
   const failed = useRef(false);
   useEffect(() => {
     let live = true; let timer; let wait = 3000;
     const run = () => fn().then(
-      (data) => { if (!live) return; failed.current = false; setRes({ data, error: null }); },
+      (data) => { remembered.set(key, data); if (!live) return; failed.current = false; setRes({ data, error: null }); },
       (error) => {
         if (!live) return;
         failed.current = true;
         setRes((r) => ({ data: r.data ?? null, error }));
         timer = setTimeout(run, wait); wait = Math.min(wait * 2, 60000);
       });
-    setRes((r) => ({ data: r.data, error: null }));
+    setRes((r) => ({ data: remembered.has(key) ? remembered.get(key) : r.data, error: null }));
     run();
     return () => { live = false; clearTimeout(timer); };
   }, [...deps, n]);
