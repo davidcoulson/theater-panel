@@ -2,6 +2,9 @@
 // list of dated events. Radarr and its 4K twin both keep movies, so a film in both is one event
 // with a 4K badge. Each instance is asked on its own; one that is down leaves a note, not a blank.
 
+import { readFileSync } from 'node:fs';
+import { writeFile, rename, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { config } from './config.mjs';
 import { tmdbImage, extImage } from './images.mjs';
 import * as plex from './plex.mjs';
@@ -76,8 +79,27 @@ function movies(hd, uhd, start, end) {
 const WATCHING_DAYS = 120;
 // Looking up every watched show's ids takes seconds the first time, so after the first answer a
 // stale one is served while a fresh one is worked out behind it.
-let interestCache = null, interestRun = null;
+let interestCache = null, interestRun = null, loaded = false;
+// The last answer is kept in the cache folder too, so a restart starts with it (refreshing it
+// straight away) instead of with nothing flagged.
+const interestFile = () => join(config.cacheDir, 'calendar-interest.json');
+function loadInterest() {
+  loaded = true;
+  try {
+    const d = JSON.parse(readFileSync(interestFile(), 'utf8'));
+    interestCache = { at: Number(d.at) || 0, data: { watchlist: new Set(d.watchlist || []), watching: new Set(d.watching || []) } };
+  } catch (e) { if (e.code !== 'ENOENT') console.warn(`[calendar] ${interestFile()}: ${e.message}`); }
+}
+async function saveInterest({ at, data }) {
+  try {
+    await mkdir(config.cacheDir, { recursive: true });
+    const tmp = `${interestFile()}.tmp`;
+    await writeFile(tmp, JSON.stringify({ at, watchlist: [...data.watchlist], watching: [...data.watching] }));
+    await rename(tmp, interestFile());
+  } catch (e) { console.warn(`[calendar] could not save ${interestFile()}: ${e.message}`); }
+}
 function interest() {
+  if (!loaded) loadInterest();
   const fresh = interestCache && Date.now() - interestCache.at < 10 * 60000;
   if (!fresh && !interestRun) interestRun = lookInterest().finally(() => { interestRun = null; });
   if (interestCache) return Promise.resolve(interestCache.data);
@@ -100,7 +122,14 @@ async function lookInterest() {
     if (list.status === 'rejected') console.warn(`[calendar] watchlist: ${list.reason?.message}`);
     if (hist.status === 'rejected') console.warn(`[calendar] history: ${hist.reason?.message}`);
   }
+  // A lookup where Plex answered nothing at all (it was down) keeps the last good answer, and
+  // tries again in five minutes rather than ten.
+  if (!data.watchlist.size && !data.watching.size && interestCache) {
+    interestCache = { at: Date.now() - 5 * 60000, data: interestCache.data };
+    return interestCache.data;
+  }
   interestCache = { at: Date.now(), data };
+  saveInterest(interestCache);
   return data;
 }
 
