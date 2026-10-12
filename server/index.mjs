@@ -39,8 +39,8 @@ const MODULES = join(root, 'node_modules');
 
 // Browser paths for third-party files, so the page loads nothing from the internet.
 const VENDOR = {
-  '/vendor/preact.mjs': 'preact/dist/preact.module.js',
-  '/vendor/preact-hooks.mjs': 'preact/hooks/dist/hooks.module.js',
+  '/vendor/preact.mjs': 'preact/dist/preact.mjs',
+  '/vendor/preact-hooks.mjs': 'preact/hooks/dist/hooks.mjs',
   '/vendor/htm.mjs': 'htm/dist/htm.module.js',
 };
 const FONTS = /^\/fonts\/((big-shoulders-display|ibm-plex-sans|ibm-plex-mono)-latin-\d{3}-normal\.woff2)$/;

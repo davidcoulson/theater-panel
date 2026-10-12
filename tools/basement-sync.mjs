@@ -33,8 +33,8 @@ async function copyModule(src, dest, rewrites) {
 await mkdir(OUT, { recursive: true });
 
 // vendor: preact's hooks module imports "preact" itself, so it points at its sibling.
-await copyModule(join(MODULES, 'preact/dist/preact.module.js'), join(OUT, 'vendor/preact.mjs'), []);
-await copyModule(join(MODULES, 'preact/hooks/dist/hooks.module.js'), join(OUT, 'vendor/preact-hooks.mjs'), [[/from\s*["']preact["']/g, 'from "./preact.mjs"']]);
+await copyModule(join(MODULES, 'preact/dist/preact.mjs'), join(OUT, 'vendor/preact.mjs'), []);
+await copyModule(join(MODULES, 'preact/hooks/dist/hooks.mjs'), join(OUT, 'vendor/preact-hooks.mjs'), [[/from\s*["']preact["']/g, 'from "./preact.mjs"']]);
 await copyModule(join(MODULES, 'htm/dist/htm.module.js'), join(OUT, 'vendor/htm.mjs'), []);
 
 // lib: the effects engine and the html/Icon helpers, as used by the theater panel.
