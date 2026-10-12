@@ -256,7 +256,9 @@ Copy [unraid/theater-panel.xml](unraid/theater-panel.xml) to
 Template: theater-panel. The image is `ghcr.io/davidcoulson/theater-panel:latest`; Unraid shows an
 update whenever a new one is pushed, and the Auto Update Applications plugin can apply it.
 
-Publish with `npm run push`. It builds amd64 and arm64 with Docker (not OCI) manifest types and no
+Publish by running the **image** workflow by hand from `main` (Actions > image > Run workflow);
+pull requests and pushes to `main` only build and smoke test it. `npm run push` does the same from a
+machine with Docker. Both build amd64 and arm64 with Docker (not OCI) manifest types and no
 attestations: Unraid's update check can't read an OCI index and reports "not available".
 
 ## The panel as a Home Assistant device
