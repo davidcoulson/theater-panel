@@ -9,6 +9,7 @@ export const html = htm.bind(h);
 const PATHS = {
   home: 'M3 11l9-8 9 8v10h-6v-6H9v6H3z',
   film: 'M3 4h18v16H3zM7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4',
+  calendar: 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h2M14 14h2M8 17.5h2',
   plus: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8M8 12h8',
   music: 'M9 18V5l11-2v13M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM17 13a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z',
@@ -48,26 +49,43 @@ const PATHS = {
   youtube: 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9v6l5-3z',
   app: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   playc: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5v7l6-3.5z',
+  // holiday glyphs (see server/accents.mjs)
+  pumpkin: 'M12 6c-1.5-1.5-3.5-1.5-5 0-2.5 1-4 3.5-4 6.5C3 17 5.5 20 8 20c1.5 0 3-.6 4-1.6 1 1 2.5 1.6 4 1.6 2.5 0 5-3 5-7.5 0-3-1.5-5.5-4-6.5-1.5-1.5-3.5-1.5-5 0zM12 6c0-1.5.5-2.5 2-3M9 12l1.5 2M15 12l-1.5 2M9 16.5c1 1 5 1 6 0',
+  leaf: 'M20 4c-8 0-14 4-15 12 4-6 8-8 12-9-3 2-7 5-9 12C17 19 20 12 20 4zM5 20l4-6',
+  snowflake: 'M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
+  sparkle: 'M12 3c.6 4.5 3.5 7.4 9 9-5.5 1.6-8.4 4.5-9 9-.6-4.5-3.5-7.4-9-9 5.5-1.6 8.4-4.5 9-9zM5 3l.5 2M4 6l2-1M19 17l.5 2M18 20l2-1',
+  heart: 'M12 20.5s-8-5.2-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 5.8-8 11-8 11z',
+  tree: 'M12 2l4 6h-2.5l3.5 5h-2.5l4 6H5.5l4-6H7l3.5-5H8zM12 19v3',
+  // the "how was it?" card
+  star: 'M12 3.2l2.7 5.9 6.3.8-4.7 4.4 1.2 6.2L12 17.4 6.5 20.5l1.2-6.2L3 9.9l6.3-.8z',
+  cake: 'M4 20h16M5 20v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M5 15c1.5 1.5 3 1.5 4.5 0s3 1.5 4.5 0 3 1.5 4.5 0M12 11V8M12 8c-1.5-1-1.5-3 0-4 1.5 1 1.5 3 0 4z',
 };
 
 // Built-in outline icons by name, or any "prefix:name" icon (mdi:, cbi:, fa7-brands: ...) served by
 // the panel from Home Assistant's icon sets, drawn in the current text colour with a CSS mask.
-export function Icon({ name, size = 24, color = 'currentColor', w = 2 }) {
+export function Icon({ name, size = 24, color = 'currentColor', w = 2, fill = 'none' }) {
   if (name && name.includes(':')) {
     const [prefix, icon] = name.split(':');
     // Only an explicit colour is inline, so CSS can colour it like the built-in icons.
     return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;${color !== 'currentColor' ? `color:${color};` : ''}--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
   }
-  return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
+  return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill=${fill} stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
 }
 export const Play = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill=${color} /></svg>`;
 export const Pause = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4" width="4.5" height="16" rx="1" fill=${color} /><rect x="14" y="4" width="4.5" height="16" rx="1" fill=${color} /></svg>`;
 export const Prev = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14L8 12z" fill=${color} /><rect x="5" y="5" width="2.5" height="14" rx="1" fill=${color} /></svg>`;
 export const Next = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l11-7z" fill=${color} /><rect x="16.5" y="5" width="2.5" height="14" rx="1" fill=${color} /></svg>`;
 
+// A circular arrow with the seconds in the middle: back (-) turns anticlockwise, ahead clockwise.
+export const Skip = ({ seconds = 10, size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true">
+  <path d=${seconds < 0 ? 'M4.6 9A8 8 0 1 1 4 12M4.4 4.6V9h4.4' : 'M19.4 9A8 8 0 1 0 20 12M19.6 4.6V9h-4.4'} fill="none" stroke=${color} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="12" y="14.7" text-anchor="middle" font-size="7.2" font-weight="700" letter-spacing="-.2" font-family="IBM Plex Sans, sans-serif" fill=${color}>${Math.abs(seconds)}</text></svg>`;
+
 // Poster with a title fallback while loading or when there is no art.
 export function Poster({ src, title, children, style }) {
   const [ok, setOk] = useState(true);
+  // A new src gets a fresh try; otherwise one broken thumbnail would stick to a reused slot.
+  useEffect(() => setOk(true), [src]);
   return html`<div class="poster" style=${style}>
     ${src && ok ? html`<img src=${src} alt="" loading="lazy" decoding="async" onError=${() => setOk(false)} />` : html`<div class="fallback">${title}</div>`}
     ${children}
@@ -88,10 +106,13 @@ export function Seg({ options, value, onChange, cls = '' }) {
 export function Range({ value, onCommit, label, fill, rest, cls = '' }) {
   const [v, setV] = useState(value);
   const dragging = useRef(false);
+  // A cancelled drag (palm, scroll, focus loss) never fires change, so release on those too.
+  const release = () => { dragging.current = false; };
   useEffect(() => { if (!dragging.current) setV(value); }, [value]);
   const style = `--pct:${v}%;${fill ? `--fill:${fill};` : ''}${rest ? `--rest:${rest};` : ''}`;
   return html`<input class=${`range ${cls}`} type="range" min="0" max="100" value=${v} aria-label=${label} style=${style}
     onPointerDown=${() => { dragging.current = true; }}
+    onPointerUp=${release} onPointerCancel=${release} onLostPointerCapture=${release}
     onInput=${(e) => setV(Number(e.target.value))}
     onChange=${(e) => { dragging.current = false; onCommit?.(Number(e.target.value)); }} />`;
 }
