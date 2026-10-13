@@ -956,8 +956,9 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .right-col .scenes .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .right-col .scene { padding: 8px 14px; }
 .right-col .scene .d { display: none; }
-.right-col .musicbar { flex: none; height: 132px; padding: 12px; }
+.right-col .musicbar { flex: none; height: auto; min-height: 188px; padding: 12px; }
 .right-col .musicbar .cover { min-height: 0; }
+.right-col .musicbar .mb-body { gap: 10px; }
 .day-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .day-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .day-nav .filter { width: 52px; height: 52px; padding: 0; justify-content: center; border-radius: 26px; }
