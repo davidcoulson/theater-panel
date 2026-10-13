@@ -25,6 +25,11 @@ function poster(images) {
   return tmdb ? tmdbImage(tmdb[1], 'w185') : extImage(url);
 }
 
+// The show's title artwork (white lettering on transparent), when Sonarr has it.
+function clearLogo(images) {
+  return extImage((images || []).find((i) => i.coverType === 'clearlogo')?.remoteUrl);
+}
+
 const day = (iso) => (iso ? iso.slice(0, 10) : null);
 
 function episodes(list) {
@@ -44,6 +49,7 @@ function episodes(list) {
     network: e.series?.network || null,
     hasFile: Boolean(e.hasFile),
     poster: poster(e.series?.images),
+    logo: clearLogo(e.series?.images),
   }));
 }
 

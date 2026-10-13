@@ -135,6 +135,27 @@ export function Calendar() {
   </main>`;
 }
 
+// A show's title as its own artwork, the way Plex draws it; the plain title when there is none.
+function Logo({ src, title }) {
+  const [ok, setOk] = useState(true);
+  useEffect(() => setOk(true), [src]);
+  return html`<div class="logo">${src && ok ? html`<img src=${src} alt=${title} loading="lazy" decoding="async" onError=${() => setOk(false)} />` : html`<span>${title}</span>`}</div>`;
+}
+
+// One show on the lobby card: poster, title artwork, and the season and episode large on the right.
+// Nothing downloaded yet greys the row out, so it reads as not playable.
+function DayShow({ s, now }) {
+  const aired = new Date(s.at).getTime() <= now;
+  const got = s.eps.filter((e) => e.hasFile).length;
+  const gone = aired && got === 0;
+  const note = got === s.eps.length ? null : gone ? 'Missing' : aired ? `${got} of ${s.eps.length}` : timeOf(s.at);
+  return html`<div class=${`cal-item day-item ${s.pick ? 'picked' : ''} ${gone ? 'gone' : ''}`}>
+    <${Thumb} src=${s.poster} title=${s.title} />
+    <${Logo} src=${s.logo} title=${s.title} />
+    <div class="ep"><b>${epLabel(s.eps)}</b>${note && html`<span class="pill">${note}</span>`}</div>
+  </div>`;
+}
+
 // The lobby's card: what the house follows around tonight. Opens on last night, since that is what
 // is usually being watched; the arrows step on to tonight and tomorrow.
 const DAYS = [{ label: 'Last night', offset: -1 }, { label: 'Tonight', offset: 0 }, { label: 'Tomorrow', offset: 1 }];
@@ -158,7 +179,7 @@ export function DayCard() {
     <div class="day-list scroll">
       ${err && !data ? html`<div class="cal-none">${err.message}</div>`
         : !data ? html`<div class="cal-none">Loading…</div>`
-        : items.length ? items.map((it) => (it.kind === 'movie' ? html`<${Movie} key=${it.id} m=${it} today=${today} />` : html`<${Show} key=${it.id} s=${it} now=${now} />`))
+        : items.length ? items.map((it) => (it.kind === 'movie' ? html`<${Movie} key=${it.id} m=${it} today=${today} />` : html`<${DayShow} key=${it.id} s=${it} now=${now} />`))
         : html`<div class="cal-none">Nothing on the list</div>`}
     </div>
     <div class="day-dots">${DAYS.map((x, i) => html`<i class=${i === at ? 'on' : ''}></i>`)}</div>
