@@ -939,14 +939,12 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .cal-item .pill.miss { background: var(--amb-soft); color: var(--amb); }
 .cal-item .pill.soon { background: var(--choc); color: #F4ECE0; font-family: var(--mono); font-weight: 600; }
 .cal-item .pill.flag { background: var(--gold); color: #2A1C14; text-transform: uppercase; letter-spacing: .5px; font-size: 11.5px; }
-.cal-item .pill.rel.digital, .cal-item .pill.rel.physical { background: var(--acc-soft); color: var(--acc); }
 .cal-item .pill.k4 { background: #2A1C14; color: var(--gold); letter-spacing: .5px; }
 .cal-item .pill.k4.ok { box-shadow: inset 0 0 0 1.5px var(--ok); }
 .cal-item .net { font-size: 12.5px; color: var(--muted); }
 .cal-note { font-size: 15px; color: var(--amb); background: var(--amb-soft); border-radius: 12px; padding: 8px 14px; align-self: flex-start; }
 .cal-item.picked { margin: 0 -8px; padding: 10px 8px; border-radius: 12px; background: color-mix(in srgb, var(--gold) 16%, transparent); box-shadow: inset 4px 0 0 var(--gold); border-top-color: transparent; }
 .cal-item.picked + .cal-item { border-top-color: transparent; }
-.cal-item .pill.pick { background: var(--acc); color: #FFF8EE; text-transform: uppercase; letter-spacing: .5px; font-size: 11.5px; }
 
 /* A page drawn out of sight to warm its data and posters (Prewarm in app.mjs). Transparent and
    under the real page rather than hidden: Chrome skips lazy images under display: none or

@@ -11,9 +11,7 @@ const COL = 232, GAP = 12;
 const pad = (n) => String(n).padStart(2, '0');
 const localDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const timeOf = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-const RELEASE = { cinema: 'In cinemas', digital: 'Digital', physical: 'Disc' };
-const PICK = { watchlist: 'Watchlist', watching: 'Watching' };
-const Pick = ({ pick }) => pick && html`<span class="pill pick">${PICK[pick]}</span>`;
+const RELEASE = { cinema: 'In cinemas' };
 
 // Episodes of one show on one day become one entry ("S2 · E1-6"), so a season drop is one card.
 function group(events, kind) {
@@ -50,27 +48,30 @@ function epLabel(eps) {
 function Show({ s, now }) {
   const aired = new Date(s.at).getTime() <= now;
   const got = s.eps.filter((e) => e.hasFile).length;
-  const st = got === s.eps.length ? ['ok', 'Downloaded'] : aired ? ['miss', got ? `${got} of ${s.eps.length}` : 'Missing'] : ['soon', timeOf(s.at)];
+  const st = got === s.eps.length ? null : aired ? ['miss', got ? `${got} of ${s.eps.length}` : 'Missing'] : ['soon', timeOf(s.at)];
   const flag = s.eps.some((e) => e.finale) ? 'Finale' : s.eps.some((e) => e.premiere) ? (s.eps[0].season === 1 ? 'New show' : 'Premiere') : null;
+  const named = s.eps.length === 1 && s.name;
+  const bare = !flag && !st && !(s.network && !aired);
   return html`<div class=${`cal-item ${s.pick ? 'picked' : ''}`}>
     <${Thumb} src=${s.poster} title=${s.title} />
     <div class="txt">
       <div class="t">${s.title}</div>
-      <div class="sub">${epLabel(s.eps)}${s.eps.length === 1 && s.name ? html` · <span>${s.name}</span>` : ''}</div>
-      <div class="tags"><${Pick} pick=${s.pick} />${flag && html`<span class="pill flag">${flag}</span>`}<span class=${`pill ${st[0]}`}>${st[1]}</span>${s.network && !aired ? html`<span class="net">${s.network}</span>` : ''}</div>
+      <div class="sub">${epLabel(s.eps)}${named && !bare ? html` · <span>${s.name}</span>` : ''}</div>
+      ${named && bare && html`<div class="sub"><span>${s.name}</span></div>`}
+      ${!bare && html`<div class="tags">${flag && html`<span class="pill flag">${flag}</span>`}${st && html`<span class=${`pill ${st[0]}`}>${st[1]}</span>`}${s.network && !aired ? html`<span class="net">${s.network}</span>` : ''}</div>`}
     </div>
   </div>`;
 }
 
 function Movie({ m, today }) {
   const out = m.date <= today;
-  const st = m.hasFile ? ['ok', 'Downloaded'] : out && m.release !== 'cinema' ? ['miss', 'Missing'] : null;
+  const st = m.hasFile ? null : out && m.release !== 'cinema' ? ['miss', 'Missing'] : null;
   return html`<div class=${`cal-item ${m.release === 'cinema' && !m.hasFile ? 'dim' : ''} ${m.pick ? 'picked' : ''}`}>
     <${Thumb} src=${m.poster} title=${m.title} />
     <div class="txt">
       <div class="t">${m.title}</div>
       <div class="sub">Movie${m.year ? ` · ${m.year}` : ''}</div>
-      <div class="tags"><${Pick} pick=${m.pick} /><span class=${`pill rel ${m.release}`}>${RELEASE[m.release]}</span>${st && html`<span class=${`pill ${st[0]}`}>${st[1]}</span>`}${m.in4k && html`<span class=${`pill k4 ${m.has4k ? 'ok' : ''}`}>4K</span>`}</div>
+      <div class="tags">${m.release === 'cinema' && html`<span class=${`pill rel ${m.release}`}>${RELEASE[m.release]}</span>`}${st && html`<span class=${`pill ${st[0]}`}>${st[1]}</span>`}${m.in4k && html`<span class=${`pill k4 ${m.has4k ? 'ok' : ''}`}>4K</span>`}</div>
     </div>
   </div>`;
 }
