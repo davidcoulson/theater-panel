@@ -1,13 +1,14 @@
 // Lobby: continue watching, scenes, projector, lights, just added and the pre-show music bar.
 
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { html, Icon, Play, Pause, Prev, Next, Skip, Poster, Seg, Range, Header, H2 } from '../lib/ui.mjs';
+import { html, Icon, Play, Pause, Prev, Next, Skip, Seg, Range, Header, H2 } from '../lib/ui.mjs';
 import { get, act, useLoad, useStore, useEntity, runtime, endsAt, livePosition, mmss, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
 import { MysterySheet } from './mystery.mjs';
 import { SleepChip } from './sleep.mjs';
+import { DayCard } from './calendar.mjs';
 
 const SCENES = [
   { name: 'pre_show', label: 'Pre-show', desc: 'Warm lights · music', icon: 'music' },
@@ -30,7 +31,7 @@ export function Lobby() {
   // Steam downloads on the gaming PC, for a pill of their own.
   const [gamesHead] = useLoad(() => get('/api/games'), []);
   const steamDl = gamesHead?.pc?.downloads || [];
-  const arrivals = useArrivals();
+  useArrivals();   // confetti when a request lands
   const [streamsOpen, setStreamsOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   // "#/lobby?mystery=1" opens the box straight away - handy from a Home Assistant automation
@@ -56,11 +57,11 @@ export function Lobby() {
     <//>
     <div class="lobby-grid">
       <${Continue} />
-      <${Scenes} />
       <${Projector} />
       <${Lights} />
       <div class="right-col">
-        <${JustAdded} arrivals=${arrivals.list} />
+        <${Scenes} />
+        <${DayCard} />
         <${MusicBar} />
       </div>
     </div>
@@ -448,33 +449,6 @@ function LightRow({ id, onEffects }) {
       <span class="lbl">${effect || 'Choose'}</span><${Icon} name="chev" size=${18} color="var(--muted)" />
     </button>`}
   </div>`;
-}
-
-function JustAdded({ arrivals = [] }) {
-  const [items] = useLoad(() => get('/api/plex/recent?size=14'), []);
-  // One card per movie or show: collapse episodes into their show.
-  const seen = new Set();
-  const recent = (items || []).filter((m) => {
-    const k = m.showTitle || m.id;
-    if (seen.has(k)) return false; seen.add(k); return true;
-  });
-  // What someone asked for in Seerr and has just landed comes first, marked, even when newer
-  // additions have pushed it off Plex's recent list.
-  const requested = arrivals.map((a) => {
-    const hit = recent.find((m) => String(m.id) === a.plexId || String(m.showKey) === a.plexId);
-    return hit ? { ...hit, requested: true } : { id: a.plexId, title: a.title, poster: a.poster, requested: true };
-  });
-  const asked = new Set(requested.map((m) => String(m.id)));
-  const list = [...requested, ...recent.filter((m) => !asked.has(String(m.id)))].slice(0, 6);
-  return html`<section class="card">
-    <${H2} title="Just added"><button type="button" class="link" onClick=${() => go('watch', { lib: 'library' })}>Browse library</button><//>
-    <div class="shelf">
-      ${list.map((m) => html`<button type="button" class="poster-btn" key=${m.id} style="width:130px" onClick=${() => go('watch', { item: m.id })} aria-label=${m.showTitle || m.title}>
-        <div class="framed" style="position:relative"><${Poster} src=${m.poster} title=${m.showTitle || m.title} />
-          ${m.requested && html`<span class="req-badge">Requested</span>`}</div>
-      </button>`)}
-    </div>
-  </section>`;
 }
 
 function MusicBar() {

@@ -9,12 +9,12 @@ const BACK = 14, AHEAD = 28, BEFORE_TODAY = 3;
 const COL = 232, GAP = 12;
 
 const pad = (n) => String(n).padStart(2, '0');
-const localDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const localDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const timeOf = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const RELEASE = { cinema: 'In cinemas' };
 
 // Episodes of one show on one day become one entry ("S2 · E1-6"), so a season drop is one card.
-function group(events, kind) {
+export function group(events, kind) {
   const days = new Map();
   const add = (day, item) => { if (!days.has(day)) days.set(day, []); days.get(day).push(item); };
   const shows = new Map();
@@ -45,7 +45,7 @@ function epLabel(eps) {
   return `${eps.length} episodes`;
 }
 
-function Show({ s, now }) {
+export function Show({ s, now }) {
   const aired = new Date(s.at).getTime() <= now;
   const got = s.eps.filter((e) => e.hasFile).length;
   const st = got === s.eps.length ? null : aired ? ['miss', got ? `${got} of ${s.eps.length}` : 'Missing'] : ['soon', timeOf(s.at)];
@@ -63,7 +63,7 @@ function Show({ s, now }) {
   </div>`;
 }
 
-function Movie({ m, today }) {
+export function Movie({ m, today }) {
   const out = m.date <= today;
   const st = m.hasFile ? null : out && m.release !== 'cinema' ? ['miss', 'Missing'] : null;
   return html`<div class=${`cal-item ${m.release === 'cinema' && !m.hasFile ? 'dim' : ''} ${m.pick ? 'picked' : ''}`}>
@@ -133,4 +133,34 @@ export function Calendar() {
         })}
       </div>`}
   </main>`;
+}
+
+// The lobby's card: what the house follows around tonight. Opens on last night, since that is what
+// is usually being watched; the arrows step on to tonight and tomorrow.
+const DAYS = [{ label: 'Last night', offset: -1 }, { label: 'Tonight', offset: 0 }, { label: 'Tomorrow', offset: 1 }];
+
+export function DayCard() {
+  const [data, err] = useLoad(() => get('/api/calendar?back=1&ahead=1'), []);
+  const [at, setAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5 * 60000); return () => clearInterval(t); }, []);
+  const today = localDay(new Date(now));
+  const byDay = useMemo(() => group(data?.events || [], 'ours'), [data]);
+  const day = DAYS[at];
+  const d = new Date(new Date(now).getFullYear(), new Date(now).getMonth(), new Date(now).getDate() + day.offset);
+  const items = byDay.get(localDay(d)) || [];
+  return html`<section class="card day-card">
+    <div class="day-nav">
+      <button type="button" class="filter" aria-label="Earlier" disabled=${at === 0} onClick=${() => setAt(at - 1)}><${Icon} name="left" size=${22} /></button>
+      <div class="day-title"><b>${day.label}</b><span>${d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</span></div>
+      <button type="button" class="filter" aria-label="Later" disabled=${at === DAYS.length - 1} onClick=${() => setAt(at + 1)}><span style="display:inline-flex;transform:scaleX(-1)"><${Icon} name="left" size=${22} /></span></button>
+    </div>
+    <div class="day-list scroll">
+      ${err && !data ? html`<div class="cal-none">${err.message}</div>`
+        : !data ? html`<div class="cal-none">Loading…</div>`
+        : items.length ? items.map((it) => (it.kind === 'movie' ? html`<${Movie} key=${it.id} m=${it} today=${today} />` : html`<${Show} key=${it.id} s=${it} now=${now} />`))
+        : html`<div class="cal-none">Nothing on the list</div>`}
+    </div>
+    <div class="day-dots">${DAYS.map((x, i) => html`<i class=${i === at ? 'on' : ''}></i>`)}</div>
+  </section>`;
 }
