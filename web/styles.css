@@ -304,7 +304,7 @@ input.range.thin { height: 40px; }
 .light .name { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; background: none; border: 0; padding: 4px 0; }
 .swatch { width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
 
-.right-col { grid-column: span 2; display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+.right-col { grid-column: 3 / span 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 22px; min-height: 0; }
 .shelf { display: flex; gap: 18px; margin-top: 16px; justify-content: space-between; }
 .musicbar { flex-grow: 1; display: flex; align-items: stretch; gap: 22px; padding: 14px 22px 14px 14px; min-height: 0; }
 .musicbar .cover { contain: size; align-self: stretch; height: auto; min-height: 120px; aspect-ratio: 1 / 1; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: #1f140e; }
@@ -950,3 +950,23 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
    under the real page rather than hidden: Chrome skips lazy images under display: none or
    visibility: hidden, and loading those posters is half the point. */
 .prewarm { position: absolute; inset: 0 0 0 142px; display: flex; opacity: 0; pointer-events: none; z-index: -1; overflow: hidden; contain: strict; }
+
+/* lobby right column: short scenes, the day card, the music bar */
+.right-col .scenes { flex: none; height: 118px; padding: 12px; }
+.right-col .scenes .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.right-col .scene { padding: 8px 14px; }
+.right-col .scene .d { display: none; }
+.right-col .musicbar { flex: none; height: 132px; padding: 12px; }
+.right-col .musicbar .cover { min-height: 0; }
+.day-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.day-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.day-nav .filter { width: 52px; height: 52px; padding: 0; justify-content: center; border-radius: 26px; }
+.day-nav .filter:disabled { opacity: .3; }
+.day-title { flex: 1; text-align: center; }
+.day-title b { display: block; font-family: var(--disp); font-weight: 800; font-size: 32px; line-height: 1; text-transform: uppercase; }
+.day-title span { font-size: 15px; color: var(--muted); }
+.day-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px; }
+.day-list .cal-none { padding: 24px 4px; }
+.day-dots { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.day-dots i { width: 10px; height: 10px; border-radius: 5px; background: var(--line); }
+.day-dots i.on { width: 26px; background: var(--acc); }
