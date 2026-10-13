@@ -971,3 +971,14 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .day-dots { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
 .day-dots i { width: 10px; height: 10px; border-radius: 5px; background: var(--line); }
 .day-dots i.on { width: 26px; background: var(--acc); }
+
+/* day card rows: tall, so a short night fills the card instead of leaving it empty */
+.day-list { display: flex; flex-direction: column; gap: 8px; }
+.day-list .cal-item { flex: 1 1 0; max-height: 170px; min-height: 96px; margin: 0; padding: 10px 16px 10px 12px; align-items: center; gap: 18px; border-top: 0; }
+.day-list .cal-item .thumb { width: auto; height: 100%; max-height: 150px; aspect-ratio: 2 / 3; }
+.day-item .logo { flex: 1; min-width: 0; height: 100%; max-height: 110px; display: flex; align-items: center; justify-content: flex-start; padding: 10px 18px; border-radius: 14px; background: var(--choc); }
+.day-item .logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.day-item .logo span { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; color: #F4ECE0; }
+.day-item .ep { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.day-item .ep b { font-family: var(--disp); font-weight: 800; font-size: 46px; line-height: 1; white-space: nowrap; color: var(--choc); }
+.day-item.gone { opacity: .5; filter: grayscale(1); background: color-mix(in srgb, var(--track) 70%, transparent); box-shadow: inset 4px 0 0 var(--line); }
