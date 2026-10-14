@@ -1024,3 +1024,18 @@ automation:
           message: >-
             Unraid says the Windows VM is running, but its guest agent has not answered for
             three minutes. It may have hung; the panel's power menu can restart it.
+
+# The VM's frame-time graph sensor is a long string that changes every few seconds and is only
+# drawn live by the panel, so keep it out of the recorder and InfluxDB. Packages merge these
+# lists into the exclude blocks in configuration.yaml.
+recorder:
+  exclude:
+    entity_globs:
+      - sensor.*_windows_11_frames
+      - sensor.*_windows_11_frames_graph
+
+influxdb:
+  exclude:
+    entity_globs:
+      - sensor.*_windows_11_frames
+      - sensor.*_windows_11_frames_graph
