@@ -21,10 +21,11 @@ const degF = (c) => (Number.isFinite(c) ? `${Math.round(c * 9 / 5 + 32)}°F` : '
 // Current numbers for every mapped role.
 function useStats(stats, demo) {
   // Only the mapped entities' raw states: the whole map is a new object on every HA update.
+  // A role value is an entity_id, or "<entity_id>#<attribute>" to read that attribute instead of the state.
   const ids = Object.values(stats || {}).flat().filter((id) => typeof id === 'string');
-  const states = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.state])));
-  const names = useStore((s) => [stats?.gpuLoad, stats?.cpuLoad].map((id) => s.states[id]?.attributes?.friendly_name || '').join('\n')).split('\n');
-  const units = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id]?.attributes?.unit_of_measurement])));
+  const states = useStore((s) => Object.fromEntries(ids.map((id) => { const [e, a] = id.split('#'); return [id, a ? s.states[e]?.attributes?.[a] : s.states[e]?.state]; })));
+  const names = useStore((s) => [stats?.gpuLoad, stats?.cpuLoad].map((id) => s.states[String(id).split('#')[0]]?.attributes?.friendly_name || '').join('\n')).split('\n');
+  const units = useStore((s) => Object.fromEntries(ids.map((id) => [id, s.states[id.split('#')[0]]?.attributes?.unit_of_measurement])));
   const num = (role) => {
     const id = stats?.[role];
     const v = id && Number(states[id]);
