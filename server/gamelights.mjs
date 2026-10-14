@@ -3,7 +3,7 @@
 // how they were when the game ends. A switch on the Games page and on the panel's Home Assistant
 // device turns it on and off (GAME_LIGHTS); GAME_LIGHTS_ENTITY is the light.
 import { config } from './config.mjs';
-import { loadGames, steamNow } from './games.mjs';
+import { loadGames, roleValue, steamNow } from './games.mjs';
 
 const SNAPSHOT = 'theater_game_lights_before';
 let ha, lit = false, lastSent = '';
@@ -26,7 +26,7 @@ async function gameOnTheWall() {
   if (!pc?.projectorInput || !showing.startsWith(pc.projectorInput)) return null;
   const playing = await steamNow();
   if (!playing) return null;
-  const n = (id) => { const v = Number(ha.states[id]?.state); return Number.isFinite(v) ? v : null; };
+  const n = (id) => { const v = Number(roleValue(ha.states, id)); return Number.isFinite(v) ? v : null; };
   return { tempC: n(st.gpuTemp), load: n(st.gpuLoad) };
 }
 

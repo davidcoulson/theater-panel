@@ -64,9 +64,17 @@ export async function gameEntities() {
 export const STAT_ROLES = ['fps', 'fpsLow', 'game', 'gpuLoad', 'gpuTemp', 'gpuClock', 'gpuMemClock', 'gpuPower', 'gpuFan',
   'cpuLoad', 'cpuTemp', 'cpuClock', 'ramUsed', 'ramTotal', 'ramLoad', 'vramUsed', 'vramTotal', 'netDown', 'netUp', 'uptime', 'stream', 'downloads', 'updates',
   'gpuMemTemp', 'diskFree', 'diskTotal', 'diskTemp', 'diskRead', 'diskWrite', 'frames', 'coolantTemp', 'coolantFlow'];
+// A role value is an entity_id, or "<entity_id>#<attribute>" to read one of its attributes instead
+// of its state. Subscriptions use the entity_id part only.
+export const roleEntity = (v) => String(v).split('#')[0];
+export function roleValue(states, v) {
+  const [id, attr] = String(v).split('#');
+  const s = states?.[id];
+  return attr ? s?.attributes?.[attr] : s?.state;
+}
 function statEntities(g) {
   const st = g?.pc?.stats || {};
-  return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string');
+  return [...STAT_ROLES.map((k) => st[k]), ...(st.cores || [])].filter((v) => typeof v === 'string').map(roleEntity);
 }
 
 // The Stats page's film strip: the last hour as one sample every ten seconds - the busier of GPU
@@ -84,11 +92,11 @@ const sessionNow = () => session && {
 export function recordStats(ha) {
   haRef = ha;
   const load = (id) => {
-    const st = id && ha.states[id]?.state;
-    const v = typeof st === 'string' ? Number(st) : NaN;
+    const st = id && roleValue(ha.states, id);
+    const v = typeof st === 'string' || typeof st === 'number' ? Number(st) : NaN;
     return Number.isFinite(v) ? v : null;
   };
-  const celsius = (id) => { const v = load(id); return v != null && ha.states[id]?.attributes?.unit_of_measurement === '°F' ? (v - 32) * 5 / 9 : v; };
+  const celsius = (id) => { const v = load(id); return v != null && ha.states[roleEntity(id)]?.attributes?.unit_of_measurement === '°F' ? (v - 32) * 5 / 9 : v; };
   setInterval(async () => {
     const st = (await loadGames().catch(() => null))?.pc?.stats;
     if (!st) return;
@@ -273,7 +281,7 @@ export async function vmPower(op) {
   return { state: VM_OPS[op] };
 }
 
-const sensorText = (g, role) => { const id = g?.pc?.stats?.[role], v = id && haRef?.states?.[id]?.state; return v && !['unknown', 'unavailable'].includes(String(v).toLowerCase()) ? String(v) : ''; };
+const sensorText = (g, role) => { const id = g?.pc?.stats?.[role], v = id && roleValue(haRef?.states, id); return v && !['unknown', 'unavailable'].includes(String(v).toLowerCase()) ? String(v) : ''; };
 function steamDownloads(g) {
   return sensorText(g, 'downloads').split(';').filter(Boolean).map((line) => {
     const [name, pct, mb] = line.split('|');
@@ -291,7 +299,7 @@ function housekeeping(g) {
 
 // The Moonlight client the PC is streaming to, by name when known, from the stream role's sensor.
 function streamingTo(g) {
-  const id = g?.pc?.stats?.stream, v = id && haRef?.states?.[id]?.state;
+  const id = g?.pc?.stats?.stream, v = id && roleValue(haRef?.states, id);
   if (!v || ['unknown', 'unavailable', ''].includes(String(v).toLowerCase())) return null;
   return g.pc.streamClients?.[v] || String(v);
 }

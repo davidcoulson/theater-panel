@@ -298,6 +298,7 @@ export async function importContainer(rev) {
 
 const ID = /^[a-z0-9_-]{1,32}$/;
 const ENTITY = /^[a-z_]+\.[a-z0-9_]+$/;
+const ENTITY_ATTR = /^[a-z_]+\.[a-z0-9_]+(#[A-Za-z0-9_]+)?$/;   // stats roles may name an attribute
 function cleanGames(g) {
   const out = { v: 2, switcher: {}, sources: [] };
   if (g.switcher?.entity) {
@@ -327,8 +328,8 @@ function cleanGames(g) {
 const SENSOR_KINDS = ['percent', 'temp', 'value'];
 function cleanPc(pc) {
   if (typeof pc !== 'object' || Array.isArray(pc)) throw httpError(400, 'pc must be an object');
-  const entity = (v, what) => {
-    if (!ENTITY.test(String(v))) throw httpError(400, `Bad ${what}: ${v}`);
+  const entity = (v, what, attr = false) => {
+    if (!(attr ? ENTITY_ATTR : ENTITY).test(String(v))) throw httpError(400, `Bad ${what}: ${v}`);
     return String(v);
   };
   const out = { name: String(pc.name || 'Gaming PC').slice(0, 40) };
@@ -353,7 +354,7 @@ function cleanPc(pc) {
   if (pc.stats) {
     if (typeof pc.stats !== 'object' || Array.isArray(pc.stats)) throw httpError(400, 'pc.stats must be an object');
     const stats = {};
-    for (const role of STAT_ROLES) if (pc.stats[role]) stats[role] = entity(pc.stats[role], `stats ${role}`);
+    for (const role of STAT_ROLES) if (pc.stats[role]) stats[role] = entity(pc.stats[role], `stats ${role}`, true);
     if (pc.stats.cores !== undefined) {
       if (!Array.isArray(pc.stats.cores)) throw httpError(400, 'pc.stats.cores must be a list');
       stats.cores = pc.stats.cores.map((c) => entity(c, 'core sensor'));
