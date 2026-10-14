@@ -2,8 +2,9 @@
 // screen (three back, today, three ahead); the strip scrolls two weeks back and four ahead.
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { html, Icon, Seg, Header } from '../lib/ui.mjs';
-import { get, useLoad } from '../lib/api.mjs';
+import { html, Icon, Play, Seg, Header } from '../lib/ui.mjs';
+import { get, useLoad, toast } from '../lib/api.mjs';
+import { play } from './lobby.mjs';
 
 const BACK = 14, AHEAD = 28, BEFORE_TODAY = 3;
 const COL = 232, GAP = 12;
@@ -135,17 +136,39 @@ export function Calendar() {
   </main>`;
 }
 
-// One show on the lobby card: poster, title, and the season and episode large on the right.
-// Nothing downloaded yet dims the row, so it reads as not playable.
+// One show on the lobby card, laid out like the hero: poster, title, season and episode, year and
+// length, and a play button that finds the episode in Plex. Nothing downloaded yet dims the row.
+function seasonLabel(eps) {
+  const first = eps[0], last = eps[eps.length - 1];
+  if (eps.length === 1) return `Season ${first.season}, Episode ${first.episode}`;
+  if (first.season === last.season) return `Season ${first.season}, Episodes ${first.episode}–${last.episode}`;
+  return `${eps.length} episodes`;
+}
 function DayShow({ s, now }) {
+  const [busy, setBusy] = useState(false);
   const aired = new Date(s.at).getTime() <= now;
   const got = s.eps.filter((e) => e.hasFile).length;
   const gone = aired && got === 0;
   const note = got === s.eps.length ? null : gone ? 'Missing' : aired ? `${got} of ${s.eps.length}` : timeOf(s.at);
+  const facts = [s.year, s.runtime && `${s.runtime}m`].filter(Boolean).join(' · ');
+  const start = async () => {
+    const ep = s.eps.find((e) => e.hasFile) || s.eps[0];
+    setBusy(true);
+    try {
+      const it = await get(`/api/plex/episode?tmdb=${s.tmdbId}&season=${ep.season}&episode=${ep.episode}`);
+      if (!it) { toast(`${s.title} isn't in Plex yet`); return; }
+      await play(it, true);
+    } catch (e) { toast(e.message || 'Could not start it'); }
+    finally { setBusy(false); }
+  };
   return html`<div class=${`day-item ${gone ? 'gone' : ''}`}>
     <${Thumb} src=${s.poster} title=${s.title} />
-    <div class="t">${s.title}</div>
-    <div class="se"><b>${epLabel(s.eps)}</b>${note && html`<span class="pill">${note}</span>`}</div>
+    <div class="body">
+      <div class="t">${s.title}</div>
+      <div class="sub">${seasonLabel(s.eps)}${note && html` <span class="pill">${note}</span>`}</div>
+      ${facts && html`<div class="times">${facts}</div>`}
+    </div>
+    ${!gone && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#fff" /></button>`}
   </div>`;
 }
 
