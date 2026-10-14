@@ -144,13 +144,21 @@ function seasonLabel(eps) {
   if (first.season === last.season) return `Season ${first.season}, Episodes ${first.episode}–${last.episode}`;
   return `${eps.length} episodes`;
 }
+// Sonarr's network name -> an icon in the panel's brand set, for the networks that have one; the
+// rest show as their name alone.
+const NET_ICONS = { cbs: 'cbs', nbc: 'nbc', abc: 'abc', fox: 'fox', amc: 'amc', hbo: 'hbo', 'hbo max': 'hbo-max', max: 'max', netflix: 'netflix',
+  'apple tv+': 'apple-tv', 'apple tv': 'apple-tv', 'disney+': 'disney-plus', hulu: 'hulu', peacock: 'peacock', 'paramount+': 'paramount-plus',
+  'paramount+ with showtime': 'paramount-plus', 'prime video': 'prime-video', 'amazon prime video': 'prime-video', bbc: 'bbc', 'bbc one': 'bbc', 'bbc two': 'bbc', espn: 'espn' };
+const netIcon = (name) => NET_ICONS[String(name || '').toLowerCase()];
+
 function DayShow({ s, now }) {
   const [busy, setBusy] = useState(false);
   const aired = new Date(s.at).getTime() <= now;
   const got = s.eps.filter((e) => e.hasFile).length;
   const gone = aired && got === 0;
   const note = got === s.eps.length ? null : gone ? 'Missing' : aired ? `${got} of ${s.eps.length}` : timeOf(s.at);
-  const facts = [s.year, s.runtime && `${s.runtime}m`].filter(Boolean).join(' · ');
+  const facts = [s.network, s.year, s.runtime && `${s.runtime}m`].filter(Boolean);
+  const icon = netIcon(s.network);
   const start = async () => {
     const ep = s.eps.find((e) => e.hasFile) || s.eps[0];
     setBusy(true);
@@ -166,7 +174,7 @@ function DayShow({ s, now }) {
     <div class="body">
       <div class="t">${s.title}</div>
       <div class="sub">${seasonLabel(s.eps)}${note && html` <span class="pill">${note}</span>`}</div>
-      ${facts && html`<div class="times">${facts}</div>`}
+      ${facts.length > 0 && html`<div class="times">${icon && html`<${Icon} name=${`cbi:${icon}`} size=${24} />`}${facts.map((f, i) => html`${i > 0 && html`<i>·</i>`}<span>${f}</span>`)}</div>`}
     </div>
     ${!gone && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#fff" /></button>`}
   </div>`;

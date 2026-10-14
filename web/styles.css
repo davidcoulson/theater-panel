@@ -980,7 +980,9 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .day-item .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .day-item .t { font-family: var(--disp); font-weight: 800; font-size: 34px; line-height: 1; text-transform: uppercase; color: #F4ECE0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .day-item .sub { font-size: 18px; color: var(--on-choc2); display: flex; align-items: center; gap: 10px; }
-.day-item .times { font-family: var(--mono); font-size: 15px; color: var(--on-choc2); }
+.day-item .times { font-family: var(--mono); font-size: 15px; color: var(--on-choc2); display: flex; align-items: center; gap: 10px; }
+.day-item .times .xicon { color: #F4ECE0; opacity: .9; }
+.day-item .times i { font-style: normal; }
 .day-item .pill { height: 24px; padding: 0 9px; border: 0; border-radius: 12px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; background: rgba(244,236,224,.14); color: #F4ECE0; }
 .day-item .play { width: 66px; height: 66px; padding: 0; flex-shrink: 0; }
 .day-item .play:disabled { opacity: .5; }
