@@ -355,6 +355,22 @@ async function listShows(sectionId) {
   return (mc.Metadata || []).map((m) => ({ id: m.ratingKey, title: m.title, tmdb: Number(((m.Guid || []).map((g) => g.id).find((g) => g.startsWith('tmdb://')) || '').slice(7)) || null }));
 }
 
+// One episode of a show the calendar knows by TMDB id, so a calendar row can play it. The show
+// listings are kept an hour; a show that is not in Plex yet answers null.
+export async function episodeByTmdb(tmdb, season, episode) {
+  tmdb = Number(tmdb); season = Number(season); episode = Number(episode);
+  if (!tmdb || !Number.isInteger(season) || !Number.isInteger(episode)) throw httpError(400, 'tmdb, season and episode are needed');
+  const shows = await cached('shows', 60 * 60000, async () => {
+    const tv = (await sections()).filter((l) => l.type === 'show');
+    return (await Promise.all(tv.map((l) => listShows(l.id)))).flat();
+  });
+  const show = shows.find((s) => s.tmdb === tmdb);
+  if (!show) return null;
+  const mc = await plex(`/library/metadata/${show.id}/allLeaves`);
+  const m = (mc.Metadata || []).find((x) => x.parentIndex === season && x.index === episode);
+  return m ? mapItem(m) : null;
+}
+
 export async function item(id) {
   id = plexId(id, 'item id');
   // includeOnDeck answers the "what plays next" question for a show in the same call.

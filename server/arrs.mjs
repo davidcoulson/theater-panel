@@ -44,6 +44,9 @@ function episodes(list) {
     network: e.series?.network || null,
     hasFile: Boolean(e.hasFile),
     poster: poster(e.series?.images),
+    year: e.series?.year || null,
+    // Minutes; Sonarr knows the episode's own length once it has aired, the series' otherwise.
+    runtime: e.runtime || e.series?.runtime || null,
   }));
 }
 

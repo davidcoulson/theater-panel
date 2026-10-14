@@ -262,6 +262,8 @@ get(/^\/api\/plex\/genres\/(\d+)$/, (m) => plex.genres(m[1]));
 get(/^\/api\/plex\/brand\/([a-z]+)$/, (m, q) => plex.brandBrowse(m[1], { filters: (q.get('filters') || '').split(',').filter(Boolean), size: Math.min(Number(q.get('size') || 60), 120) }));
 get(/^\/api\/networks$/, () => (config.seerr.url ? seerr.networks() : [])); 
 get(/^\/api\/plex\/item\/(\d+)$/, (m) => plex.item(m[1]));
+// The calendar's play button: the Plex copy of a Sonarr episode, or null when there is none yet.
+get(/^\/api\/plex\/episode$/, (m, q) => plex.episodeByTmdb(q.get('tmdb'), q.get('season'), q.get('episode')));
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
 // The panel's own settings sheet: the harmless knobs, behind the panel's auth like every action.
 get(/^\/api\/tweaks$/, () => admin.tweaks());
