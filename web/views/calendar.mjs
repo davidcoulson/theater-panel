@@ -135,24 +135,17 @@ export function Calendar() {
   </main>`;
 }
 
-// A show's title as its own artwork, the way Plex draws it; the plain title when there is none.
-function Logo({ src, title }) {
-  const [ok, setOk] = useState(true);
-  useEffect(() => setOk(true), [src]);
-  return html`<div class="logo">${src && ok ? html`<img src=${src} alt=${title} loading="lazy" decoding="async" onError=${() => setOk(false)} />` : html`<span>${title}</span>`}</div>`;
-}
-
-// One show on the lobby card: poster, title artwork, and the season and episode large on the right.
-// Nothing downloaded yet greys the row out, so it reads as not playable.
+// One show on the lobby card: poster, title, and the season and episode large on the right.
+// Nothing downloaded yet dims the row, so it reads as not playable.
 function DayShow({ s, now }) {
   const aired = new Date(s.at).getTime() <= now;
   const got = s.eps.filter((e) => e.hasFile).length;
   const gone = aired && got === 0;
   const note = got === s.eps.length ? null : gone ? 'Missing' : aired ? `${got} of ${s.eps.length}` : timeOf(s.at);
-  return html`<div class=${`cal-item day-item ${s.pick ? 'picked' : ''} ${gone ? 'gone' : ''}`}>
+  return html`<div class=${`day-item ${gone ? 'gone' : ''}`}>
     <${Thumb} src=${s.poster} title=${s.title} />
-    <${Logo} src=${s.logo} title=${s.title} />
-    <div class="ep"><b>${epLabel(s.eps)}</b>${note && html`<span class="pill">${note}</span>`}</div>
+    <div class="t">${s.title}</div>
+    <div class="se"><b>${epLabel(s.eps)}</b>${note && html`<span class="pill">${note}</span>`}</div>
   </div>`;
 }
 
@@ -170,7 +163,7 @@ export function DayCard() {
   const day = DAYS[at];
   const d = new Date(new Date(now).getFullYear(), new Date(now).getMonth(), new Date(now).getDate() + day.offset);
   const items = byDay.get(localDay(d)) || [];
-  return html`<section class="card day-card">
+  return html`<section class="day-card dark tx-suede">
     <div class="day-nav">
       <button type="button" class="filter" aria-label="Earlier" disabled=${at === 0} onClick=${() => setAt(at - 1)}><${Icon} name="left" size=${22} /></button>
       <div class="day-title"><b>${day.label}</b><span>${d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</span></div>
