@@ -4,7 +4,7 @@
 
 import { render } from 'preact';
 import { useEffect, useErrorBoundary, useRef, useState } from 'preact/hooks';
-import { html, Icon } from './lib/ui.mjs';
+import { html, Icon, StrataMark } from './lib/ui.mjs';
 import { report, startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
@@ -335,6 +335,8 @@ function Rail({ current }) {
   useStore((s) => s.ui?.accent?.id);              // re-render when the server's pick changes
   const hol = currentAccent();
   const lightsOn = accent?.state === 'on';
+  // Strata (the gaming PC's LLM server) thinking: its mark breathes in the glyph's place.
+  const thinking = useEntity(useStore((s) => s.entities.ai?.busy))?.state === 'on';
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
     <${RailGlow} name=${route.params.glow || (lightsOn ? accent.attributes?.effect : hol?.glow || null)} speed=${lightsOn ? speed : 0.3}
@@ -345,7 +347,8 @@ function Rail({ current }) {
     <div class="grow"></div>
     ${ha.live === false ? html`<div class="offline">Server offline</div>` : ha.live && !ha.ok ? html`<div class="offline">${ha.configured ? 'HA offline' : 'HA not set up'}</div>` : null}
     <a href="#/showtime" class="to-showtime" onClick=${(e) => { e.preventDefault(); go('showtime'); }}><${Icon} name="moon" size=${30} /><span>Showtime</span></a>
-    ${hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Emblem} id=${hol.id} size=${68} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
+    ${thinking ? html`<div class="glyph" title="Strata is thinking"><${StrataMark} size=${60} busy /></div>`
+    : hol && html`<div class="glyph" title=${hol.who ? `${hol.who}'s birthday` : hol.name}><${Emblem} id=${hol.id} size=${68} />${hol.who && html`<span>${hol.who}</span>`}</div>`}
     <div class="clock">${now.hm}</div><div class="ampm">${now.ampm}</div>
     ${build.version && html`<div class="build" title=${build.time ? `built ${build.time}` : ''} onClick=${tapVersion}>
       <span>${build.version.split('.').slice(0, 3).join('.')}</span>

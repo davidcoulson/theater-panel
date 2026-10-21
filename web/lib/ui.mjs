@@ -72,6 +72,22 @@ export function Icon({ name, size = 24, color = 'currentColor', w = 2, fill = 'n
   }
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill=${fill} stroke=${color} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${PATHS[name]} /></svg>`;
 }
+// Strata's mark: three layers, the green one the lung. `busy` breathes it (see .strata in the
+// stylesheet) and runs a light along the green bar.
+let strataSeq = 0;
+export function StrataMark({ size = 60, busy = false }) {
+  const id = useRef(`sw${++strataSeq}`).current;
+  return html`<svg class=${`strata ${busy ? 'busy' : ''}`} width=${size} height=${size} viewBox="0 0 512 512" aria-hidden="true">
+    <defs><linearGradient id=${id} gradientUnits="userSpaceOnUse" x1="128" x2="384">
+      <stop offset="0" stop-color="#37D39A" /><stop offset=".35" stop-color="#37D39A" /><stop offset=".5" stop-color="#B9FFE3" /><stop offset=".65" stop-color="#37D39A" /><stop offset="1" stop-color="#37D39A" />
+      ${busy && html`<animate attributeName="x1" values="-130;384" dur="1.8s" repeatCount="indefinite" /><animate attributeName="x2" values="128;640" dur="1.8s" repeatCount="indefinite" />`}
+    </linearGradient></defs>
+    <rect width="512" height="512" rx="110" fill="#15191C" />
+    <rect x="170" y="157" width="172" height="48" rx="24" fill="#EDF1F3" />
+    <rect x="128" y="233" width="256" height="48" rx="24" fill=${busy ? `url(#${id})` : '#37D39A'} />
+    <rect x="170" y="309" width="172" height="48" rx="24" fill="#EDF1F3" />
+  </svg>`;
+}
 export const Play = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill=${color} /></svg>`;
 export const Pause = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4" width="4.5" height="16" rx="1" fill=${color} /><rect x="14" y="4" width="4.5" height="16" rx="1" fill=${color} /></svg>`;
 export const Prev = ({ size = 24, color = 'currentColor' }) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14L8 12z" fill=${color} /><rect x="5" y="5" width="2.5" height="14" rx="1" fill=${color} /></svg>`;
