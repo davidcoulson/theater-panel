@@ -7,9 +7,9 @@
 // #/stats?demo=1 fills it with made-up numbers to see the layout.
 
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
-import { html, Icon } from '../lib/ui.mjs';
+import { html, Icon, StrataMark } from '../lib/ui.mjs';
 import { UnraidMark, UnraidWord } from '../lib/unraid.mjs';
-import { get, useStore, useLoad, runtime } from '../lib/api.mjs';
+import { get, useStore, useEntity, useLoad, runtime } from '../lib/api.mjs';
 import { route, go } from '../app.mjs';
 
 const r0 = (v) => (Number.isFinite(v) ? Math.round(v) : null);
@@ -48,6 +48,17 @@ function useStats(stats, demo) {
   };
   return vals;
 }
+
+// Strata, while it has a model loaded: the LLM server's own numbers from its integration's
+// entities (config.entities.ai), or null when no model is loaded.
+function useStrata() {
+  const ai = useStore((s) => s.entities.ai);
+  const v = useStore((s) => (ai ? Object.fromEntries(Object.entries(ai).map(([k, id]) => [k, s.states[id]?.state])) : null));
+  if (!v || v.loaded !== 'on') return null;
+  const n = (k) => { const x = Number(v[k]); return Number.isFinite(x) ? x : null; };
+  return { model: v.model || 'Strata', thinking: v.busy === 'on', gen: n('gen'), prompt: n('prompt'), ctx: n('ctx'), ctxUsed: n('ctxUsed'), served: n('served'), queued: n('queued'), draft: n('draft'), cacheHit: n('cacheHit') };
+}
+const kTok = (n) => (n == null ? '—' : n >= 1000 ? `${Math.round(n / 1000)}K` : String(n));
 
 // LibreHardwareMonitor reports memory in MB and network in KB/s, HASS.Agent temperatures in the
 // house's unit; the panels work in GB, Mb/s and °C (temperatures are shown in °F).
@@ -420,6 +431,8 @@ export function Stats() {
   const [g] = useLoad(() => get('/api/games').catch(() => null), []);
   const demo = route.params.demo === '1' || (g && !g.pc?.stats);
   const s = useStats(g?.pc?.stats, demo);
+  const ai = useStrata();
+  const ctxTrail = useTrail(ai?.ctx ? ((ai.ctxUsed || 0) / ai.ctx) * 100 : null);
   const swipe = useRef(null);
 
   // The hour comes from the server, which records it whether or not this page is open.
@@ -460,7 +473,7 @@ export function Stats() {
   const has = (v) => v != null;
   // Steam's word on what is running: the game's proper name and art (the sensor only knows the program).
   const demoApp = route.params.app || '1091500';
-  const playing = demo ? { name: route.params.app ? 'Shadow of the Tomb Raider' : 'Cyberpunk 2077', header: `/img/steam/${demoApp}/header.jpg`, hero: `/img/steam/${demoApp}/library_hero.jpg`, logo: `/img/steam/${demoApp}/logo.png` } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
+  const playing = ai ? null : demo ? { name: route.params.app ? 'Shadow of the Tomb Raider' : 'Cyberpunk 2077', header: `/img/steam/${demoApp}/header.jpg`, hero: `/img/steam/${demoApp}/library_hero.jpg`, logo: `/img/steam/${demoApp}/logo.png` } : (s.game || s.fps > 0) ? g?.pc?.playing : null;
   const streamingTo = s.stream ? (g?.pc?.streamClients?.[s.stream] || s.stream) : null;
   // The card's own name (the sensor only knows the chip) can be set as pc.gpuName, the CPU's as pc.cpuName.
   const gpuName = g?.pc?.gpuName || s.gpuName, cpuName = g?.pc?.cpuName || s.cpuName;
@@ -484,20 +497,24 @@ export function Stats() {
           ? html`<h1 class="brand" aria-label=${g.pc.name}><${UnraidMark} height=${56} /><${UnraidWord} height=${44} /></h1>`
           : html`<h1>${g?.pc?.name || 'Gaming PC'}</h1>`}
           ${(() => { const named = !(playing?.logo && logoShown === playing.logo);
-            const line = [demo && 'Demo numbers', named && (playing?.name || s.game || 'Idle'), streamingTo && `streaming to ${streamingTo}`].filter(Boolean).join(' · ');
-            return line && html`<div class=${`playing ${s.game || playing ? 'on' : ''}`}>${named ? line : line[0].toUpperCase() + line.slice(1)}</div>`; })()}
+            const line = [demo && 'Demo numbers', ai ? `${ai.thinking ? 'Thinking' : 'Serving'} ${ai.model}${ai.queued > 0 ? ` · ${ai.queued} queued` : ''}` : named && (playing?.name || s.game || 'Idle'), streamingTo && `streaming to ${streamingTo}`].filter(Boolean).join(' · ');
+            return line && html`<div class=${`playing ${ai?.thinking || s.game || playing ? 'on' : ''}`}>${named ? line : line[0].toUpperCase() + line.slice(1)}</div>`; })()}
           ${session && html`<div class="session">${[hm(session.minutes), session.peakC != null && `peak ${degF(session.peakC)}`, `peak ${session.peakW} W`, `${session.kwh.toFixed(2)} kWh`].filter(Boolean).join(' · ')}</div>`}</div>
+        ${ai && html`<div class="logo" style="display:flex;align-items:center"><${StrataMark} size=${84} busy=${ai.thinking} /></div>`}
         ${playing?.logo && html`<img class="logo" key=${playing.logo} src=${playing.logo} alt=${playing.name || ''} onLoad=${() => setLogoShown(playing.logo)} onError=${hide} />`}
       </div>
       <div class="right">
-      ${s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
-      ${s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${fpsLow >= 1 ? html`<small>1% low ${r0(fpsLow)}</small>` : ''}</span>`}
+      ${!ai && s.fps >= 1 && frameTimes.length > 1 && html`<${FrameSpark} ms=${frameTimes} />`}
+      ${ai?.gen != null && html`<span class="fps"><b>${ai.gen >= 100 ? r0(ai.gen) : ai.gen.toFixed(1)}</b>tok/s${ai.prompt != null && html`<small>prompt ${r0(ai.prompt)} tok/s</small>`}</span>`}
+      ${!ai && s.fps >= 1 && html`<span class="fps"><b>${r0(s.fps)}</b>fps${fpsLow >= 1 ? html`<small>1% low ${r0(fpsLow)}</small>` : ''}</span>`}
       <a href="#/games" class="chip dark-chip" onClick=${(e) => { e.preventDefault(); go('games'); }}><${Icon} name="left" size=${18} />Games</a>
       </div>
     </header>
     ${!any ? html`<div class="empty" style="flex-grow:1;color:#C7B39E">${g?.pc?.stats ? `${g.pc.name || 'The PC'} is off. The gauges come back when it starts.` : 'No PC sensors yet. Add them under pc.stats in games.json.'}</div>` : html`
     <div class="st-row dials">
-      ${has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
+      ${ai ? html`<section class="tile big"><h3 class="lead">Strata<small>${ai.model}</small></h3><${Dial} id="s" value=${ai.ctx ? ((ai.ctxUsed || 0) / ai.ctx) * 100 : 0} heat=${null} trail=${ctxTrail} label="Context" />
+        ${readout([ai.ctx && ['Context', `${kTok(ai.ctxUsed)} / ${kTok(ai.ctx)}`], ai.served != null && ['Served', ai.served], ai.draft != null && ['Draft hits', `${r0(ai.draft)}%`], ai.cacheHit != null && ['Cache hits', `${r0(ai.cacheHit)}%`]])}</section>`
+      : has(s.cpuLoad) && html`<section class="tile big"><h3 class="lead">CPU${cpuName && html`<small>${cpuName}</small>`}</h3><${Dial} id="c" value=${s.cpuLoad} heat=${warmth(cpuTemp, 125, 175)} trail=${cpuTrail} />
         ${readout([cpuClock > 0 && ['Clock', `${(cpuClock / 1000).toFixed(1)} GHz`], s.cores.length && ['Cores', s.cores.length], has(busiest) && ['Busiest', `${r0(busiest)}%`]])}</section>`}
       ${has(s.gpuLoad) && html`<section class="tile big"><h3 class="lead">GPU${gpuName && html`<small>${gpuName}</small>`}</h3><${Dial} id="g" value=${s.gpuLoad} heat=${warmth(s.gpuTemp, GPU_F[0], GPU_F[1])} trail=${gpuTrail}
           heatLabel=${has(s.gpuMemTemp) ? 'CORE' : null} marks=${has(s.gpuMemTemp) ? [{ f: warmth(s.gpuMemTemp, GPU_F[0], GPU_F[1]), label: 'MEM' }] : []} />

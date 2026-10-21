@@ -154,6 +154,9 @@ function build(env) {
     dogName: env.DOG_NAME || 'The dog',
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
+    // Strata, the local LLM server on the gaming PC: its "model loaded" sensor names the device
+    // and the integration's other entities follow from it.
+    ai: aiEntities(env.ENTITY_AI_LOADED),
   },
   // Where Play sends a title:
   //   appletv  - the Apple TV's Plex app (HA's Plex client for it)
@@ -340,12 +343,25 @@ export const soundbarEntities = (sb) => !sb ? [] : [sb.volume, sb.power, sb.nigh
 
 export const config = build(effectiveVars());
 
+// shortcut: assumes the ha-strata integration's entity names and one Strata device; make the
+// roles configurable if a second server or another integration turns up.
+function aiEntities(loaded) {
+  const m = /^binary_sensor\.(.+)_model_loaded$/.exec(loaded || '');
+  if (!m) return null;
+  const s = (k) => `sensor.${m[1]}_${k}`;
+  return {
+    loaded, busy: `binary_sensor.${m[1]}_busy`, model: s('model'), gen: s('generation_speed'), prompt: s('prompt_processing_speed'),
+    ctx: s('context_size'), ctxUsed: s('prompt_tokens_in_slot'), served: s('requests_served'), queued: s('queued_requests'),
+    started: s('started'), draft: s('draft_acceptance'), cacheHit: s('prompt_cache_hit_ratio'),
+  };
+}
+
 export function watchedEntities() {
   const e = config.entities;
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.adminRoomSensor,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
-    ...e.dogSensors, ...soundbarEntities(e.soundbar),
+    ...e.dogSensors, ...soundbarEntities(e.soundbar), ...Object.values(e.ai || {}),
     'input_select.theater_scene',
   ].filter(Boolean);
 }

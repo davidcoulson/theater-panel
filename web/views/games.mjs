@@ -2,7 +2,7 @@
 // and launch the Steam library, and watch the PC's temperatures and load.
 
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { html, Icon, Poster, Header, H2 } from '../lib/ui.mjs';
+import { html, Icon, Poster, Header, H2, StrataMark } from '../lib/ui.mjs';
 import { get, post, act, useLoad, useEntity, useStore, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
 
@@ -117,6 +117,13 @@ function PcPanel({ pc }) {
   const on = ['running', 'paused', 'shutdown', 'starting', 'restarting'].includes(state);
   const busy = ['shutdown', 'starting', 'shutting down', 'restarting'].includes(state);
   const canPower = Boolean(pc.power || pc.vm);
+  // While Strata has a model loaded the PC is an AI server: the model takes the name line and
+  // the speeds lead the tiles; the hardware tiles and the power button stay.
+  const ai = useStore((s) => s.entities.ai);
+  const loaded = useEntity(ai?.loaded)?.state === 'on';
+  const thinking = loaded && useEntity(ai?.busy)?.state === 'on';
+  const model = useEntity(ai?.model)?.state;
+  const queued = Number(useEntity(ai?.queued)?.state) || 0;
   const run = async (op) => {
     setMenu(false);
     const r = await act({ action: 'game_pc_power', op });
@@ -125,8 +132,10 @@ function PcPanel({ pc }) {
   const press = () => { if (busy) return; if (on) setMenu((m) => !m); else run('start'); };
   return html`<aside class="pc dark tx-suede">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div><div class="eyebrow">${(vm?.streamingTo ?? pc.streamingTo) && state === 'running' ? `Streaming to ${vm?.streamingTo ?? pc.streamingTo}` : canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
-        <div style="font-family:var(--disp);font-weight:800;font-size:44px;line-height:1;text-transform:uppercase">${pc.name}</div></div>
+      <div style="display:flex;align-items:center;gap:16px;min-width:0">
+        ${loaded && html`<${StrataMark} size=${76} busy=${thinking} />`}
+        <div style="min-width:0"><div class="eyebrow">${loaded ? (thinking ? `Thinking${queued > 0 ? ` · ${queued} queued` : ''}` : 'Serving') : (vm?.streamingTo ?? pc.streamingTo) && state === 'running' ? `Streaming to ${vm?.streamingTo ?? pc.streamingTo}` : canPower ? (VM_WORDS[state] || 'Unknown') : 'Stats'}</div>
+          <div style="font-family:var(--disp);font-weight:800;font-size:44px;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${loaded ? model || 'Strata' : pc.name}</div></div></div>
       ${canPower && html`<button type="button" class=${`power ${on ? 'on' : ''} ${busy ? 'busy' : ''}`} style="width:76px;height:76px" aria-label=${on ? 'Power options' : 'Start the PC'} aria-expanded=${menu}
         onClick=${press}><${Icon} name="power" size=${34} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} /></button>`}
     </div>
@@ -141,7 +150,7 @@ function PcPanel({ pc }) {
     ${((vm?.downloads ?? pc.downloads) || []).map((d) => html`<div class="dl" key=${d.name}>
       <div class="t"><span>${d.name}</span><b>${d.percent}%${d.mbLeft > 0 ? html`<small> · ${d.mbLeft >= 1024 ? `${(d.mbLeft / 1024).toFixed(1)} GB` : `${d.mbLeft} MB`} left</small>` : ''}</b></div>
       <div class="b"><i style=${`width:${d.percent}%`}></i></div></div>`)}
-    <div class="stats">${pc.sensors.map((s) => html`<${Stat} s=${s} />`)}</div>
+    <div class="stats">${loaded && html`<${Stat} s=${{ entity: ai.gen, label: 'Generating', kind: 'value' }} /><${Stat} s=${{ entity: ai.prompt, label: 'Prompt', kind: 'value' }} />`}${pc.sensors.map((s) => html`<${Stat} s=${s} />`)}</div>
     ${!pc.sensors.length && html`<div class="empty" style="color:var(--on-choc2)">Add the PC's sensors to games.json to show them here.</div>`}
   </aside>`;
 }
