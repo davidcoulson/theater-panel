@@ -53,7 +53,8 @@ const token = new URLSearchParams(location.search).get('t') || '';
 const q = `?t=${encodeURIComponent(token)}`;
 const $ = (id) => document.getElementById(id);
 const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); const m = Math.floor(s / 60); return `${Math.floor(m / 60) ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : m}:${String(s % 60).padStart(2, '0')}`; };
-function gone(text) { document.body.innerHTML = `<h1>Home theater</h1><div class="gone">${text}</div>`; }
+const el = (tag, className, textContent) => Object.assign(document.createElement(tag), { className, textContent });
+function gone(text) { document.body.replaceChildren(el('h1', '', 'Home theater'), el('div', 'gone', text)); }
 function draw(s) {
   $('title').textContent = s.title || (s.tonight?.item ? `Tonight: ${s.tonight.item.title}` : 'Standing by');
   const scene = s.scene ? ` · ${s.scene}` : '';
@@ -78,7 +79,7 @@ for (const b of document.querySelectorAll('button[data-cmd]')) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'That did not work');
       setTimeout(load, 1200);
-    } catch (e) { $('note').innerHTML = `<span class="err">${e.message}</span>`; }
+    } catch (e) { $('note').replaceChildren(el('span', 'err', e.message)); }
   };
 }
 if (!token) gone('Open this page from the QR on the theater panel.');

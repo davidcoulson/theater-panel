@@ -66,6 +66,7 @@ const PATHS = {
 export function Icon({ name, size = 24, color = 'currentColor', w = 2, fill = 'none' }) {
   if (name && name.includes(':')) {
     const [prefix, icon] = name.split(':');
+    if (!/^[a-z0-9-]+$/.test(prefix) || !/^[a-z0-9-]+$/.test(icon || '')) return null;   // it is interpolated into url('...')
     // Only an explicit colour is inline, so CSS can colour it like the built-in icons.
     return html`<span class="xicon" aria-hidden="true" style=${`width:${size}px;height:${size}px;${color !== 'currentColor' ? `color:${color};` : ''}--src:url('/api/icon/${prefix}/${icon}.svg')`}></span>`;
   }

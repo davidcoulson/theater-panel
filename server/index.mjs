@@ -6,6 +6,8 @@ import { createServer } from 'node:http';
 import { readFile, appendFile, rename, stat } from 'node:fs/promises';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
 import { config, watchedEntities, SETTINGS_FILE } from './config.mjs';
@@ -701,10 +703,10 @@ const server = createServer(async (req, res) => {
     if (path === '/api/camera.jpg') {
       const id = config.entities.dogCamera;
       if (!id || !config.ha.url || !config.ha.token) { res.writeHead(404).end(); return; }
-      const r = await fetch(`${config.ha.url}/api/camera_proxy/${encodeURIComponent(id)}`, { headers: { authorization: `Bearer ${config.ha.token}` } });
+      const r = await fetch(`${config.ha.url}/api/camera_proxy/${encodeURIComponent(id)}`, { headers: { authorization: `Bearer ${config.ha.token}` }, signal: AbortSignal.timeout(10000) });
       if (!r.ok) { res.writeHead(502).end(); return; }
       res.writeHead(200, { 'content-type': r.headers.get('content-type') || 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
-      res.end(Buffer.from(await r.arrayBuffer()));
+      await pipeline(Readable.fromWeb(r.body), res).catch(() => res.destroy());   // streamed, never held whole in memory
       return;
     }
 
