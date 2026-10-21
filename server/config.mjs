@@ -30,6 +30,13 @@ function ensureSecrets(vars) {
   };
   need('IMAGE_SECRET', () => randomBytes(24).toString('hex'));
   if (process.env.ALLOW_OPEN !== '1') need('PANEL_KEY', () => randomBytes(12).toString('base64url'));
+  // Without a key the ESPHome native API is plaintext for anyone on the LAN. Secrets are write-only
+  // on the admin page, so the one time it is made it is logged for pasting into Home Assistant.
+  need('ESPHOME_NOISE_KEY', () => {
+    const key = randomBytes(32).toString('base64');
+    console.warn(`[hass] generated the ESPHome encryption key; enter it in Home Assistant for the theater-panel device: ${key}`);
+    return key;
+  });
   if (changed) {
     try {
       mkdirSync(dirname(SETTINGS_FILE), { recursive: true });
@@ -250,7 +257,7 @@ function build(env) {
     trailers: env.TRAILERS_ENABLED !== 'false',
     trailerCount: Math.max(0, Math.min(5, Number(env.TRAILERS_COUNT ?? 2) || 0)),
     trailerSeconds: Math.max(30, Math.min(600, Number(env.TRAILERS_SECONDS ?? 150) || 150)),
-    trailerPackage: env.TRAILERS_PACKAGE || 'org.smarttube.stable',
+    trailerPackage: /^[\w.]+$/.test(env.TRAILERS_PACKAGE || '') ? env.TRAILERS_PACKAGE : 'org.smarttube.stable',   // goes into an adb command
     preshowMinutes: Math.max(0, Math.min(60, Number(env.PRESHOW_MINUTES ?? 10) || 0)),
     autoIntermissionMinutes: Math.max(0, Math.min(600, Number(env.AUTO_INTERMISSION_MINUTES ?? 120) || 0)),
     guestHours: Math.max(1, Math.min(24, Number(env.GUEST_HOURS ?? 6) || 6)),

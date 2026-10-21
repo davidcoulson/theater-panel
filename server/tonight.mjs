@@ -50,7 +50,8 @@ async function pickTrailers(feature, count) {
     if (out.length >= count) break;
     if (!it.tmdb || String(it.id) === String(feature.id)) continue;
     const key = await tmdb.trailer(it.tmdb).catch(() => null);
-    if (key) out.push({ id: it.id, tmdb: it.tmdb, title: it.title, year: it.year, poster: it.poster, key });
+    // The key ends up in an adb shell command on the projector, so only a YouTube id shape passes.
+    if (key && /^[\w-]{6,20}$/.test(key)) out.push({ id: it.id, tmdb: it.tmdb, title: it.title, year: it.year, poster: it.poster, key });
   }
   return out;
 }

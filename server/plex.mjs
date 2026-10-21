@@ -24,7 +24,10 @@ async function plex(path, params = {}, { method = 'GET', timeoutMs = 15000 } = {
   });
   // An item Plex no longer has is the caller's 404; anything else is Plex misbehaving.
   if (!res.ok) throw httpError(res.status === 404 ? 404 : 502, `Plex ${res.status} for ${path}`);
-  const text = await res.text();
+  // Read in chunks and capped, so a broken or hostile Plex cannot grow the heap without limit.
+  const chunks = []; let size = 0;
+  for await (const c of res.body || []) { if ((size += c.length) > 64 * 1024 * 1024) throw httpError(502, `Plex answer for ${path} is too large`); chunks.push(c); }
+  const text = Buffer.concat(chunks).toString();
   return text ? JSON.parse(text).MediaContainer : {};
 }
 

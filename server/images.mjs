@@ -15,6 +15,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { mkdir, readFile, writeFile, readdir, stat, unlink, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { lookup } from 'node:dns/promises';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { isIP } from 'node:net';
 import { config } from './config.mjs';
 
@@ -36,7 +38,9 @@ export function plexImage(path, w, h) {
   return `/img/plex/${w}x${h}?p=${encodeURIComponent(path)}`;
 }
 export function tmdbImage(file, size = 'w342') {
-  return file ? `/img/tmdb/${size}${file}` : null;
+  // The same shape the proxy serves; anything else from TMDB or Seerr is dropped before it can
+  // reach a client-side url('...') string.
+  return file && /^\/[\w-]+\.(?:jpg|png)$/.test(file) ? `/img/tmdb/${size}${file}` : null;
 }
 export function extImage(url) {
   if (!url) return null;
@@ -116,37 +120,57 @@ const isPrivate = (ip) => {
   const x = ip.toLowerCase();
   return x === '::' || x === '::1' || /^f[cd]/.test(x) || /^fe[89ab]/.test(x) || /^ff/.test(x);
 };
+// The addresses a URL may connect to: null when it may not, [] for Home Assistant's own host (any
+// address), else the public addresses the name resolves to. The connection is then pinned to those,
+// so a name that answers differently when fetched (DNS rebinding) cannot reach the LAN.
 async function allowed(url) {
-  let u; try { u = new URL(url); } catch { return false; }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  let u; try { u = new URL(url); } catch { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
   const host = u.hostname.replace(/^\[|\]$/g, '');
   const haHost = (() => { try { return new URL(config.ha.url).hostname; } catch { return null; } })();
-  if (haHost && host === haHost) return true;
+  if (haHost && host === haHost) return [];
   const addrs = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map((a) => a.address);
-  return addrs.length > 0 && !addrs.some(isPrivate);
+  return addrs.length > 0 && !addrs.some(isPrivate) ? addrs : null;
 }
 async function fetchChecked(url) {
   for (let hop = 0; hop < 4; hop++) {
-    if (!(await allowed(url))) throw Object.assign(new Error('destination not allowed'), { status: 403 });
-    const up = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
-    const next = up.status >= 300 && up.status < 400 && up.headers.get('location');
+    const addrs = await allowed(url);
+    if (!addrs) throw Object.assign(new Error('destination not allowed'), { status: 403 });
+    const up = await get(url, addrs);
+    const next = up.status >= 300 && up.status < 400 && up.headers.location;
     if (!next) return readImage(up);
     url = new URL(next, url).href;
   }
   throw Object.assign(new Error('too many redirects'), { status: 502 });
 }
 
-// The upstream image, refused unless it really is an image and of a sane size: an error page
-// answered with 200 must never be cached and served as a poster for a year.
-async function fetchImage(url) {
-  return readImage(await fetch(url, { signal: AbortSignal.timeout(15000) }));
+// One GET with the body read no further than MAX_BYTES, so a lying content-length or a stream that
+// never ends cannot fill memory. `addrs` pins the connection to addresses already checked.
+function get(url, addrs = []) {
+  const u = new URL(url);
+  const pinned = addrs.map((address) => ({ address, family: isIP(address) }));
+  const lookupPinned = (host, opts, cb) => (opts.all ? cb(null, pinned) : cb(null, pinned[0].address, pinned[0].family));
+  return new Promise((resolve, reject) => {
+    const req = (u.protocol === 'https:' ? httpsRequest : httpRequest)(u, { signal: AbortSignal.timeout(15000), ...(pinned.length ? { lookup: lookupPinned } : {}) }, (up) => {
+      const chunks = []; let size = 0;
+      up.on('data', (c) => { if ((size += c.length) > MAX_BYTES) req.destroy(Object.assign(new Error('too large'), { status: 502 })); else chunks.push(c); });
+      up.on('end', () => resolve({ status: up.statusCode, headers: up.headers, body: Buffer.concat(chunks) }));
+      up.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
+  });
 }
-async function readImage(up) {
-  if (!up.ok) throw Object.assign(new Error(`upstream ${up.status}`), { status: up.status === 404 ? 404 : 502 });
-  if (Number(up.headers.get('content-length')) > MAX_BYTES) throw Object.assign(new Error('too large'), { status: 502 });
-  const body = Buffer.from(await up.arrayBuffer());
-  if (body.length > MAX_BYTES || !sniff(body)) throw Object.assign(new Error('not an image'), { status: 502 });
-  return body;
+
+// The upstream image, refused unless it really is an image: an error page answered with 200 must
+// never be cached and served as a poster for a year.
+async function fetchImage(url) {
+  return readImage(await get(url));
+}
+function readImage(up) {
+  if (up.status < 200 || up.status >= 300) throw Object.assign(new Error(`upstream ${up.status}`), { status: up.status === 404 ? 404 : 502 });
+  if (!sniff(up.body)) throw Object.assign(new Error('not an image'), { status: 502 });
+  return up.body;
 }
 
 // Written under a temporary name and renamed into place, so a request arriving mid-write reads
