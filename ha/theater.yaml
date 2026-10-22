@@ -525,14 +525,31 @@ script:
       - action: media_player.turn_on
         target: { entity_id: "{{ apple_tv }}" }
 
+  # On this build the power key opens the vendor's power menu (Power Off, Sleep Timer, Screen Off,
+  # Restart) rather than standing by, and a key pressed while eye protection is up only clears
+  # that; KEYCODE_SLEEP does nothing (all seen 2026-10-22). So press power until the menu is up
+  # (cur.prj.inShutdownPage) and select its first row, Power Off: the platform's standby. That
+  # takes the Apple TV down over CEC (auto device off) and cuts the projector's network; the Apple
+  # TV's CEC wake brings it back.
   theater_projector_power_off:
     alias: "Theater: projector off"
     fields:
       projector: { description: "Projector ADB media_player (optional)" }
       apple_tv: { description: "Apple TV media_player" }
     sequence:
-      - action: media_player.turn_off
-        target: { entity_id: "{{ projector if projector else apple_tv }}" }
+      - if:
+          - condition: template
+            value_template: "{{ projector is defined and projector }}"
+        then:
+          - action: androidtv.adb_command
+            target: { entity_id: "{{ projector }}" }
+            data:
+              command: >-
+                for i in 1 2 3; do input keyevent 26; sleep 2;
+                [ "$(getprop cur.prj.inShutdownPage)" = true ] && { input keyevent 23; break; }; done
+        else:
+          - action: media_player.turn_off
+            target: { entity_id: "{{ apple_tv }}" }
 
   # The picture, input and picture mode go through the NexiGo Aurora plugin on the projector's
   # own Kiosk Satellite (github.com/davidcoulson/kiosk-satellite-nexigo-aurora): the plugin runs
@@ -836,9 +853,9 @@ automation:
   # The eye-protection body sensor cuts the laser when someone is in front of the lens, and only
   # the vendor's service puts it back. On 2026-10-21 it tripped at 14:15 and never cleared: the
   # projector sat awake, fans running, laser warm but dark, on the launcher all night. Nobody can
-  # be watching a dark wall, so after 25 minutes in eye protection put the picture out.
+  # be watching a dark wall, so after 25 minutes in eye protection stand the projector by.
   - id: theater_projector_eye_protection_standby
-    alias: "Theater: projector goes dark after 25 minutes in eye protection"
+    alias: "Theater: projector stands by after 25 minutes in eye protection"
     mode: single
     triggers:
       - trigger: state
@@ -852,16 +869,44 @@ automation:
         entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature
         below: 113
     actions:
-      # The ADB power key does not stand this projector by from the launcher (tried twice on
-      # 2026-10-22): it only clears eye protection, which relights the laser. So clear it, then
-      # cut the picture with the plugin's flagged recipe, which holds.
       - action: script.theater_projector_power_off
         data:
           projector: media_player.theater_projector
           apple_tv: media_player.home_theater
-      - wait_template: "{{ is_state('binary_sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_eye_protection', 'off') }}"
-        timeout: "00:00:30"
-      - action: script.theater_projector_light_off
+
+  # The plugin's stay-on guard turns off every way the projector stands by on its own (vendor
+  # sleep timer, no-signal shutdown, the source's CEC standby) so a paused film is never cut.
+  # These two are our own timer: idle on the launcher, or paused for an hour.
+  - id: theater_projector_launcher_idle_standby
+    alias: "Theater: projector stands by after 20 minutes on the launcher"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing
+        to: "Projectivy"
+        for: "00:20:00"
+    actions:
+      # shortcut: nothing in HA sees remote presses, so browsing the launcher for 20 minutes
+      # straight also stands it by; add a last-key sensor to the plugin if that ever bites.
+      - action: script.theater_projector_power_off
+        data:
+          projector: media_player.theater_projector
+          apple_tv: media_player.home_theater
+
+  - id: theater_paused_standby
+    alias: "Theater: projector stands by after an hour paused"
+    mode: single
+    triggers:
+      # The Apple TV only: the ADB entity says "paused" for the whole HDMI input.
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: "paused"
+        for: "01:00:00"
+    actions:
+      - action: script.theater_projector_power_off
+        data:
+          projector: media_player.theater_projector
+          apple_tv: media_player.home_theater
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
