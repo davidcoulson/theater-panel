@@ -894,14 +894,24 @@ automation:
           apple_tv: media_player.home_theater
 
   - id: theater_paused_standby
-    alias: "Theater: projector stands by after an hour paused"
+    alias: "Theater: projector stands by after an hour paused or idle, ten minutes asleep"
     mode: single
     triggers:
-      # The Apple TV only: the ADB entity says "paused" for the whole HDMI input.
+      # The Apple TV only: the ADB entity says "paused" for the whole HDMI input. "idle" is the
+      # home screen or the screensaver; "off" is the Apple TV asleep, which the plugin's stay-on
+      # guard turns into a dark, awake projector (2026-10-22: on HDMI 1 all day that way).
       - trigger: state
         entity_id: media_player.home_theater
-        to: "paused"
+        to: ["paused", "idle"]
         for: "01:00:00"
+      - trigger: state
+        entity_id: media_player.home_theater
+        to: "off"
+        for: "00:10:00"
+    conditions:
+      # Only while the projector is awake on the Apple TV's input: never cut the VM on HDMI 3.
+      - condition: template
+        value_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') is match('HDMI 1\\b') }}"
     actions:
       - action: script.theater_projector_power_off
         data:
