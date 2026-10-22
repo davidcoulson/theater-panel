@@ -539,7 +539,7 @@ script:
     sequence:
       - if:
           - condition: template
-            value_template: "{{ projector is defined and projector }}"
+            value_template: "{{ projector is defined }}"
         then:
           - action: androidtv.adb_command
             target: { entity_id: "{{ projector }}" }
