@@ -836,9 +836,9 @@ automation:
   # The eye-protection body sensor cuts the laser when someone is in front of the lens, and only
   # the vendor's service puts it back. On 2026-10-21 it tripped at 14:15 and never cleared: the
   # projector sat awake, fans running, laser warm but dark, on the launcher all night. Nobody can
-  # be watching a dark wall, so after 25 minutes in eye protection stand the projector by.
+  # be watching a dark wall, so after 25 minutes in eye protection put the picture out.
   - id: theater_projector_eye_protection_standby
-    alias: "Theater: projector stands by after 25 minutes in eye protection"
+    alias: "Theater: projector goes dark after 25 minutes in eye protection"
     mode: single
     triggers:
       - trigger: state
@@ -852,10 +852,16 @@ automation:
         entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature
         below: 113
     actions:
+      # The ADB power key does not stand this projector by from the launcher (tried twice on
+      # 2026-10-22): it only clears eye protection, which relights the laser. So clear it, then
+      # cut the picture with the plugin's flagged recipe, which holds.
       - action: script.theater_projector_power_off
         data:
           projector: media_player.theater_projector
           apple_tv: media_player.home_theater
+      - wait_template: "{{ is_state('binary_sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_eye_protection', 'off') }}"
+        timeout: "00:00:30"
+      - action: script.theater_projector_light_off
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
