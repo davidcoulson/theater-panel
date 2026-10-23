@@ -525,32 +525,22 @@ script:
       - action: media_player.turn_on
         target: { entity_id: "{{ apple_tv }}" }
 
-  # On this build the power key opens the vendor's power menu (Power Off, Sleep Timer, Screen Off,
-  # Restart) rather than standing by, and a key pressed while eye protection is up only clears
-  # that; KEYCODE_SLEEP does nothing (all seen 2026-10-22). So press power until the menu is up
-  # (cur.prj.inShutdownPage) and select its first row, Power Off: the platform's standby. That
-  # takes the Apple TV down over CEC (auto device off) and cuts the projector's network; the Apple
-  # TV's CEC wake brings it back.
+  # "Off" keeps the projector on the network around the clock (ADB, CEC and the plugin all need it):
+  # the picture goes dark through the plugin (laser and fans stop, Android stays awake) and the
+  # Apple TV is sent to sleep, which puts a CEC standby on the HDMI-1 input. The vendor's own
+  # power menu is not used: its Power Off row is a platform standby that drops the network and
+  # leaves the projector deaf to ADB until the Apple TV wakes it (2026-10-22). The VM on HDMI 3
+  # has no CEC path from here and is left alone.
   theater_projector_power_off:
     alias: "Theater: projector off"
     fields:
-      projector: { description: "Projector ADB media_player (optional)" }
+      projector: { description: "unused; kept for the callers" }
       apple_tv: { description: "Apple TV media_player" }
     sequence:
-      - if:
-          - condition: template
-            value_template: "{{ projector is defined }}"
-        then:
-          - action: androidtv.adb_command
-            target: { entity_id: "{{ projector }}" }
-            data:
-              command: >-
-                [ "$(getprop cur.prj.inShutdownPage)" = true ] && exit 0;
-                for i in 1 2 3; do input keyevent 26; sleep 2;
-                [ "$(getprop cur.prj.inShutdownPage)" = true ] && { input keyevent 23; break; }; done
-        else:
-          - action: media_player.turn_off
-            target: { entity_id: "{{ apple_tv }}" }
+      - action: script.theater_projector_light_off
+      - action: media_player.turn_off
+        target: { entity_id: "{{ apple_tv }}" }
+        continue_on_error: true
 
   # The picture, input and picture mode go through the NexiGo Aurora plugin on the projector's
   # own Kiosk Satellite (github.com/davidcoulson/kiosk-satellite-nexigo-aurora): the plugin runs
@@ -858,7 +848,8 @@ automation:
   # sleep timer, no-signal shutdown, the source's CEC standby) so a paused film is never cut.
   # This is our own timer. It looks every five minutes rather than arming on a state change, so
   # a reload, a failed attempt or a late input switch is retried, and it stands the projector by
-  # only when nobody can be watching:
+  # only when nobody can be watching (it darkens the picture and sleeps the Apple TV; the
+  # projector stays on the network):
   #   - eye protection up for 25 minutes with the laser cold (~95 °F; lit it runs 130 °F and up):
   #     on 2026-10-21 the flag stuck at 14:15 and the projector sat awake on a dark wall all night;
   #   - the launcher showing for 20 minutes with no key pressed in that time (Android's power
@@ -872,6 +863,10 @@ automation:
       - trigger: time_pattern
         minutes: "/5"
     conditions:
+      # Already dark: nothing to do (and no repeating every five minutes).
+      - condition: state
+        entity_id: switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture
+        state: "on"
       - condition: template
         value_template: >-
           {% set showing = states.sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing %}
@@ -910,8 +905,8 @@ automation:
         data:
           projector: media_player.theater_projector
           apple_tv: media_player.home_theater
-      # Standby drops the projector off the network within ten seconds (2026-10-22).
-      - wait_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') == 'unavailable' }}"
+      # The plugin reads the light state back from the projector within seconds.
+      - wait_template: "{{ is_state('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture', 'off') }}"
         timeout: "00:01:00"
       - if:
           - condition: template
@@ -919,11 +914,11 @@ automation:
         then:
           - action: notify.mobile_app_davids_iphone
             data:
-              title: "Projector would not stand by"
+              title: "Projector would not go dark"
               message: >-
-                The theater projector is still awake on
+                The theater projector is still showing
                 {{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') }}
-                after the idle watchdog pressed Power Off. It will try again in 30 minutes.
+                after the idle watchdog turned the picture off. It will try again in 30 minutes.
           # Single mode: this hold spaces the retries (and the alerts) out to half an hour.
           - delay: "00:30:00"
 
@@ -960,6 +955,13 @@ automation:
         to: unavailable
         for: "00:03:00"
         id: stuck
+      # HA's Apple TV entity can miss a whole sleep and wake (idle all evening on 2026-10-22), so
+      # the projector's own reconnecting is the surer sign that it is awake.
+      - trigger: state
+        entity_id: binary_sensor.aurora_pro_projector_connectivity
+        from: unavailable
+        to: "on"
+        id: woke
     conditions:
       - condition: state
         entity_id: media_player.theater_projector
