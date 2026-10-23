@@ -882,11 +882,12 @@ automation:
           {% else %}
             {% set showing_for = (now() - showing.last_changed).total_seconds() %}
             {% set atv_for = (now() - atv.last_changed).total_seconds() %}
+            {% set quiet_for = (now() - (states('sensor.theater_apple_tv_last_active') | as_datetime(atv.last_changed))).total_seconds() %}
             {{ (eye is not none and eye.state == 'on' and (now() - eye.last_changed).total_seconds() > 1500
                 and states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature') | float(999) < 113)
                or (showing.state == 'Projectivy' and showing_for > 1200)
                or (showing.state is match('HDMI 1( |$)') and showing_for > 600
-                   and ((atv.state in ['paused', 'idle'] and atv_for > 3600)
+                   and ((atv.state in ['paused', 'idle'] and quiet_for > 3600)
                         or (atv.state == 'off' and atv_for > 600))) }}
           {% endif %}
     actions:
@@ -909,6 +910,22 @@ automation:
         data:
           projector: media_player.theater_projector
           apple_tv: media_player.home_theater
+      # Standby drops the projector off the network within ten seconds (2026-10-22).
+      - wait_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') == 'unavailable' }}"
+        timeout: "00:01:00"
+      - if:
+          - condition: template
+            value_template: "{{ not wait.completed }}"
+        then:
+          - action: notify.mobile_app_davids_iphone
+            data:
+              title: "Projector would not stand by"
+              message: >-
+                The theater projector is still awake on
+                {{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') }}
+                after the idle watchdog pressed Power Off. It will try again in 30 minutes.
+          # Single mode: this hold spaces the retries (and the alerts) out to half an hour.
+          - delay: "00:30:00"
 
   # The Apple TV integration sometimes stops answering (pyatv loses its remote-control channel),
   # and then nothing can wake the projector. Reload it when the Apple TV has been unavailable for
@@ -1101,6 +1118,22 @@ automation:
           message: >-
             Unraid says the Windows VM is running, but its guest agent has not answered for
             three minutes. It may have hung; the panel's power menu can restart it.
+
+# When the Apple TV last went to or from anything but paused and idle, so the watchdog's hour
+# runs across a pause that turns into the screensaver (the entity's last_changed restarts it).
+template:
+  - triggers:
+      - trigger: state
+        entity_id: media_player.home_theater
+        not_from: ["paused", "idle"]
+      - trigger: state
+        entity_id: media_player.home_theater
+        not_to: ["paused", "idle"]
+    sensor:
+      - name: "Theater Apple TV last active"
+        unique_id: theater_apple_tv_last_active
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
 
 # The VM's frame-time graph sensor is a long string that changes every few seconds and is only
 # drawn live by the panel, so keep it out of the recorder and InfluxDB. Packages merge these
