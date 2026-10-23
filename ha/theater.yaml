@@ -545,6 +545,7 @@ script:
             target: { entity_id: "{{ projector }}" }
             data:
               command: >-
+                [ "$(getprop cur.prj.inShutdownPage)" = true ] && exit 0;
                 for i in 1 2 3; do input keyevent 26; sleep 2;
                 [ "$(getprop cur.prj.inShutdownPage)" = true ] && { input keyevent 23; break; }; done
         else:
@@ -757,17 +758,20 @@ automation:
         from: "off"
         to: "on"
     conditions:
-      - condition: state
-        entity_id: media_player.home_theater
-        state: "off"
       - condition: template
         value_template: "{{ state_attr('media_player.theater_projector', 'app_id') in [none, 'com.mediatek.wwtv.tvcenter'] }}"
       # Only on the Apple TV's input: another source (the Unraid VM on HDMI 3) is showing
       # something of its own (2026-10-01: Projectivy came up over the VM).
       - condition: template
-        value_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') is match('HDMI 1\\b') }}"
+        value_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') is match('HDMI 1( |$)') }}"
     actions:
-      - delay: "00:00:02"
+      # The picture coming on may be the Apple TV waking, which HA's entity reports up to a
+      # minute late (2026-10-22): give it ten seconds, and only then insist it is still asleep.
+      - wait_template: "{{ states('media_player.home_theater') != 'off' }}"
+        timeout: "00:00:10"
+      - condition: state
+        entity_id: media_player.home_theater
+        state: "off"
       - action: androidtv.adb_command
         target: { entity_id: media_player.theater_projector }
         data:
@@ -850,69 +854,57 @@ automation:
     actions:
       - action: script.theater_projector_light_off
 
-  # The eye-protection body sensor cuts the laser when someone is in front of the lens, and only
-  # the vendor's service puts it back. On 2026-10-21 it tripped at 14:15 and never cleared: the
-  # projector sat awake, fans running, laser warm but dark, on the launcher all night. Nobody can
-  # be watching a dark wall, so after 25 minutes in eye protection stand the projector by.
-  - id: theater_projector_eye_protection_standby
-    alias: "Theater: projector stands by after 25 minutes in eye protection"
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_eye_protection
-        to: "on"
-        for: "00:25:00"
-    conditions:
-      # Only with the laser really dark (~95 °F; lit it runs 130 °F and up): a stale flag while a
-      # film is showing must not turn the room off. An unavailable reading fails this too.
-      - condition: numeric_state
-        entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature
-        below: 113
-    actions:
-      - action: script.theater_projector_power_off
-        data:
-          projector: media_player.theater_projector
-          apple_tv: media_player.home_theater
-
   # The plugin's stay-on guard turns off every way the projector stands by on its own (vendor
   # sleep timer, no-signal shutdown, the source's CEC standby) so a paused film is never cut.
-  # These two are our own timer: idle on the launcher, or paused for an hour.
-  - id: theater_projector_launcher_idle_standby
-    alias: "Theater: projector stands by after 20 minutes on the launcher"
+  # This is our own timer. It looks every five minutes rather than arming on a state change, so
+  # a reload, a failed attempt or a late input switch is retried, and it stands the projector by
+  # only when nobody can be watching:
+  #   - eye protection up for 25 minutes with the laser cold (~95 °F; lit it runs 130 °F and up):
+  #     on 2026-10-21 the flag stuck at 14:15 and the projector sat awake on a dark wall all night;
+  #   - the launcher showing for 20 minutes with no key pressed in that time (Android's power
+  #     manager counts every remote key as user activity);
+  #   - the Apple TV's input showing for 10 minutes while the Apple TV is paused or idle (home
+  #     screen, screensaver) for an hour, or asleep for 10 minutes. Never the VM on HDMI 3.
+  - id: theater_projector_idle_standby
+    alias: "Theater: projector stands by when nobody can be watching"
     mode: single
     triggers:
-      - trigger: state
-        entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing
-        to: "Projectivy"
-        for: "00:20:00"
-    actions:
-      # shortcut: nothing in HA sees remote presses, so browsing the launcher for 20 minutes
-      # straight also stands it by; add a last-key sensor to the plugin if that ever bites.
-      - action: script.theater_projector_power_off
-        data:
-          projector: media_player.theater_projector
-          apple_tv: media_player.home_theater
-
-  - id: theater_paused_standby
-    alias: "Theater: projector stands by after an hour paused or idle, ten minutes asleep"
-    mode: single
-    triggers:
-      # The Apple TV only: the ADB entity says "paused" for the whole HDMI input. "idle" is the
-      # home screen or the screensaver; "off" is the Apple TV asleep, which the plugin's stay-on
-      # guard turns into a dark, awake projector (2026-10-22: on HDMI 1 all day that way).
-      - trigger: state
-        entity_id: media_player.home_theater
-        to: ["paused", "idle"]
-        for: "01:00:00"
-      - trigger: state
-        entity_id: media_player.home_theater
-        to: "off"
-        for: "00:10:00"
+      - trigger: time_pattern
+        minutes: "/5"
     conditions:
-      # Only while the projector is awake on the Apple TV's input: never cut the VM on HDMI 3.
       - condition: template
-        value_template: "{{ states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing') is match('HDMI 1\\b') }}"
+        value_template: >-
+          {% set showing = states.sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing %}
+          {% set atv = states.media_player.home_theater %}
+          {% set eye = states.binary_sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_eye_protection %}
+          {% if showing is none or showing.state in ['unavailable', 'unknown'] or atv is none %}
+            false
+          {% else %}
+            {% set showing_for = (now() - showing.last_changed).total_seconds() %}
+            {% set atv_for = (now() - atv.last_changed).total_seconds() %}
+            {{ (eye is not none and eye.state == 'on' and (now() - eye.last_changed).total_seconds() > 1500
+                and states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature') | float(999) < 113)
+               or (showing.state == 'Projectivy' and showing_for > 1200)
+               or (showing.state is match('HDMI 1( |$)') and showing_for > 600
+                   and ((atv.state in ['paused', 'idle'] and atv_for > 3600)
+                        or (atv.state == 'off' and atv_for > 600))) }}
+          {% endif %}
     actions:
+      - if:
+          - condition: state
+            entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing
+            state: "Projectivy"
+        then:
+          # Nothing in HA sees remote presses; ask Android when the last one was. No match
+          # (a changed dump, a failed read) parses as 0 ms ago and keeps the projector on.
+          - action: androidtv.adb_command
+            target: { entity_id: media_player.theater_projector }
+            data:
+              command: "dumpsys power | grep -o 'mLastUserActivityTime=.*'"
+          - condition: template
+            value_template: >-
+              {{ (state_attr('media_player.theater_projector', 'adb_response') | default('', true)
+                  | regex_findall('mLastUserActivityTime=\\d+ \\((\\d+) ms ago\\)') | first | default(0) | int(0)) > 1200000 }}
       - action: script.theater_projector_power_off
         data:
           projector: media_player.theater_projector
