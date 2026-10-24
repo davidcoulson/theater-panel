@@ -1,6 +1,6 @@
 # Theater panel. Plain Node on Alpine, like Strimmer: no build step, no native modules.
 # Pinned by digest for repeatable builds; Dependabot moves the pin as the tag is republished.
-FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a
+FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 LABEL org.opencontainers.image.source=https://github.com/davidcoulson/theater-panel
 
 WORKDIR /app
