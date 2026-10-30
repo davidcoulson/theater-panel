@@ -1021,4 +1021,3 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .hw-pumpkin { background-image: url(/assets/pumpkin-strip.png); animation: hw-frames .9s steps(6, end) infinite; width: 96px; height: 144px; }
 /* up in the header's empty stretch, clear of the controls */
 .hw-pumpkin-a { left: 1340px; top: -6px; }
-.hw-pumpkin-b { left: 1245px; top: 14px; width: 72px; height: 108px; animation-duration: 1.3s; animation-delay: -.4s; }
