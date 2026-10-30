@@ -1019,6 +1019,6 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 @keyframes hw-shamble { from { margin-left: 0; } to { margin-left: 220px; } }
 @keyframes hw-flyby { 0% { margin-left: -300px; opacity: 0; } 5%, 95% { opacity: .9; } 100% { margin-left: 1920px; opacity: 0; } }
 @keyframes hw-apparition { 0% { opacity: 0; } 20% { opacity: .8; } 70% { opacity: .8; } 100% { opacity: 0; } }
-.hw-pumpkin { background-image: url(/assets/pumpkin-strip.png); animation: hw-frames .9s steps(6, end) infinite; width: 96px; height: 144px; }
+/* the header pumpkin sits in the row of pills, ahead of the first one, so a new pill pushes it left instead of landing on it */
+html.a-halloween header.top .right::before { content: ''; flex: none; width: 96px; height: 144px; margin: -66px 0 -34px; background: url(/assets/pumpkin-strip.png) 0 0 / 600% 100% no-repeat; animation: hw-frames .9s steps(6, end) infinite; }
 /* up in the header's empty stretch, clear of the controls */
-.hw-pumpkin-a { left: 1340px; top: -6px; }
