@@ -15,6 +15,19 @@ export function Games() {
   const switcher = useEntity(g?.switcher?.entity);
   const switcherState = switcher?.state;
   const switchOptions = switcher?.attributes?.options || [];
+  const switcherDown = switcherState === 'unknown' || switcherState === 'unavailable';
+  // The Gaming PC button greys out while the PC is off: its HA power entity, else the Unraid VM's state.
+  const pcPower = useEntity(g?.pc?.power);
+  const pcSensor = useEntity(g?.pc?.state);
+  const [pcVm, setPcVm] = useState(null);
+  useEffect(() => {
+    if (!g?.pc?.vm || g.pc.power || g.pc.state) return undefined;
+    const read = () => get('/api/games/vm').then(setPcVm).catch(() => {});
+    const t = setInterval(read, 5000);
+    return () => clearInterval(t);
+  }, [g?.pc?.vm, g?.pc?.power, g?.pc?.state]);
+  const pcState = g?.pc?.state ? vmWord(pcSensor?.state) : g?.pc?.power ? (pcPower?.state === 'on' ? 'running' : 'shutoff') : (pcVm || g?.pc?.vm)?.state;
+  const pcDown = Boolean(pcState) && !['running', 'paused', 'shutdown', 'starting', 'restarting'].includes(pcState);
 
   if (err && !g) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><div class="empty" style="flex-grow:1">Couldn't load the games: ${err.message}. Trying again…</div></main>`;
   if (g && !g.configured) return html`<main class="view"><${Header} title="Games" kicker="Consoles and PC" /><${Setup} /></main>`;
@@ -49,7 +62,7 @@ export function Games() {
       ${g?.pc && html`<button type="button" class="chip" onClick=${() => go('stats')}><${Icon} name="chart" size=${20} />PC stats<${Icon} name="chev" size=${18} /></button>`}
     <//>
     <div class="game-sources" style=${`grid-template-columns:repeat(${Math.max(sources.length || 5, 1)}, minmax(0, 1fr))`}>
-      ${sources.map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} onClick=${() => pick(s)}>
+      ${sources.map((s) => html`<button type="button" class="game-src" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${s.via === 'switcher' ? switcherDown : s.via === 'projector' && pcDown} onClick=${() => pick(s)}>
         <${Icon} name=${s.icon?.includes(':') ? s.icon : ICONS[s.icon] || 'pad'} size=${44} color=${current === s.id ? 'var(--gold)' : 'var(--acc)'} w=${1.8} />
         <span class="n">${s.name}</span><span class="d">${s.via === 'switcher' ? 'HDMI switcher' : 'Gaming PC'}</span>
       </button>`)}
@@ -95,8 +108,11 @@ function GameLightsChip() {
 // Tapping the power button while the PC is on offers shut down, restart and force off; the last two
 // only while the house's admin is in the room (the admin room sensor on the settings page).
 const VM_WORDS = { running: 'Running', shutoff: 'Off', shutdown: 'Shutting down', paused: 'Paused', pmsuspended: 'Suspended', crashed: 'Crashed', missing: 'VM not found', unknown: 'Unreachable', starting: 'Starting', 'shutting down': 'Shutting down', restarting: 'Restarting' };
+// A VM state sensor (e.g. sensor.windows_11_state) reads "running" or "shut off"; the panel says "shutoff".
+const vmWord = (s) => (s ? String(s).toLowerCase().replace('shut off', 'shutoff') : 'unknown');
 function PcPanel({ pc }) {
   const power = useEntity(pc.power);
+  const sensor = useEntity(pc.state);
   const [vm, setVm] = useState(pc.vm);
   const [menu, setMenu] = useState(false);
   const adminRoom = useStore((s) => s.ui?.adminRoom);
@@ -113,7 +129,7 @@ function PcPanel({ pc }) {
     const t = setTimeout(() => setMenu(false), 10000);
     return () => clearTimeout(t);
   }, [menu]);
-  const state = pc.power ? (power ? (power.state === 'on' ? 'running' : 'shutoff') : 'unknown') : vm?.state;
+  const state = pc.state ? vmWord(sensor?.state) : pc.power ? (power ? (power.state === 'on' ? 'running' : 'shutoff') : 'unknown') : vm?.state;
   const on = ['running', 'paused', 'shutdown', 'starting', 'restarting'].includes(state);
   const busy = ['shutdown', 'starting', 'shutting down', 'restarting'].includes(state);
   const canPower = Boolean(pc.power || pc.vm);

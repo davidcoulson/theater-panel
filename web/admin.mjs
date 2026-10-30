@@ -188,7 +188,8 @@ function Settings({ page, signOut }) {
         <div class="card-head"><h2>${g}</h2>${TESTS[g] && html`<${Test} service=${TESTS[g]} draft=${draft} label=${TEST_LABELS[TESTS[g]]} />`}</div>
         ${data.fields.filter((f) => f.group === g).map((f) => html`<${Field} f=${f} value=${draft[f.key]} base=${data.values[f.key]} entities=${entities}
           cleared=${clear[f.key]} onClear=${(v) => setClear({ ...clear, [f.key]: v })} onChange=${(v) => set(f.key, v)} />`)}
-        ${g === 'Games' && html`<${GamesEditor} games=${games} source=${data.gamesSource} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />`}
+        ${g === 'Games' && html`<${GamesEditor} games=${games} source=${data.gamesSource} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />
+          <${PcEditor} games=${games} entities=${entities} onChange=${(v) => { setGames(v); setGamesDirty(true); }} />`}
       </section>`)}`}
     <div class=${`savebar ${dirty || status ? 'show' : ''}`}>
       <span class=${status ? (status.ok ? 'ok' : 'err') : 'muted'}>${status ? status.text : dirty ? `Unsaved changes on ${[...dirtyPages].map((id) => PAGES.find((p) => p.id === id).label).join(', ')}` : 'All changes saved'}</span>
@@ -448,6 +449,45 @@ function GamesEditor({ games, source, entities, onChange }) {
     </tbody></table>
     <button type="button" class="small" onClick=${() => put({ sources: [...g.sources, { name: '', via: 'switcher', icon: 'pad' }] })}>Add source</button>
     <small>Every source is on the projector card, in this order; untick Games to keep one off the Games screen. Switcher inputs are by number; their names come from the switcher's select in Home Assistant.</small>
+  </div>`;
+}
+
+// The gaming PC block of games.json. Only the keys shown here are edited; the rest (stats, hostCpus)
+// ride along untouched through the spread, and the server's cleanPc validates the lot on save.
+const SENSOR_KINDS = ['value', 'percent', 'temp'];
+function PcEditor({ games, entities, onChange }) {
+  const g = games || { switcher: {}, sources: [] };
+  const pc = g.pc;
+  const put = (patch) => onChange({ ...g, pc: { ...pc, ...patch } });
+  const sensors = pc?.sensors || [];
+  const setSensor = (i, patch) => put({ sensors: sensors.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
+  const move = (i, d) => { const n = [...sensors]; [n[i], n[i + d]] = [n[i + d], n[i]]; put({ sensors: n }); };
+  const [clients, setClients] = useState(() => Object.entries(pc?.streamClients || {}).map(([k, v]) => `${k} = ${v}`).join('\n'));
+  const parseClients = (t) => Object.fromEntries(t.split('\n').map((l) => l.split('=').map((x) => x.trim())).filter(([k, v]) => k && v));
+  if (!pc) return html`<div class="games"><h3>Gaming PC</h3>
+    <button type="button" class="small" onClick=${() => onChange({ ...g, pc: { name: 'Gaming PC' } })}>Add a gaming PC</button></div>`;
+  const ent = (key, label, domain, hint) => html`<label>${label}<input type="text" spellcheck="false" list=${`dl-pc-${domain}`} value=${pc[key] || ''} onInput=${(e) => put({ [key]: e.target.value || undefined })} />
+    <${EntityOptions} id=${`dl-pc-${domain}`} domain=${domain} entities=${entities} />${hint && html`<small>${hint}</small>`}</label>`;
+  return html`<div class="games">
+    <h3>Gaming PC</h3>
+    <div class="two">
+      <label>Name<input type="text" value=${pc.name || ''} onInput=${(e) => put({ name: e.target.value })} /></label>
+      ${ent('power', 'Power switch (switch entity)', 'switch')}
+      ${ent('state', 'VM state (sensor entity)', 'sensor', 'Wins over the power switch and the Unraid poll, e.g. sensor.windows_11_state.')}
+      ${ent('launchScript', 'Launch script (script entity)', 'script')}
+      <label>GPU name<input type="text" value=${pc.gpuName || ''} onInput=${(e) => put({ gpuName: e.target.value || undefined })} /></label>
+      <label>CPU name<input type="text" value=${pc.cpuName || ''} onInput=${(e) => put({ cpuName: e.target.value || undefined })} /></label>
+    </div>
+    <table class="grid"><thead><tr><th>Sensor</th><th>Label</th><th>Kind</th><th></th></tr></thead><tbody>
+      ${sensors.map((s, i) => html`<tr>
+        <td><input type="text" spellcheck="false" list="dl-pc-sensor" value=${s.entity || ''} onInput=${(e) => setSensor(i, { entity: e.target.value })} /></td>
+        <td><input type="text" value=${s.label || ''} onInput=${(e) => setSensor(i, { label: e.target.value })} /></td>
+        <td><select value=${s.kind || 'value'} onChange=${(e) => setSensor(i, { kind: e.target.value })}>${SENSOR_KINDS.map((k) => html`<option>${k}</option>`)}</select></td>
+        <td class="actions"><${RowActions} i=${i} n=${sensors.length} move=${move} remove=${() => put({ sensors: sensors.filter((_, k) => k !== i) })} /></td></tr>`)}
+    </tbody></table>
+    <button type="button" class="small" onClick=${() => put({ sensors: [...sensors, { entity: '', label: '', kind: 'value' }] })}>Add sensor</button>
+    <label>Stream clients (one "address = name" per line)<textarea rows="3" spellcheck="false" value=${clients} onInput=${(e) => { setClients(e.target.value); put({ streamClients: parseClients(e.target.value) }); }}></textarea></label>
+    <button type="button" class="link" onClick=${() => { const { pc: _, ...rest } = g; onChange(rest); }}>Remove the gaming PC</button>
   </div>`;
 }
 

@@ -56,7 +56,7 @@ function switcherOption(ha, g, src) {
 // Entities the Games screen shows live: the switcher's select, PC power and sensors.
 export async function gameEntities() {
   const g = await loadGames();
-  return [g?.switcher?.entity, g?.pc?.power, ...(g?.pc?.sensors || []).map((s) => s.entity), ...statEntities(g)].filter(Boolean);
+  return [g?.switcher?.entity, g?.pc?.power, g?.pc?.state, ...(g?.pc?.sensors || []).map((s) => s.entity), ...statEntities(g)].filter(Boolean);
 }
 
 // The Stats page's sensors: one entity per role, plus an optional list of per-core load sensors.
@@ -316,7 +316,7 @@ export async function gamesState() {
     // games: false keeps a source (the Apple TV) off the Games screen; it stays on the projector card.
     sources: (g.sources || []).map(({ id, name, icon, via, option, input, projectorInput, games }) => ({ id, name, icon, via, option, input, projectorInput, games: games !== false })),
     pc: g.pc ? {
-      name: g.pc.name || 'Gaming PC', power: g.pc.power || null, sensors: g.pc.sensors || [],
+      name: g.pc.name || 'Gaming PC', power: g.pc.power || null, state: g.pc.state || null, sensors: g.pc.sensors || [],
       canLaunch: Boolean(g.pc.launchScript),
       stats: g.pc.stats || null,
       hour: g.pc.stats ? [...hour] : null,

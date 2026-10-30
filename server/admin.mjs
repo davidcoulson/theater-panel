@@ -335,6 +335,7 @@ function cleanPc(pc) {
   };
   const out = { name: String(pc.name || 'Gaming PC').slice(0, 40) };
   if (pc.power) out.power = entity(pc.power, 'PC power entity');
+  if (pc.state) out.state = entity(pc.state, 'PC state entity');
   if (pc.launchScript) out.launchScript = entity(pc.launchScript, 'PC launch script');
   if (pc.sensors !== undefined) {
     if (!Array.isArray(pc.sensors)) throw httpError(400, 'pc.sensors must be a list');

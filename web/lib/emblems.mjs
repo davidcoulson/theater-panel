@@ -11,12 +11,13 @@ const O = { stroke: P.ink, 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'str
 const ART = {
   // jack-o'-lantern with a big grin; the eyes flicker like the candle inside
   halloween: html`
-    <path d="M30 13c-2-5 1-9 6-10-1 3-1 6 0 10z" fill=${P.green} ...${O} />
-    <ellipse cx="32" cy="38" rx="27" ry="22" fill=${P.orange} ...${O} />
-    <path d="M18 18c-4 6-4 34 0 40M46 18c4 6 4 34 0 40M32 16v44" fill="none" stroke=${P.ember} stroke-width="2.5" stroke-linecap="round" />
-    <g class="flame"><path d="M15 33l10-5 2 10zM49 33l-10-5-2 10z" fill=${P.sun} ...${O} /></g>
-    <path d="M16 44c4 8 10 11 16 11s12-3 16-11l-5 2-4-4-3 4-4-4-4 4-3-4-4 4z" fill=${P.sun} ...${O} />
-    <circle cx="24" cy="26" r="1.8" fill=${P.cream} opacity=".6" />`,
+    <path d="M29 14c-1-6 3-10 9-9-3 1-3 4-1 6l-2 4z" fill="#5C3B1E" ...${O} />
+    <ellipse cx="32" cy="38" rx="27" ry="22" fill="#8F3A10" ...${O} />
+    <path d="M18 18c-4 6-4 34 0 40M46 18c4 6 4 34 0 40M32 16v44" fill="none" stroke="#4A1A08" stroke-width="2.5" stroke-linecap="round" />
+    <ellipse cx="32" cy="48" rx="22" ry="10" fill="#1A0A04" opacity=".28" />
+    <g class="flame"><path d="M15 33l10-5 2 10zM49 33l-10-5-2 10z" fill="#FFA21F" ...${O} /></g>
+    <path d="M16 44c4 8 10 11 16 11s12-3 16-11l-5 2-4-4-3 4-4-4-4 4-3-4-4 4z" fill="#FFB52E" ...${O} />
+    <path d="M23 31l3-1M41 31l-3-1" stroke="#FFE08A" stroke-width="1.6" stroke-linecap="round" />`,
   // turkey with a fan tail that wags, big eyes, goofy grin
   thanksgiving: html`
     <g class="wag">${[-58, -29, 0, 29, 58].map((a, i) => html`<ellipse cx="32" cy="22" rx="7.5" ry="21" transform=${`rotate(${a} 32 42)`} fill=${[P.rust, P.gold, P.copper, P.gold, P.rust][i]} ...${O} />`)}</g>

@@ -992,3 +992,29 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .day-item .play { width: 66px; height: 66px; padding: 0; flex-shrink: 0; }
 .day-item .play:disabled { opacity: .5; }
 .day-item.gone { opacity: .4; filter: grayscale(1); }
+
+/* ---------- Halloween dressing (web/lib/halloween.mjs): fog, flickering pumpkins, a passing ghost ---------- */
+.hw { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.hw-fog { position: absolute; inset: 0; opacity: 0; animation: hw-fog 22s ease-in-out infinite; }
+.hw-fog-a { background: radial-gradient(ellipse 900px 420px at 20% 70%, rgba(150,165,160,.27), transparent 70%), radial-gradient(ellipse 700px 380px at 85% 30%, rgba(150,165,160,.16), transparent 70%); }
+.hw-fog-b { background: radial-gradient(ellipse 800px 400px at 65% 80%, rgba(90,200,110,.22), transparent 70%), radial-gradient(ellipse 600px 320px at 10% 25%, rgba(90,200,110,.14), transparent 70%); animation-duration: 29s; animation-delay: -9s; }
+.hw-fog-c { background: radial-gradient(ellipse 950px 450px at 45% 55%, rgba(135,75,200,.27), transparent 70%), radial-gradient(ellipse 650px 350px at 92% 85%, rgba(135,75,200,.19), transparent 70%); animation-duration: 36s; animation-delay: -18s; }
+.hw-fog-low { background: linear-gradient(to top, rgba(120,150,130,.35), rgba(120,150,130,.10) 18%, transparent 34%); opacity: 1; animation: hw-low 15s ease-in-out infinite; }
+@keyframes hw-fog { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes hw-low { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* six-frame strips, stepped through with background-position */
+.hw-ghost, .hw-pumpkin { position: absolute; width: 280px; height: 420px; background-repeat: no-repeat; background-size: 600% 100%; }
+@keyframes hw-frames { from { background-position: 0 0; } to { background-position: 120% 0; } }
+.hw-ghost { background-image: url(/assets/ghost-strip.png); opacity: 0; animation: hw-frames 1.8s steps(6, end) infinite, hw-apparition 9s linear forwards; }
+.hw-ghost.flip { direction: rtl; }
+.hw-zombie { background-image: url(/assets/zombie-strip.png); animation: hw-frames 1.6s steps(6, end) infinite, hw-apparition 9s linear forwards, hw-shamble 9s linear forwards; }
+.hw-skeleton { background-image: url(/assets/skeleton-strip.png); animation: hw-frames 1.2s steps(6, end) infinite, hw-apparition 9s linear forwards; }
+.hw-witch { left: 0 !important; background-image: url(/assets/witch-strip.png); animation: hw-frames .8s steps(6, end) infinite, hw-flyby 8s linear forwards; }
+@keyframes hw-shamble { from { margin-left: 0; } to { margin-left: 220px; } }
+@keyframes hw-flyby { 0% { margin-left: -300px; opacity: 0; } 5%, 95% { opacity: .9; } 100% { margin-left: 1920px; opacity: 0; } }
+@keyframes hw-apparition { 0% { opacity: 0; } 20% { opacity: .8; } 70% { opacity: .8; } 100% { opacity: 0; } }
+.hw-pumpkin { background-image: url(/assets/pumpkin-strip.png); animation: hw-frames .9s steps(6, end) infinite; width: 96px; height: 144px; }
+/* up in the header's empty stretch, clear of the controls */
+.hw-pumpkin-a { left: 1400px; top: -6px; }
+.hw-pumpkin-b { left: 1300px; top: 14px; width: 72px; height: 108px; animation-duration: 1.3s; animation-delay: -.4s; }

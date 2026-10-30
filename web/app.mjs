@@ -9,6 +9,7 @@ import { report, startLive, useStore, useEntity, clock, getState, setTheater, su
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
+import { HalloweenFx } from './lib/halloween.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
 import { Watch } from './views/watch.mjs';
@@ -494,7 +495,9 @@ function App() {
     return () => { a.pause(); };
   }, [sound?.at]);
 
-  const haunt = useHaunting(currentAccent()?.id === 'halloween');
+  const serverAccent = useStore((s) => s.ui?.accent?.id);   // subscribes, so the fx mount when the server's pick arrives
+  const halloween = accentOverride ? accentOverride === 'halloween' : serverAccent === 'halloween';
+  const haunt = useHaunting(halloween);
   const tweaks = useStore((s) => s.tweaks);
   const tonightOpen = useStore((s) => s.tonightOpen);
   const guestOpen = useStore((s) => s.guestOpen);
@@ -522,6 +525,7 @@ function App() {
     <${Guard} name="dog" quiet><${DogAtDoor} /><//>
     <${Guard} name="rate card" quiet><${RateCard} /><//>
     <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
+    ${halloween && html`<${Guard} name="halloween" quiet><${HalloweenFx} /><//>`}
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
