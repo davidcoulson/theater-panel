@@ -98,6 +98,9 @@ const ART = {
     <path d="M22 22l-4-3M42 22l4-3" stroke=${P.red} stroke-width="0" />`,
 };
 
-export const Emblem = ({ id, size = 64 }) => (ART[id]
+// the Halloween rail pumpkin is the same flickering sprite as the header pumpkins (web/lib/halloween.mjs)
+export const Emblem = ({ id, size = 64 }) => (id === 'halloween'
+  ? html`<div class="emb emb-sprite" style=${`width:${size}px;height:${size * 1.5}px;margin:${-size / 4}px 0`} aria-hidden="true"></div>`
+  : ART[id]
   ? html`<svg class=${`emb emb-${id}`} width=${size} height=${size} viewBox="0 0 64 64" aria-hidden="true">${ART[id]}</svg>`
   : null);

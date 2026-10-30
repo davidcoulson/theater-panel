@@ -110,6 +110,7 @@ html.a-fall { --gold: #C75E12; }
 @keyframes haunt { 0%, 100% { opacity: 0; } 5% { opacity: .62; } 9% { opacity: .05; } 15% { opacity: .5; } 20% { opacity: 0; } 44% { opacity: .38; } 49% { opacity: .02; } 55% { opacity: .3; } 60% { opacity: 0; } }
 
 .rail .glyph svg { overflow: visible; }
+.emb-sprite { background: url(/assets/pumpkin-strip.png) 0 0 / 600% 100% no-repeat; animation: hw-frames 1s steps(6, end) infinite; }
 .rail .glyph .emb { transform-box: fill-box; transform-origin: 50% 90%; }
 .rail .glyph .emb-halloween, .rail .glyph .emb-thanksgiving, .rail .glyph .emb-fall { animation: emb-wobble 9s ease-in-out infinite; }
 .rail .glyph .emb-christmas, .rail .glyph .emb-winter, .rail .glyph .emb-birthday { animation: emb-bob 4s ease-in-out infinite; }
