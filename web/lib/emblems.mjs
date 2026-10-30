@@ -100,7 +100,7 @@ const ART = {
 
 // the Halloween rail pumpkin is the same flickering sprite as the header pumpkins (web/lib/halloween.mjs)
 export const Emblem = ({ id, size = 64 }) => (id === 'halloween'
-  ? html`<div class="emb emb-sprite" style=${`width:${size}px;height:${size * 1.5}px;margin:${-size / 4}px 0`} aria-hidden="true"></div>`
+  ? html`<div class="emb emb-sprite" style=${`width:${size}px;height:${size * 1.5}px;margin:${-size / 4 + 20}px 0 ${-size / 4 - 20}px`} aria-hidden="true"></div>`
   : ART[id]
   ? html`<svg class=${`emb emb-${id}`} width=${size} height=${size} viewBox="0 0 64 64" aria-hidden="true">${ART[id]}</svg>`
   : null);
