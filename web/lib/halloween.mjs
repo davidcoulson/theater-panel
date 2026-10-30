@@ -33,6 +33,6 @@ export function HalloweenFx() {
   return html`<div class="hw" aria-hidden="true">
     <div class="hw-fog hw-fog-a"></div><div class="hw-fog hw-fog-b"></div><div class="hw-fog hw-fog-c"></div><div class="hw-fog hw-fog-low"></div>
     ${ghost && html`<div class=${`hw-ghost hw-${ghost.kind} ${ghost.flip ? 'flip' : ''}`} key=${ghost.at} style=${`left:${ghost.x}px;top:${ghost.y}px`}></div>`}
-    <div class="hw-pumpkin hw-pumpkin-a"></div><div class="hw-pumpkin hw-pumpkin-b"></div>
+    <div class="hw-pumpkin hw-pumpkin-a"></div>
   </div>`;
 }
