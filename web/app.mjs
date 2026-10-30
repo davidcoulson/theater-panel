@@ -97,7 +97,7 @@ subscribe(() => { const t = getState().ui?.theme; if (THEMES.includes(t) && t !=
 const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valentines', 'birthday', 'winter', 'spring', 'summer', 'fall'];
 // Idle glow and weather per accent, for a route override (the server sends these with its pick).
 const ACCENT_DEFS = {
-  halloween: { id: 'halloween', name: 'Halloween', glow: 'Halloween Eyes', weather: 'bats' },
+  halloween: { id: 'halloween', name: 'Halloween', glow: 'Halloween Eyes' },
   thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glow: 'Ember Ring', weather: 'leaves' },
   christmas: { id: 'christmas', name: 'Christmas', glow: 'Fairytwinkle', weather: 'xmas' },
   newyear: { id: 'newyear', name: 'New Year', glow: 'Fireworks Burst', weather: 'confetti' },
