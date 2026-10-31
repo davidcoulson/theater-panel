@@ -169,7 +169,7 @@ function Continue() {
     </div>
     <div class="body">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="eyebrow" style="white-space:nowrap">Continue watching</div>
+        <div class="eyebrow" style="white-space:nowrap">${live ? (live.state === 'paused' ? 'Paused' : 'Now playing') : 'Continue watching'}</div>
 
       </div>
       <div class="title">${it.title}</div>
@@ -183,11 +183,14 @@ function Continue() {
       ${rewind && html`<div class="rewind"><${Icon} name="moon" size=${18} color="var(--gold)" />${rewind}</div>`}
       <div style="display:flex;gap:12px">
         ${live
-          ? html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'play_pause' })}>${live.state === 'paused' ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>`
+          ? html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Back 10 seconds" onClick=${() => act({ action: 'transport', cmd: 'seek_rel', seconds: -10 })}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>
+            <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'play_pause' })}>${live.state === 'paused' ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>
+            <button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Forward 30 seconds" onClick=${() => act({ action: 'transport', cmd: 'seek_rel', seconds: 30 })}><${Icon} name="fwd" size=${28} color="#F4F0E8" /></button>
+            <button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Stop" onClick=${() => act({ action: 'transport', cmd: 'stop' })}><${Icon} name="x" size=${28} color="#F4F0E8" /></button>`
           : html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>`}
-        ${rewind && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Play the last two minutes again first" onClick=${() => play(it, true, { offset: Math.max(0, it.viewOffset - 120000) })}><${Icon} name="back" size=${24} color="#F4F0E8" />Recap</button>`}
-        ${it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Start over" title="Start over" onClick=${() => play(it, false)}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>`}
-        ${it.type === 'movie' && !it.viewOffset && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Plan the evening around it" onClick=${() => openTonight(it)}><${Icon} name="film" size=${24} color="#F4F0E8" />Tonight</button>`}
+        ${!live && rewind && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Play the last two minutes again first" onClick=${() => play(it, true, { offset: Math.max(0, it.viewOffset - 120000) })}><${Icon} name="back" size=${24} color="#F4F0E8" />Recap</button>`}
+        ${!live && it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Start over" title="Start over" onClick=${() => play(it, false)}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>`}
+        ${!live && it.type === 'movie' && !it.viewOffset && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Plan the evening around it" onClick=${() => openTonight(it)}><${Icon} name="film" size=${24} color="#F4F0E8" />Tonight</button>`}
       </div>
     </div>
     </div>
