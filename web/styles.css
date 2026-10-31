@@ -110,7 +110,7 @@ html.a-fall { --gold: #C75E12; }
 @keyframes haunt { 0%, 100% { opacity: 0; } 5% { opacity: .62; } 9% { opacity: .05; } 15% { opacity: .5; } 20% { opacity: 0; } 44% { opacity: .38; } 49% { opacity: .02; } 55% { opacity: .3; } 60% { opacity: 0; } }
 
 .rail .glyph svg { overflow: visible; }
-.emb-sprite { position: relative; background: url(/assets/pumpkin-strip.png) 0 0 / 600% 100% no-repeat; animation: hw-frames 1s steps(6, end) infinite; }
+.emb-sprite { position: relative; background: url(/assets/pumpkin-96-atlas.png) 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
 /* the strip's alpha is its brightness, so the dark ribs show the wood through; a dark body behind and a second copy on top make it solid */
 .emb-sprite::before { content: ''; position: absolute; left: 6%; right: 6%; top: 27%; bottom: 27%; border-radius: 50%; background: #2A1204; z-index: -1; }
 .emb-sprite::after { content: ''; position: absolute; inset: 0; background: inherit; animation: inherit; }
@@ -1008,19 +1008,19 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 @keyframes hw-low { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 
 /* six-frame strips, stepped through with background-position */
-.hw-ghost, .hw-pumpkin { position: absolute; width: 280px; height: 420px; background-repeat: no-repeat; background-size: 600% 100%; }
+.hw-ghost { position: absolute; width: 360px; height: 360px; background-repeat: no-repeat; background-size: 600% 100%; }
 @keyframes hw-frames { from { background-position: 0 0; } to { background-position: 120% 0; } }
-.hw-ghost { background-image: url(/assets/ghost-strip.png); opacity: 0; animation: hw-frames 1.8s steps(6, end) infinite, hw-apparition 9s linear forwards; }
+.hw-ghost { background-image: url(/assets/ghost-96-atlas.png); background-size: 1200% 800%; opacity: 0; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, hw-apparition 9s linear forwards; }
 .hw-ghost.flip { direction: rtl; }
-.hw-zombie { background-image: url(/assets/zombie-strip.png); animation: hw-frames 1.6s steps(6, end) infinite, hw-apparition 9s linear forwards, hw-shamble 9s linear forwards; }
-.hw-skeleton { height: 374px; background-image: url(/assets/skeleton-96-atlas.png); background-size: 1200% 800%; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, hw-apparition 9s linear forwards; }
+.hw-zombie { width: 280px; height: 420px; background-image: url(/assets/zombie-strip.png); animation: hw-frames 1.6s steps(6, end) infinite, hw-apparition 9s linear forwards, hw-shamble 9s linear forwards; }
+.hw-skeleton { width: 340px; height: 340px; background-image: url(/assets/skeleton-96-atlas.png); background-size: 1200% 800%; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, hw-apparition 9s linear forwards; }
 /* 96 frames in a 12 x 8 atlas at 12 fps: x steps through a row each second, y moves down a row each time x wraps (N/(N-1) of the sheet per axis) */
 @keyframes hw-dance-x { from { background-position-x: 0; } to { background-position-x: 109.0909%; } }
 @keyframes hw-dance-y { from { background-position-y: 0; } to { background-position-y: 114.2857%; } }
-.hw-witch { left: 0 !important; background-image: url(/assets/witch-strip.png); animation: hw-frames .8s steps(6, end) infinite, hw-flyby 8s linear forwards; }
+.hw-witch { left: 0 !important; width: 440px; height: 440px; background-image: url(/assets/witch-96-atlas.png); background-size: 1200% 800%; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, hw-flyby 8s linear forwards; }
 @keyframes hw-shamble { from { margin-left: 0; } to { margin-left: 220px; } }
 @keyframes hw-flyby { 0% { margin-left: -300px; opacity: 0; } 5%, 95% { opacity: .9; } 100% { margin-left: 1920px; opacity: 0; } }
 @keyframes hw-apparition { 0% { opacity: 0; } 20% { opacity: .8; } 70% { opacity: .8; } 100% { opacity: 0; } }
 /* the header pumpkin sits in the row of pills, ahead of the first one, so a new pill pushes it left instead of landing on it */
-html.a-halloween header.top .right::before { content: ''; flex: none; width: 96px; height: 144px; margin: -66px 0 -34px; background: url(/assets/pumpkin-strip.png) 0 0 / 600% 100% no-repeat; animation: hw-frames .9s steps(6, end) infinite; }
+html.a-halloween header.top .right::before { content: ''; flex: none; width: 120px; height: 120px; margin: -32px -16px -44px; background: url(/assets/pumpkin-96-atlas.png) 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
 /* up in the header's empty stretch, clear of the controls */
