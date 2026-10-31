@@ -103,6 +103,22 @@ let pollTimer = null;
 // ran to the end - nobody wants to rate something they gave up on after ten minutes. Everyone
 // on the sofa can have a say: the card stays up for a while and Plex gets the average.
 let playing = null;
+// A transport press shows at once and is held until Plex catches up (the client only reports
+// every few seconds); meanwhile Plex is polled every second.
+let want = null, fastUntil = 0, polledAt = 0;
+function nudge(cmd) {
+  const cur = sessions[0];
+  const state = cmd === 'pause' ? 'paused' : cmd === 'play' ? 'playing' : cur?.state === 'playing' ? 'paused' : 'playing';
+  fastUntil = Date.now() + 15000;
+  if (cur) {
+    // Pausing freezes the film where it is now, not where the last poll saw it.
+    const viewOffset = cur.state === 'playing' ? cur.viewOffset + (Date.now() - polledAt) : cur.viewOffset;
+    want = { state, until: Date.now() + 8000 };
+    sessions = [{ ...cur, state, viewOffset }, ...sessions.slice(1)];
+    broadcast('sessions', sessions);
+  }
+  setTimeout(pollSessions, 700).unref?.();
+}
 let verdict = null;
 const WATCHED_ENOUGH = 0.8;
 const ASK_FOR = 20 * 60e3;        // how long the card waits for the room's verdict
@@ -113,7 +129,12 @@ async function pollSessions() {
     try {
       // One call to Plex, read two ways: the theater's own session, and everything on the server.
       const { sessions: all, streams: everything } = await plex.activity();
-      const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName || s.product === config.plexPlayerName) : all;
+      let mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName || s.product === config.plexPlayerName) : all;
+      polledAt = Date.now();
+      if (want) {
+        if (mine[0]?.state === want.state || Date.now() > want.until) want = null;
+        else if (mine[0]) mine = [{ ...mine[0], state: want.state, viewOffset: sessions[0]?.viewOffset ?? mine[0].viewOffset }, ...mine.slice(1)];
+      }
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
       tonight.observe(mine).catch((e) => console.warn('[tonight]', e.message));
       if (mine.length) playing = mine[0];
@@ -130,10 +151,10 @@ async function pollSessions() {
       if (verdict && Date.now() - verdict.at > ASK_FOR) { verdict = null; broadcast('rate', { id: null }); }
       if (JSON.stringify(everything) !== JSON.stringify(streams)) { streams = everything; broadcast('streams', streams); }
       hass.sessions(sessions, streams);
-      if (mine.length) next = 5000;
+      if (mine.length) next = Date.now() < fastUntil ? 1000 : 5000;
     } catch (e) { /* Plex unreachable: keep the last known state */ }
     const tv = ha.states[config.entities.appleTv]?.state;
-    if (tv === 'playing' || tv === 'paused') next = 5000;
+    if (tv === 'playing' || tv === 'paused') next = Math.min(next, 5000);
   }
   pollTimer = setTimeout(pollSessions, next);
 }
@@ -569,6 +590,7 @@ post(/^\/api\/navigate$/, (m, q, body) => {
 
 post(/^\/api\/action$/, async (m, q, body) => {
   const r = await runAction(ha, body);
+  if (body.action === 'transport' && ['play_pause', 'play', 'pause'].includes(body.cmd)) nudge(body.cmd);
   // A film is on its way (after the pre-roll, and the projector waking): look for its Plex
   // session sooner than the idle 30 s poll would, so Showtime comes up with the film.
   if (body.action === 'play') for (const s of [8, 20, 35, 50]) setTimeout(pollSessions, s * 1000).unref?.();
