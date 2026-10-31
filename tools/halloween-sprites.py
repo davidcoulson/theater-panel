@@ -2,7 +2,8 @@
 """Slice a 3x2 sprite sheet (frames on pure black) into a horizontal strip with real alpha, so the
 panel needs no blend modes: alpha = brightness, colour un-premultiplied.
 usage: [GRID=4x3] halloween-sprites.py <sheet.png[,sheet2.png...]> <out-strip.png> [frame-width] [align]
-GRID is columns x rows per sheet (default 3x2); several sheets are joined in order into one strip
+GRID is columns x rows per sheet (default 3x2); several sheets are joined in order into one strip;
+ATLAS=<n> lays the frames out n per row instead (a long strip would pass the GPU's 8192px texture limit)
 align pins every frame's solid body to frame 0's bottom and centre, for things that must not bounce (the pumpkin)"""
 import os, sys
 from PIL import Image, ImageChops
@@ -23,7 +24,8 @@ for path in src.split(','):
     for i in range(cols_n * rows_n):
         cells.append(sheet.crop(((i % cols_n) * cw, (i // cols_n) * ch, (i % cols_n + 1) * cw, (i // cols_n + 1) * ch)))
 fh = round(fw * cells[0].height / cells[0].width)
-strip = Image.new('RGBA', (fw * len(cells), fh))
+per = int(os.environ.get('ATLAS', len(cells)))
+strip = Image.new('RGBA', (fw * per, fh * -(-len(cells) // per)))
 ref = None
 for i, cell in enumerate(cells):
     cell = cell.resize((fw, fh), Image.LANCZOS)
@@ -42,6 +44,6 @@ for i, cell in enumerate(cells):
         here = ((cols[0] + cols[-1]) // 2, rows[-1])
         ref = ref or here
         dx, dy = ref[0] - here[0], ref[1] - here[1]
-    strip.paste(frame, (i * fw + dx, dy))
+    strip.paste(frame, ((i % per) * fw + dx, (i // per) * fh + dy))
 strip.save(out, optimize=True)
 print(out, strip.size, len(cells), 'frames')

@@ -1013,8 +1013,10 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .hw-ghost { background-image: url(/assets/ghost-strip.png); opacity: 0; animation: hw-frames 1.8s steps(6, end) infinite, hw-apparition 9s linear forwards; }
 .hw-ghost.flip { direction: rtl; }
 .hw-zombie { background-image: url(/assets/zombie-strip.png); animation: hw-frames 1.6s steps(6, end) infinite, hw-apparition 9s linear forwards, hw-shamble 9s linear forwards; }
-.hw-skeleton { height: 374px; background-image: url(/assets/skeleton-dance-strip.png); background-size: 3600% 100%; animation: hw-dance 6s steps(36, end) infinite, hw-apparition 9s linear forwards; }
-@keyframes hw-dance { from { background-position: 0 0; } to { background-position: 102.8571% 0; } }   /* N/(N-1) of the strip: 36 frames at 6 fps */
+.hw-skeleton { height: 374px; background-image: url(/assets/skeleton-96-atlas.png); background-size: 1200% 800%; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, hw-apparition 9s linear forwards; }
+/* 96 frames in a 12 x 8 atlas at 12 fps: x steps through a row each second, y moves down a row each time x wraps (N/(N-1) of the sheet per axis) */
+@keyframes hw-dance-x { from { background-position-x: 0; } to { background-position-x: 109.0909%; } }
+@keyframes hw-dance-y { from { background-position-y: 0; } to { background-position-y: 114.2857%; } }
 .hw-witch { left: 0 !important; background-image: url(/assets/witch-strip.png); animation: hw-frames .8s steps(6, end) infinite, hw-flyby 8s linear forwards; }
 @keyframes hw-shamble { from { margin-left: 0; } to { margin-left: 220px; } }
 @keyframes hw-flyby { 0% { margin-left: -300px; opacity: 0; } 5%, 95% { opacity: .9; } 100% { margin-left: 1920px; opacity: 0; } }
