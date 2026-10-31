@@ -1043,10 +1043,9 @@ automation:
                 data: { option: Movie time }
           - conditions: { condition: trigger, id: paused }
             sequence:
+              # Lights only: the Intermission scene is what puts the snack-bar screen on the panel,
+              # and a plain pause should not do that. The Intermission button still does.
               - action: script.theater_lights_intermission
-              - action: input_select.select_option
-                target: { entity_id: input_select.theater_scene }
-                data: { option: Intermission }
           - conditions: { condition: trigger, id: stopped }
             sequence:
               # Lights only: the music player is left alone (see theater_lights_bright).
