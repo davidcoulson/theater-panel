@@ -211,7 +211,7 @@ function Scenes() {
   const active = map[scene];
   return html`<section class="scenes tx-maple" aria-label="Scenes">
     <div class="grid">
-      ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${() => act({ action: 'scene', name: s.name })}>
+      ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${() => { act({ action: 'scene', name: s.name }); if (s.name === 'intermission') go('intermission', { auto: true }); }}>
         <${Icon} name=${s.icon} size=${30} color=${s.name === active ? 'var(--gold)' : 'var(--acc)'} />
         <span><span class="n">${s.label}</span><br /><span class="d">${s.desc}</span></span>
       </button>`)}

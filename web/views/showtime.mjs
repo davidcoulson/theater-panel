@@ -93,7 +93,7 @@ export function Showtime() {
         </div>
       </div>
       <div style="display:flex;gap:28px">
-        <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => act({ action: 'scene', name: 'intermission' })}>
+        <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => { act({ action: 'scene', name: 'intermission' }); go('intermission', { auto: true }); }}>
           <span class="big"><${Icon} name="cup" size=${40} w=${1.8} />Intermission</span><span class="s">Pause · lights 30%</span></button>
         <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => act({ action: 'scene', name: 'lights_up' })}>
           <span class="big"><${Icon} name="sun" size=${40} w=${1.8} />Lights up</span><span class="s">End show</span></button>
