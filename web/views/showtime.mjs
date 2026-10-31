@@ -19,6 +19,7 @@ export function Showtime() {
   const [, tick] = useState(0);
   const [awake, setAwake] = useState(true);
   const [muted, setMuted] = useState(false);
+  const [sure, setSure] = useState(false);   // Stop needs a second tap within 2.5 s
   const [sleepOpen, setSleepOpen] = useState(route.params.sleep === '1');
   const sleep = useStore((s) => s.sleep);
   // The soundbar, once there is one: its level under the volume buttons, and Late night.
@@ -76,7 +77,7 @@ export function Showtime() {
       <div style="flex-grow:1;display:flex;gap:28px;min-height:0">
         <div style="width:220px;display:flex;flex-direction:column;gap:20px">
           <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume up" disabled=${sb && Number(sbVolume?.state) >= 100} onClick=${() => t('vol_up')}><${Icon} name="volp" size=${48} w=${1.8} /></button>
-          <button type="button" class="dbtn" style="height:110px" aria-label="Mute" aria-pressed=${muted ? 'true' : 'false'} onClick=${() => { setMuted(!muted); t('mute', { muted: !muted }); }}><${Icon} name="mute" size=${40} w=${1.8} /><span class="s">${muted ? 'Unmute' : 'Mute'}</span></button>
+          <button type="button" class="dbtn" style="height:110px" aria-label="Mute" aria-pressed=${muted ? 'true' : 'false'} onClick=${async () => { setMuted(!muted); if (!(await t('mute', { muted: !muted }))) setMuted(muted); }}><${Icon} name="mute" size=${40} w=${1.8} /><span class="s">${muted ? 'Unmute' : 'Mute'}</span></button>
           <button type="button" class="dbtn" style="flex-grow:1" aria-label="Volume down" disabled=${sb && sbVolume && Number(sbVolume.state) <= 0} onClick=${() => t('vol_down')}><${Icon} name="volm" size=${48} w=${1.8} /></button>
           ${sb && html`<div class="sb-level" title="Soundbar volume"><i style=${`width:${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? Number(sbVolume.state) : 0}%`}></i><span class="mono">${sbVolume && !['unknown', 'unavailable'].includes(sbVolume.state) ? sbVolume.state : '–'}</span></div>
           <button type="button" class="dbtn" style="height:90px" aria-pressed=${lateNight ? 'true' : 'false'} onClick=${() => act({ action: 'soundbar', cmd: 'late_night', on: !lateNight })}><${Icon} name="moon" size=${32} w=${1.8} /><span class="s">Late night</span></button>`}
@@ -89,11 +90,11 @@ export function Showtime() {
         </div>
         <div style="width:220px;display:flex;flex-direction:column;gap:20px">
           <button type="button" class="dbtn" style="flex-grow:1" onClick=${() => act({ action: 'aisle_glow' })}><${Icon} name="bulb" size=${48} w=${1.8} /><span class="s">Aisle glow</span></button>
-          <button type="button" class="dbtn" style="flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'stop' })}><${Icon} name="x" size=${48} w=${1.8} /><span class="s">Stop</span></button>
+          <button type="button" class="dbtn" style="flex-grow:1" aria-pressed=${sure ? 'true' : 'false'} onClick=${() => { if (!sure) { setSure(true); setTimeout(() => setSure(false), 2500); return; } setSure(false); act({ action: 'transport', cmd: 'stop' }); }}><${Icon} name="x" size=${48} w=${1.8} /><span class="s">${sure ? 'Tap to stop' : 'Stop'}</span></button>
         </div>
       </div>
       <div style="display:flex;gap:28px">
-        <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => { act({ action: 'scene', name: 'intermission' }); go('intermission', { auto: true }); }}>
+        <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${async () => { if (await act({ action: 'scene', name: 'intermission' })) go('intermission', { auto: true }); }}>
           <span class="big"><${Icon} name="cup" size=${40} w=${1.8} />Intermission</span><span class="s">Pause · lights 30%</span></button>
         <button type="button" class="dbtn" style="flex-grow:1;height:150px" onClick=${() => act({ action: 'scene', name: 'lights_up' })}>
           <span class="big"><${Icon} name="sun" size=${40} w=${1.8} />Lights up</span><span class="s">End show</span></button>

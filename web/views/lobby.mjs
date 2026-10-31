@@ -117,12 +117,13 @@ function useArrivals() {
 }
 
 function Continue() {
-  const [deck] = useLoad(() => get('/api/plex/ondeck?size=8'), []);
+  const [deck, deckErr, retry] = useLoad(() => get('/api/plex/ondeck?size=8'), []);
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState(0);
   const sessions = useStore((s) => s.sessions);
   const swipe = useRef(null);
   const swallowUntil = useRef(0);
+  if (!deck && deckErr) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center">Plex isn't answering, trying again<button type="button" class="btn ghost" onClick=${retry}>Retry now</button></div></section>`;
   if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
   if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   const it = deck[i % deck.length];
@@ -211,7 +212,7 @@ function Scenes() {
   const active = map[scene];
   return html`<section class="scenes tx-maple" aria-label="Scenes">
     <div class="grid">
-      ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${() => { act({ action: 'scene', name: s.name }); if (s.name === 'intermission') go('intermission', { auto: true }); }}>
+      ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${async () => { const ok = await act({ action: 'scene', name: s.name }); if (ok && s.name === 'intermission') go('intermission', { auto: true }); }}>
         <${Icon} name=${s.icon} size=${30} color=${s.name === active ? 'var(--gold)' : 'var(--acc)'} />
         <span><span class="n">${s.label}</span><br /><span class="d">${s.desc}</span></span>
       </button>`)}

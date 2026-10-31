@@ -23,10 +23,9 @@ export function Intermission() {
 
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
   const ss = String(left % 60).padStart(2, '0');
-  const back = () => {
-    act({ action: 'transport', cmd: 'play' });
-    act({ action: 'scene', name: 'movie_time' });
-    go('showtime');
+  const back = async () => {
+    const [played, lit] = await Promise.all([act({ action: 'transport', cmd: 'play' }), act({ action: 'scene', name: 'movie_time' })]);
+    if (played || lit) go('showtime');   // a failure has already toasted; stay put so it can be tried again
   };
 
   return html`<div class="lobby-screen">

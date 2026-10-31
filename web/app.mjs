@@ -423,6 +423,8 @@ function App() {
   // The Plex session first (Plezy on the projector), the Apple TV otherwise; see playbackState.
   const tvState = useStore((s) => playbackState(s));
   const toast = useStore((s) => s.toast);
+  const down = useStore((s) => (s.connected === false ? 'Server offline' : s.connected && !s.haConnected ? (s.haConfigured ? 'Home Assistant is offline: the room will not respond' : '') : ''));
+  const banner = down && html`<div class="outage" role="alert">${down}</div>`;
 
   // Playback drives the screen: start playing -> Showtime; stop -> Lobby. If someone leaves
   // Showtime while a movie plays, return there after 90 s without a touch.
@@ -512,6 +514,7 @@ function App() {
     <${Guard} name="dog" quiet><${DogAtDoor} /><//>
     <${Guard} name="rate card" quiet><${RateCard} /><//>
     <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
+    ${banner}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}`;
   return html`<div class="app tx-plaster">
     <${Rail} current=${r.name} />
@@ -527,6 +530,7 @@ function App() {
     <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
     ${halloween && html`<${Guard} name="halloween" quiet><${HalloweenFx} /><//>`}
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
+    ${banner}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
   </div>`;
 }
