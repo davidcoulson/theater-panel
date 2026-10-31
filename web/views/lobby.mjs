@@ -120,16 +120,20 @@ function Continue() {
   const [deck] = useLoad(() => get('/api/plex/ondeck?size=8'), []);
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState(0);
+  const sessions = useStore((s) => s.sessions);
   const swipe = useRef(null);
   const swallowUntil = useRef(0);
   if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
   if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   const it = deck[i % deck.length];
-  const pct = it.duration ? Math.round((it.viewOffset / it.duration) * 100) : 0;
+  // When the theater is already playing this title the card follows the live session, not the deck.
+  const live = sessions?.find((x) => String(x.id) === String(it.id));
+  const pos = live?.viewOffset ?? it.viewOffset;
+  const pct = it.duration ? Math.round((pos / it.duration) * 100) : 0;
   // Coming back after days away: when it was, how far in, and who was watching.
   const rewind = it.viewOffset > 0 && it.lastViewedAt && Date.now() - it.lastViewedAt > 36 * 3600e3
     ? `Last time ${ago(it.lastViewedAt)} · ${runtime(it.viewOffset)} in${it.who ? ` · with ${it.who}` : ''}` : '';
-  const left = (it.duration || 0) - (it.viewOffset || 0);
+  const left = (it.duration || 0) - (pos || 0);
   const name = it.showTitle || it.title;
   const n = deck.length;
   const at = i % n;
@@ -178,7 +182,9 @@ function Continue() {
       </div>
       ${rewind && html`<div class="rewind"><${Icon} name="moon" size=${18} color="var(--gold)" />${rewind}</div>`}
       <div style="display:flex;gap:12px">
-        <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>
+        ${live
+          ? html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'play_pause' })}>${live.state === 'paused' ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>`
+          : html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>`}
         ${rewind && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Play the last two minutes again first" onClick=${() => play(it, true, { offset: Math.max(0, it.viewOffset - 120000) })}><${Icon} name="back" size=${24} color="#F4F0E8" />Recap</button>`}
         ${it.viewOffset > 0 && html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Start over" title="Start over" onClick=${() => play(it, false)}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>`}
         ${it.type === 'movie' && !it.viewOffset && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Plan the evening around it" onClick=${() => openTonight(it)}><${Icon} name="film" size=${24} color="#F4F0E8" />Tonight</button>`}
