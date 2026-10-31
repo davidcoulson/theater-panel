@@ -3,10 +3,10 @@
 panel needs no blend modes: alpha = brightness, colour un-premultiplied.
 usage: [GRID=4x3] halloween-sprites.py <sheet.png[,sheet2.png...]> <out-strip.png> [frame-width] [align]
 GRID is columns x rows per sheet (default 3x2); several sheets are joined in order into one strip;
-ATLAS=<n> lays the frames out n per row instead (a long strip would pass the GPU's 8192px texture limit)
+FILL=1 plugs interior holes; ALPHA_GAIN=<x> multiplies the alpha curve; ATLAS=<n> lays the frames out n per row instead (a long strip would pass the GPU's 8192px texture limit)
 align pins every frame's solid body to frame 0's bottom and centre, for things that must not bounce (the pumpkin)"""
 import os, sys
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 def unpremultiply(p, a):
     return (*(min(255, c * 255 // a) for c in p), a) if a else (0, 0, 0, 0)
@@ -14,6 +14,9 @@ def unpremultiply(p, a):
 
 src, out = sys.argv[1], sys.argv[2]
 fw = int(sys.argv[3]) if len(sys.argv) > 3 else 280
+LO = int(os.environ.get('ALPHA_LO', 10))
+GAIN = float(os.environ.get('ALPHA_GAIN', 1))  # >1 for art that is dark on black (the zombie): more opaque, colours darken to match
+FILL = os.environ.get('FILL')  # set for the zombie
 align = len(sys.argv) > 4 and sys.argv[4] == 'align'
 cols_n, rows_n = map(int, os.environ.get('GRID', '3x2').split('x'))
 cells = []
@@ -30,8 +33,12 @@ ref = None
 for i, cell in enumerate(cells):
     cell = cell.resize((fw, fh), Image.LANCZOS)
     r, g, b = cell.split()
-    alpha = ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: max(0, min(255, round((v - 10) * 255 / 245))))
-    out_px = [unpremultiply(p, a) for p, a in zip(cell.getdata(), alpha.getdata())]
+    alpha = ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: max(0, min(255, round((v - LO) * 255 * GAIN / 245))))
+    if FILL:  # dark clothing leaves see-through patches inside the body: fill every hole the outside cannot reach
+        m = alpha.point(lambda v: 255 if v > 40 else 0).filter(ImageFilter.MaxFilter(5)); m.putpixel((0, 0), 0)
+        ImageDraw.floodfill(m, (0, 0), 128)
+        alpha = ImageChops.lighter(alpha, m.point(lambda v: 255 if v == 0 else 0))
+    out_px = [(*p, a) if GAIN != 1 else unpremultiply(p, a) for p, a in zip(cell.getdata(), alpha.getdata())]
     frame = Image.new('RGBA', (fw, fh)); frame.putdata(out_px)
     dx = dy = 0
     if align:
