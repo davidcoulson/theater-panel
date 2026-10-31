@@ -429,7 +429,7 @@ script:
     fields:
       projector: { description: "Projector ADB media_player" }
       apple_tv: { description: "Apple TV media_player (wakes the projector over HDMI-CEC)" }
-      package: { example: com.github.wunax.strimr }
+      package: { example: com.edde746.plezy }
       uri: { example: "plezy://play?content_id=plezy_<machineIdentifier>_358614" }
     sequence:
       - if:
