@@ -219,7 +219,10 @@ export async function runAction(ha, body) {
 const ACTIVE = ['playing', 'paused', 'buffering'];
 export function transportTarget(ha) {
   const e = config.entities;
-  if (ACTIVE.includes(ha.states[e.appleTv]?.state)) return 'appletv';
+  const atv = ha.states[e.appleTv]?.state;
+  if (ACTIVE.includes(atv)) return 'appletv';
+  // Third-party Plex clients (Strimr) play without the Apple TV reporting it: awake is enough.
+  if (config.playTarget === 'appletv' && atv && !['off', 'unavailable', 'unknown'].includes(atv)) return 'appletv';
   const proj = ha.states[e.projector]?.state;
   if (e.projector && proj && !['unavailable', 'unknown', 'off'].includes(proj)) return 'projector';
   return 'appletv';
