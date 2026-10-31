@@ -113,7 +113,7 @@ async function pollSessions() {
     try {
       // One call to Plex, read two ways: the theater's own session, and everything on the server.
       const { sessions: all, streams: everything } = await plex.activity();
-      const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName) : all;
+      const mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName || s.product === config.plexPlayerName) : all;
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
       tonight.observe(mine).catch((e) => console.warn('[tonight]', e.message));
       if (mine.length) playing = mine[0];

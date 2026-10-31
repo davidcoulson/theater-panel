@@ -30,7 +30,7 @@ export const FIELDS = [
   { group: 'Plex', key: 'PLAY_TARGET', label: 'Play on', type: 'select', options: [['appletv', 'Apple TV — Plex app'], ['plezy', 'Projector — Plezy'], ['plex', 'Projector — Plex app']], help: 'Which app Play and Resume open. Plezy is opened with a link over ADB; the Plex apps are driven as Plex clients.' },
   { group: 'Plex', key: 'ENTITY_PROJECTOR_PLEX_PLAYER', label: "Projector's Plex client", type: 'entity', domain: 'media_player', help: 'Only for "Projector — Plex app": HA\'s Plex client for the projector (Plex for Android (TV) - AURORA PRO).' },
   { group: 'Plex', key: 'HISTORY_ACCOUNTS', label: 'Whose taste to follow', type: 'list', help: "Plex account names whose watch history feeds \u201cYou'll love this\u201d and the Mystery box. Blank follows the whole house." },
-  { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO)." },
+  { group: 'Plex', key: 'PLEX_PLAYER_NAME', label: 'Theater player name', type: 'text', help: "The client's name as Plex reports it, to show what's playing (the projector is AURORA PRO); a client with no name of its own can be matched by its app name, e.g. Strimr." },
   { group: 'Mystery box', key: 'MYSTERY_YEARS', label: 'Only films from the last (years)', type: 'text', placeholder: '10', help: '0 looks at every year.' },
   { group: 'Mystery box', key: 'MYSTERY_MIN_RATING', label: 'Lowest rating', type: 'text', placeholder: '7', help: "Plex's audience rating, 0-10. A film with no rating is left out. 0 takes anything." },
   { group: 'Mystery box', key: 'MYSTERY_MAX_MINUTES', label: 'Longest film (minutes)', type: 'text', help: 'Blank for any length.' },
