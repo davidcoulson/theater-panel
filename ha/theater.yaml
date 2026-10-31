@@ -382,11 +382,11 @@ script:
       # Wake the Apple TV; HDMI-CEC turns the projector on and switches to its input.
       - action: media_player.turn_on
         target: { entity_id: "{{ apple_tv }}" }
-      # Open Strimr so the client is running and reachable. Launching needs the Apple TV integration
+      # Open Plezy so the client is running and reachable. Launching needs the Apple TV integration
       # paired for the Companion protocol; without it this fails, so carry on and open Strimr by hand.
       - action: media_player.play_media
         target: { entity_id: "{{ apple_tv }}" }
-        data: { media_content_type: app, media_content_id: com.github.wunax.strimr }
+        data: { media_content_type: app, media_content_id: com.edde746.plezy }
         continue_on_error: true
       - wait_template: "{{ states(plex_player) not in ['unavailable', 'unknown'] }}"
         timeout: "00:00:25"
