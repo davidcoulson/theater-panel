@@ -510,7 +510,7 @@ async function voiceIntent(body = {}) {
 // Idle screen: Plex's own titles (in progress, just added), with two boards woven in - the
 // holiday shelf while its season lasts, and Coming soon from the request queue.
 // "?season=halloween" or "christmas" shows a shelf out of season (for a look, or a screenshot).
-const seasonParam = (q) => (['halloween', 'christmas', 'hallmark'].includes(q.get('season')) ? q.get('season') : undefined);
+const seasonParam = (q) => (['halloween', 'thanksgiving', 'christmas', 'hallmark'].includes(q.get('season')) ? q.get('season') : undefined);
 get(/^\/api\/showing$/, async (m, q) => {
   const [plexItems, soon, shelves] = await Promise.all([
     config.plex.url ? plex.showing(10).catch(() => []) : [],
@@ -536,7 +536,7 @@ get(/^\/api\/pick$/, async (m, q) => {
   const n = Math.min(6, Math.max(2, Number(q.get('n')) || 3));
   const want = q.get('season');
   if (want !== '0') {
-    const shelves = await seasonal.shelves(['halloween', 'christmas'].includes(want) ? want : undefined).catch(() => []);
+    const shelves = await seasonal.shelves(['halloween', 'thanksgiving', 'christmas'].includes(want) ? want : undefined).catch(() => []);
     let pool = shelves.flatMap((s) => s.items.map((it) => ({ ...it, shelf: s.title }))).filter((it) => !it.watched);
     if (filters.includes('short')) pool = pool.filter((it) => !it.duration || it.duration < 7200000);
     if (filters.includes('family')) pool = pool.filter((it) => !it.contentRating || ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG'].includes(it.contentRating));

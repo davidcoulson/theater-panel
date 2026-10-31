@@ -809,6 +809,9 @@ html.cinema .search, html.cinema input.range { background: rgba(255,238,214,.07)
 .sh-board.halloween h1 { color: #9BE07A; text-shadow: 3px 3px 0 #2A0B33, 0 0 34px rgba(120,220,110,.4); }
 .sh-board.halloween .k { color: #E8731C; }
 .sh-board.halloween img { box-shadow: 0 0 0 2px rgba(150,220,130,.35), 0 16px 34px rgba(0,0,0,.55); }
+.sh-board.thanksgiving h1 { color: #F6D9A0; text-shadow: 3px 3px 0 #5A2A0C, 0 0 34px rgba(220,140,40,.45); }
+.sh-board.thanksgiving .k { color: #E39A3C; }
+.tasterow.seasonal.thanksgiving .foryou-head h2 { color: #9A5A12; }
 .sh-board.christmas h1 { color: #F7EEDD; text-shadow: 3px 3px 0 #7A1A16, 0 0 34px rgba(200,50,43,.45); }
 .sh-board.christmas .k { color: #7FB77E; }
 .tasterow.seasonal { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
@@ -1026,3 +1029,23 @@ html.a-halloween header.top .right::before { content: ''; flex: none; position: 
 /* up in the header's empty stretch, clear of the controls */
 
 .outage { position: absolute; top: 0; left: 0; right: 0; padding: 10px 24px; background: #7A2E1A; color: #F4F0E8; font-size: 18px; font-weight: 700; text-align: center; z-index: 60; }
+
+/* ---------- Thanksgiving and Christmas roamers (web/lib/seasonfx.mjs) and the header mascot ---------- */
+.sf { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.sf-roam { position: absolute; bottom: 0; left: 0; width: 300px; height: 300px; opacity: 0; background-size: 1200% 800%; background-repeat: no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, sf-cross 12s linear forwards; }
+@keyframes sf-cross { 0% { margin-left: -320px; opacity: 0; } 4%, 96% { opacity: 1; } 100% { margin-left: 1920px; opacity: 0; } }
+.sf-turkey { background-image: url(/assets/turkey-96-atlas.png); }
+.sf-elf { background-image: url(/assets/elf-96-atlas.png); }
+.sf-reindeer { background-image: url(/assets/reindeer-96-atlas.png); }
+.sf-thief { background-image: url(/assets/thief-96-atlas.png); }
+.sf-bear { background-image: url(/assets/bear-96-atlas.png); }
+.sf-santa { background-image: url(/assets/santa-96-atlas.png); animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, sf-wave 12s linear forwards; left: auto; right: 40px; }
+@keyframes sf-wave { 0%, 100% { opacity: 0; } 15%, 85% { opacity: 1; } }
+/* the vent: a duct section sliding along the bottom edge, 60 frames in a 12 x 5 atlas */
+.sf-vent { width: 420px; height: 172px; background-image: url(/assets/vent-60-atlas.jpg); background-size: 1200% 500%; animation: sf-vx 1s steps(12, end) infinite, sf-vy 5s steps(5, end) infinite, sf-cross 12s linear forwards; }
+@keyframes sf-vx { from { background-position-x: 0; } to { background-position-x: 109.0909%; } }
+@keyframes sf-vy { from { background-position-y: 0; } to { background-position-y: 125%; } }
+/* header mascot: the turkey and the tree take the pumpkin's place */
+html.a-thanksgiving header.top .right::before, html.a-christmas header.top .right::before { content: ''; flex: none; position: relative; top: -16px; width: 120px; height: 120px; margin: -32px -16px -44px; background: 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
+html.a-thanksgiving header.top .right::before { background-image: url(/assets/turkey-96-atlas.png); }
+html.a-christmas header.top .right::before { background-image: url(/assets/tree-96-atlas.png); }

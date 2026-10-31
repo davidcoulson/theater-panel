@@ -2,6 +2,7 @@
 // films in progress, and a shelf on the For you tab while the season lasts.
 //
 //   Halloween Scares      all of October
+//   Thanksgiving Movies   Nov 1 up to Thanksgiving
 //   Christmas Movies      Thanksgiving through New Year's Eve
 //   Hallmark Christmas    the same window: Hallmark Media's Christmas films, and a ribbon on every
 //                         one with Lacey Chabert in it, because there are so many
@@ -26,6 +27,7 @@ import * as tmdb from './tmdb.mjs';
 import { thanksgiving } from './accents.mjs';
 
 const HALLOWEEN = /hallowe'?en|trick.or.treat|haunt|ghost|witch|pumpkin|spook|jack-o|all hallows/i;
+const THANKSGIVING = /thanksgiving|turkey|pilgrim|harvest|family dinner|feast/i;
 const CHRISTMAS = /christmas|santa|xmas|noel|sleigh|\belf\b|grinch|scrooge|nutcracker|reindeer|mistletoe|north pole/i;
 // Christmas movies whatever anyone's database says - Die Hard's plot summary is all terrorists
 // and Nakatomi Plaza. Always on the shelf when they're in the library, found by title if neither
@@ -37,6 +39,11 @@ const SEASONS = {
     title: 'Halloween Scares', kicker: 'All October, from your library',
     collection: /^halloween\.?$/i, keyword: 3335,
     keep: (it) => it.horror || (it.allGenres || it.genres || []).includes('Horror') || HALLOWEEN.test(`${it.title} ${it.summary || it.overview || ''}`),
+  },
+  thanksgiving: {
+    title: 'Thanksgiving Movies', kicker: 'Turkey day, from your library',
+    collection: /^thanksgiving\.?$/i, keyword: 11126,
+    keep: (it) => THANKSGIVING.test(`${it.title} ${it.summary || it.overview || ''}`),
   },
   christmas: {
     title: 'Christmas Movies', kicker: "Thanksgiving to New Year's Eve, from your library",
@@ -50,6 +57,7 @@ const SEASONS = {
 export function seasonNow(now = new Date()) {
   const m = now.getMonth() + 1, d = now.getDate();
   if (m === 10) return 'halloween';
+  if (m === 11 && d < thanksgiving(now.getFullYear())) return 'thanksgiving';
   if ((m === 11 && d >= thanksgiving(now.getFullYear())) || m === 12) return 'christmas';
   return null;
 }

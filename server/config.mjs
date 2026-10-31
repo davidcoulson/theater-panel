@@ -301,6 +301,8 @@ function build(env) {
     theme: env.THEME === 'sofa' ? 'sofa' : 'classic',
     // Holiday accent on top of the theme: 'auto' follows the calendar (see accents.mjs).
     accent: env.ACCENT || 'auto',
+    // 'diehard': the Christmas roamers are the barefoot man and the vent crawler instead of the elf and the reindeer.
+    christmasStyle: env.CHRISTMAS_STYLE === 'diehard' ? 'diehard' : 'classic',
     // 0..100: how much weather the accent puts over the lobby (25 is the original amount).
     accentIntensity: Math.max(0, Math.min(100, Number(env.ACCENT_INTENSITY ?? 50) || 0)),
     birthdays: env.BIRTHDAYS || '',

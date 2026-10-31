@@ -10,6 +10,7 @@ import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
 import { HalloweenFx } from './lib/halloween.mjs';
+import { SeasonFx } from './lib/seasonfx.mjs';
 import { onTheater, detectTheater } from './lib/ks.mjs';
 import { Lobby } from './views/lobby.mjs';
 import { Watch } from './views/watch.mjs';
@@ -499,6 +500,8 @@ function App() {
 
   const serverAccent = useStore((s) => s.ui?.accent?.id);   // subscribes, so the fx mount when the server's pick arrives
   const halloween = accentOverride ? accentOverride === 'halloween' : serverAccent === 'halloween';
+  const accentId = accentOverride || serverAccent;
+  const xmasStyle = useStore((s) => s.ui?.christmasStyle);
   const haunt = useHaunting(halloween);
   const tweaks = useStore((s) => s.tweaks);
   const tonightOpen = useStore((s) => s.tonightOpen);
@@ -529,6 +532,7 @@ function App() {
     <${Guard} name="rate card" quiet><${RateCard} /><//>
     <${Prewarm} current=${r.name} playing=${tvState === 'playing'} />
     ${halloween && html`<${Guard} name="halloween" quiet><${HalloweenFx} /><//>`}
+    ${(accentId === 'thanksgiving' || accentId === 'christmas') && html`<${Guard} name="season" quiet><${SeasonFx} accent=${accentId} style=${xmasStyle} /><//>`}
     ${haunt > 0 && html`<div class="haunt" key=${haunt}></div>`}
     ${banner}
     ${toast && html`<div class=${`toast ${toast.err ? 'err' : ''}`}>${toast.text}</div>`}
