@@ -120,7 +120,7 @@ export async function runAction(ha, body) {
     // same way the pre-roll and the march travel. The panel counts down before asking.
     case 'thx': {
       if (!config.thxUrl) throw new Error('No THX sound on the settings page');
-      const speaker = config.soundsOnPanel ? '' : e.roomSpeaker;
+      const speaker = e.roomSpeaker;   // THX always goes through the soundbar, whatever SOUNDS_ON_PANEL says
       if (up(ha, speaker)) return script(ha, 'snipe', { speaker, url: config.thxUrl });
       if (panelPath(config.thxUrl)) { toPanels({ url: panelPath(config.thxUrl) }); return { panel: true }; }
       throw new Error('The theater speaker is not up');
