@@ -112,7 +112,6 @@ html.a-fall { --gold: #C75E12; }
 .rail .glyph svg { overflow: visible; }
 .emb-sprite { position: relative; background: url(/assets/pumpkin-96-atlas.png) 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
 /* the strip's alpha is its brightness, so the dark ribs show the wood through; a dark body behind and a second copy on top make it solid */
-.emb-sprite::before { content: ''; position: absolute; left: 6%; right: 6%; top: 27%; bottom: 27%; border-radius: 50%; background: #2A1204; z-index: -1; }
 .emb-sprite::after { content: ''; position: absolute; inset: 0; background: inherit; animation: inherit; }
 .rail .glyph .emb { transform-box: fill-box; transform-origin: 50% 90%; }
 .rail .glyph .emb-halloween, .rail .glyph .emb-thanksgiving, .rail .glyph .emb-fall { animation: emb-wobble 9s ease-in-out infinite; }
