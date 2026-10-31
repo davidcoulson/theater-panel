@@ -250,6 +250,8 @@ function build(env) {
   },
   // Intermission: the snack bar screen on the panel, and a corny little march on the theater
   // speakers to go with it (the panel's own, at /assets/intermission.mp3). Blank = no sound.
+  // Room sounds (march, pre-roll swell, THX) on the panel's own speakers instead of the room speaker.
+  soundsOnPanel: env.SOUNDS_ON_PANEL === 'true',
   intermission: {
     url: env.INTERMISSION_URL || ((env.PREROLL_URL || '').endsWith('/preroll.mp3') ? env.PREROLL_URL.replace(/preroll\.mp3$/, 'intermission.mp3') : ''),
     minutes: Math.max(1, Math.min(60, Number(env.INTERMISSION_MINUTES || 15))),

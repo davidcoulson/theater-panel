@@ -183,9 +183,7 @@ function Continue() {
       ${rewind && html`<div class="rewind"><${Icon} name="moon" size=${18} color="var(--gold)" />${rewind}</div>`}
       <div style="display:flex;gap:12px">
         ${live
-          ? html`<button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Back 10 seconds" onClick=${() => act({ action: 'transport', cmd: 'seek_rel', seconds: -10 })}><${Icon} name="back" size=${28} color="#F4F0E8" /></button>
-            <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'play_pause' })}>${live.state === 'paused' ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>
-            <button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Forward 30 seconds" onClick=${() => act({ action: 'transport', cmd: 'seek_rel', seconds: 30 })}><${Icon} name="fwd" size=${28} color="#F4F0E8" /></button>
+          ? html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: 'play_pause' })}>${live.state === 'paused' ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>
             <button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Stop" onClick=${() => act({ action: 'transport', cmd: 'stop' })}><${Icon} name="x" size=${28} color="#F4F0E8" /></button>`
           : html`<button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => play(it, true)}><${Play} />${it.viewOffset ? 'Resume' : 'Play'}</button>`}
         ${!live && rewind && html`<button type="button" class="btn ghost" style="height:66px;flex-shrink:0" title="Play the last two minutes again first" onClick=${() => play(it, true, { offset: Math.max(0, it.viewOffset - 120000) })}><${Icon} name="back" size=${24} color="#F4F0E8" />Recap</button>`}
