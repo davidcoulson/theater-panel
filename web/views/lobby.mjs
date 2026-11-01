@@ -319,16 +319,11 @@ function Projector() {
   return html`<section class="card proj">
     <${H2} title="Projector">${on && picture && !['unknown', 'unavailable'].includes(picture)
       ? html`<button type="button" class="aside mode" title="Next picture mode" onClick=${() => act({ action: 'picture_next' })}><span class="dot on"></span>${picture}</button>`
-      : html`<span class="aside"><span class=${`dot ${on ? 'on' : ''}`}></span>${on ? 'On' : 'Standby'}</span>`}<//>
-    <div class="row">
-      <button type="button" class=${`power ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
-        onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}>
-        <${Icon} name="power" size=${40} color=${on ? '#fff' : 'var(--acc)'} w=${2.4} />
-      </button>
-      <div style="min-width:0;flex:1"><div style="font-size:21px;font-weight:600">NexiGo Aurora Pro</div>
-      <div class="muted ellipsis" style="font-size:16px">${!on ? 'Tap a source or app to start' : nowPlaying || 'Nothing playing'}</div></div>
-    </div>
-    <div class="label" style="margin:18px 0 8px">Source</div>
+      : null}
+      <button type="button" class=${`aside mode pwr ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
+        onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}><${Icon} name="power" size=${18} w=${2.4} />${on ? 'Off' : 'Power on'}</button><//>
+    ${on && nowPlaying && html`<div class="muted ellipsis" style="font-size:16px;margin-top:8px">${nowPlaying}</div>`}
+    <div class="label" style="margin:14px 0 8px">Source</div>
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
