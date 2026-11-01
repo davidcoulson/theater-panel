@@ -287,6 +287,14 @@ function Projector() {
   useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
   const [menu, setMenu] = useState(false);
+  const menuRef = useRef(null);
+  // A tap anywhere outside the open menu closes it.
+  useEffect(() => {
+    if (!menu) return undefined;
+    const close = (e) => { if (!menuRef.current?.contains(e.target)) setMenu(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [menu]);
   const adminRoom = useStore((s) => s.ui?.adminRoom);
   const adminAt = useEntity(ents.adminRoomSensor)?.state;
   const adminHere = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
@@ -324,7 +332,7 @@ function Projector() {
 
   return html`<section class="card proj">
     <${H2} title="Projector">${on
-      ? html`<span class="modemenu"><button type="button" class="aside mode" aria-haspopup="menu" aria-expanded=${menu} onClick=${() => setMenu(!menu)}>
+      ? html`<span class="modemenu" ref=${menuRef}><button type="button" class="aside mode" aria-haspopup="menu" aria-expanded=${menu} onClick=${() => setMenu(!menu)}>
           <span class="dot on"></span>${modeOk ? picture : 'On'}<span aria-hidden="true">▾</span></button>
           ${menu && html`<div class="menu" role="menu">
             ${(proj_modes || []).map((m) => html`<button type="button" role="menuitem" aria-current=${m === picture} onClick=${() => { setMenu(false); act({ action: 'picture_set', option: m }); }}>${m}</button>`)}
