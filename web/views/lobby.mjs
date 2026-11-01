@@ -140,7 +140,7 @@ function Continue() {
   const at = i % n;
 
   // Swipe left/right to move through the deck. A swipe never counts as a tap on the buttons.
-  const down = (e) => { if (n > 1) swipe.current = { x: e.clientX, y: e.clientY, moved: false }; };
+  const down = (e) => { if (n > 1 && live) swipe.current = { x: e.clientX, y: e.clientY, moved: false }; };
   const move = (e) => {
     const s = swipe.current;
     if (!s) return;
@@ -165,8 +165,7 @@ function Continue() {
     <div class="slide" key=${it.id} style=${drag ? `transform:translateX(${drag * 0.6}px);opacity:${Math.max(0.35, 1 - Math.abs(drag) / 500)};transition:none` : ''}>
     <div class="art">
       <img src=${it.art || it.still} alt="" draggable="false" />
-      ${!live && n > 1 && html`<span class="count">${at + 1} / ${n}</span>`}
-      <div class="name">${name}</div>
+            <div class="name">${name}</div>
     </div>
     <div class="body">
       <div style="display:flex;justify-content:space-between;align-items:center">
