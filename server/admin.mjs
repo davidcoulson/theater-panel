@@ -72,6 +72,7 @@ export const FIELDS = [
   { group: 'Entities', key: 'ENTITY_LIGHTS', label: 'Lights', type: 'list', domain: 'light' },
   { group: 'Entities', key: 'ENTITY_ACCENT_SPEED', label: 'Effect speed (input_number)', type: 'entity', domain: 'input_number' },
   { group: 'Entities', key: 'ENTITY_ACCENT_INTENSITY', label: 'Effect intensity (input_number)', type: 'entity', domain: 'input_number' },
+  { group: 'Entities', key: 'ENTITY_PROJECTOR_PICTURE', label: "Projector's own picture mode (select)", type: 'entity', domain: 'select', help: 'Lets the panel dim the picture-mode dot until the projector has really switched.' },
   { group: 'Entities', key: 'ENTITY_PICTURE_MODE', label: 'Picture mode (input_select)', type: 'entity', domain: 'input_select' },
   { group: 'Entities', key: 'ENTITY_TEMPERATURE', label: 'Temperature', type: 'entity', domain: 'sensor' },
   { group: 'Soundbar', key: 'SOUNDBAR_PREFIX', label: 'Soundbar name, as Home Assistant spells it', type: 'text', placeholder: 'jbl_bar_1300mk2', help: "The stem of the JBL integration's entity ids: for a device named \"JBL BAR 1300MK2\" every entity is number.jbl_bar_1300mk2_volume, switch.jbl_bar_1300mk2_nightmode and so on. The integration ships its buttons (mute, volume, bass, rear, atmos, calibration) disabled; enable them in Home Assistant. Blank keeps volume on the Apple TV." },

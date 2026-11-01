@@ -1055,3 +1055,4 @@ html.a-christmas header.top .right::before { background-image: url(/assets/tree-
 .proj .menu button { border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; color: var(--ink); text-align: left; padding: 10px 12px; border-radius: 10px; white-space: nowrap; }
 .proj .menu button[aria-current="true"] { background: var(--track); }
 .proj .menu button.off { color: #b3261e; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; margin-top: 4px; }
+.dot.dim { background: #4F8A55; opacity: .3; }

@@ -287,6 +287,7 @@ function Projector() {
   useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
   const [menu, setMenu] = useState(false);
+  const [want, setWant] = useState(null);   // a picture mode asked for, until the projector reports it
   const menuRef = useRef(null);
   // A tap anywhere outside the open menu closes it.
   useEffect(() => {
@@ -304,6 +305,10 @@ function Projector() {
   const pictureEnt = useEntity(ents.pictureMode);
   const picture = pictureEnt?.state;
   const proj_modes = pictureEnt?.attributes?.options;
+  const applied = useEntity(ents.projectorPicture)?.state;
+  const confirmed = applied && !['unknown', 'unavailable'].includes(applied) ? applied : picture;
+  useEffect(() => { if (want && confirmed === want) setWant(null); }, [confirmed, want]);
+  useEffect(() => { if (!want) return undefined; const t = setTimeout(() => setWant(null), 12000); return () => clearTimeout(t); }, [want]);
   const modeOk = picture && !['unknown', 'unavailable'].includes(picture);
   const appId = on ? proj?.attributes?.app_id : null;
   // The Showing sensor names an app on the projector ("Plezy"); an input reads "HDMI 2 ..."
@@ -333,9 +338,9 @@ function Projector() {
   return html`<section class="card proj">
     <${H2} title="Projector">${on
       ? html`<span class="modemenu" ref=${menuRef}><button type="button" class="aside mode" aria-haspopup="menu" aria-expanded=${menu} onClick=${() => setMenu(!menu)}>
-          <span class="dot on"></span>${modeOk ? picture : 'On'}<span aria-hidden="true">▾</span></button>
+          <span class=${`dot ${want ? 'dim' : 'on'}`}></span>${want || (modeOk ? picture : 'On')}<span aria-hidden="true">▾</span></button>
           ${menu && html`<div class="menu" role="menu">
-            ${(proj_modes || []).map((m) => html`<button type="button" role="menuitem" aria-current=${m === picture} onClick=${() => { setMenu(false); act({ action: 'picture_set', option: m }); }}>${m}</button>`)}
+            ${(proj_modes || []).map((m) => html`<button type="button" role="menuitem" aria-current=${m === picture} onClick=${() => { setMenu(false); setWant(m); act({ action: 'picture_set', option: m }); }}>${m}</button>`)}
             <button type="button" role="menuitem" class="off" onClick=${() => { setMenu(false); act({ action: 'projector', cmd: 'power_off' }); }}>Off</button></div>`}</span>`
       : html`<button type="button" class="aside mode pwr" aria-label="Turn projector on" onClick=${() => act({ action: 'projector', cmd: 'power_on' })}><${Icon} name="power" size=${18} w=${2.4} />Power on</button>`}<//>
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}

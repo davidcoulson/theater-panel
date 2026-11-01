@@ -154,6 +154,8 @@ function build(env) {
     dogName: env.DOG_NAME || 'The dog',
     // Picture mode helper (input_select) the projector card shows and cycles.
     pictureMode: env.ENTITY_PICTURE_MODE || 'input_select.projector_picture_mode',
+    // The projector's own picture-mode select: it moves only once the projector has applied the mode.
+    projectorPicture: env.ENTITY_PROJECTOR_PICTURE || 'select.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture_mode',
     // Strata, the local LLM server on the gaming PC: its "model loaded" sensor names the device
     // and the integration's other entities follow from it.
     ai: aiEntities(env.ENTITY_AI_LOADED),
@@ -365,7 +367,7 @@ export function watchedEntities() {
   const e = config.entities;
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.adminRoomSensor,
-    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.accentSpeed, e.accentIntensity,
+    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.projectorPicture, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar), ...Object.values(e.ai || {}),
     'input_select.theater_scene',
   ].filter(Boolean);
