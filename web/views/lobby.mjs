@@ -166,15 +166,14 @@ function Continue() {
     <div class="art">
       <img src=${it.art || it.still} alt="" draggable="false" />
       ${!live && n > 1 && html`<span class="count">${at + 1} / ${n}</span>`}
-      ${!live && html`<div class="name">${name}</div>`}
+      <div class="name">${name}</div>
     </div>
     <div class="body">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="eyebrow" style="white-space:nowrap">${live ? (live.state === 'paused' ? 'Paused' : 'Now playing') : 'Continue watching'}</div>
 
       </div>
-      <div class="title">${it.title}</div>
-      ${it.showTitle && html`<div class="sub">Season ${it.season}, Episode ${it.episode}</div>`}
+      ${it.showTitle && html`<div class="sub">Season ${it.season}, Episode ${it.episode} · ${it.title}</div>`}
       <p>${it.summary}</p>
       <div style="flex-grow:1"></div>
       <div>
