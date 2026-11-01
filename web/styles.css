@@ -1045,9 +1045,8 @@ html.a-halloween header.top .right::before { content: ''; flex: none; position: 
 .sf-vent { width: 420px; height: 172px; background-image: url(/assets/vent-60-atlas.jpg); background-size: 1200% 500%; animation: sf-vx 1s steps(12, end) infinite, sf-vy 5s steps(5, end) infinite, sf-cross 12s linear forwards; }
 @keyframes sf-vx { from { background-position-x: 0; } to { background-position-x: 109.0909%; } }
 @keyframes sf-vy { from { background-position-y: 0; } to { background-position-y: 125%; } }
-/* header mascot: the turkey and the tree take the pumpkin's place */
-html.a-thanksgiving header.top .right::before, html.a-christmas header.top .right::before { content: ''; flex: none; position: relative; top: -16px; width: 120px; height: 120px; margin: -32px -16px -44px; background: 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
-html.a-thanksgiving header.top .right::before { background-image: url(/assets/turkey-96-atlas.png); }
+/* header mascot: the tree takes the pumpkin's place */
+html.a-christmas header.top .right::before { content: ''; flex: none; position: relative; top: -16px; width: 120px; height: 120px; margin: -32px -16px -44px; background: 0 0 / 1200% 800% no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite; }
 html.a-christmas header.top .right::before { background-image: url(/assets/tree-96-atlas.png); }
 .proj .aside.pwr { margin-left: 8px; } .proj .aside.pwr svg { color: var(--acc); }
 .proj .modemenu { position: relative; }
