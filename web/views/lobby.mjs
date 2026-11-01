@@ -290,15 +290,17 @@ function Projector() {
   // Until the projector's own entity exists, the Apple TV's power state stands in for it (CEC).
   const on = hasProj ? proj && !['off', 'standby', 'unavailable'].includes(proj.state) : tv && !['off', 'standby', 'unavailable'].includes(tv.state);
   const appId = on ? proj?.attributes?.app_id : null;
-  const runningApp = apps.find((a) => a.package === appId);
+  // The Showing sensor names an app on the projector ("Plezy"); an input reads "HDMI 2 ..."
+  const showing = useEntity(ents.projectorShowing)?.state;
+  const appShown = on && showing && !/^(HDMI \d|unknown|unavailable)/.test(showing) ? showing : null;
+  const runningApp = apps.find((a) => a.package === appId) || apps.find((a) => appShown && a.name.toLowerCase() === appShown.toLowerCase());
 
   // In the order set on the admin page.
   const sources = (games?.sources || []).map((s) => ({ ...s, icon: s.icon?.includes(':') ? s.icon : SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
   // Lit from what the projector shows (its Showing sensor and, behind the game switcher, the
   // switcher's input); the last source picked here only while that is unknown.
-  const showing = useEntity(ents.projectorShowing)?.state;
   const switcher = useEntity(games?.switcher?.entity);
-  const current = runningApp ? null : picked || sourceOnWall(showing, games, switcher) || games?.active;
+  const current = picked || (runningApp || appShown ? null : sourceOnWall(showing, games, switcher) || games?.active);
   const picture = useEntity(ents.pictureMode)?.state;
   const nowPlaying = useNowPlaying(on, current, tv, games);
 
@@ -330,9 +332,10 @@ function Projector() {
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
-    ${apps.length > 0 && html`<div class="label" style="margin:16px 0 8px">Apps</div>
+    ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:16px 0 8px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
-      <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}</div>`}
+      <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}
+      ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${30} /><span>${appShown}</span></button>`}</div>`}
   </section>`;
 }
 
