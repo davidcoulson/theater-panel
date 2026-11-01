@@ -287,6 +287,9 @@ function Projector() {
   useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
   const [menu, setMenu] = useState(false);
+  const adminRoom = useStore((s) => s.ui?.adminRoom);
+  const adminAt = useEntity(ents.adminRoomSensor)?.state;
+  const adminHere = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
   const hasProj = Boolean(ents.projector);
   // Until the projector's own entity exists, the Apple TV's power state stands in for it (CEC).
   const on = hasProj ? proj && !['off', 'standby', 'unavailable'].includes(proj.state) : tv && !['off', 'standby', 'unavailable'].includes(tv.state);
@@ -332,7 +335,7 @@ function Projector() {
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
     ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:16px 0 8px">Apps</div>
-    <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
+    <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj || (a.admin && !adminHere)} title=${a.admin && !adminHere ? 'Only when the admin is in the room' : undefined} onClick=${() => openApp(a)}>
       <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}
       ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${30} /><span>${appShown}</span></button>`}</div>`}
   </section>`;

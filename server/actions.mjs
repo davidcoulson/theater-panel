@@ -182,6 +182,7 @@ export async function runAction(ha, body) {
       // Only apps listed in PROJECTOR_APPS; HA wakes the projector first if it is off.
       const app = config.projectorApps.find((a) => a.package === body.package);
       if (!app) throw new Error('Unknown projector app');
+      if (app.admin && !games.adminHere(ha)) throw Object.assign(new Error('Only when the admin is in the room'), { status: 403 });
       // "appletv:<bundle id>" opens a tvOS app on the Apple TV instead (Plex = Strimr there).
       if (app.package.startsWith('appletv:')) {
         games.setActive('appletv');

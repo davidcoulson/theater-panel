@@ -347,10 +347,13 @@ function LibraryPicker({ value, base, onChange }) {
   </div>`;
 }
 
+// Row flags live in the fourth field, joined by "+" ("hide+admin").
+const flag = (r, f) => (r[3] || '').split('+').includes(f);
+const flagged = (r, f, on) => (r[3] || '').split('+').filter((x) => x && x !== f).concat(on ? [f] : []).join('+');
 function AppsEditor({ value, onChange }) {
   const rows = (value || '').split(',').map((p) => p.split('=').map((x) => x.trim())).filter((r) => r[0] || r[1]);
   const sent = useRef(value);
-  const put = (rs) => { sent.current = rs.filter((r) => r[0] && r[1]).map((r) => (r[3] ? `${r[0]}=${r[1]}=${r[2] || ''}=hide` : r[2] ? `${r[0]}=${r[1]}=${r[2]}` : `${r[0]}=${r[1]}`)).join(','); onChange(sent.current); };
+  const put = (rs) => { sent.current = rs.filter((r) => r[0] && r[1]).map((r) => (r[3] ? `${r[0]}=${r[1]}=${r[2] || ''}=${r[3]}` : r[2] ? `${r[0]}=${r[1]}=${r[2]}` : `${r[0]}=${r[1]}`)).join(','); onChange(sent.current); };
   const [draft, setDraft] = useState(rows);
   // Only take rows from `value` when it changed elsewhere (a reset, a reload). put() drops
   // half-edited rows, so rebuilding the draft from our own echo would delete a row the moment
@@ -358,12 +361,13 @@ function AppsEditor({ value, onChange }) {
   useEffect(() => { if (value !== sent.current) setDraft(rows); }, [value]);
   const edit = (i, k, v) => { const n = draft.map((r) => [...r]); n[i][k] = v; setDraft(n); put(n); };
   const move = (i, d) => { const n = [...draft]; [n[i], n[i + d]] = [n[i + d], n[i]]; setDraft(n); put(n); };
-  return html`<table class="grid"><thead><tr><th>Name</th><th>Android package</th><th>Icon</th><th>Show</th><th></th></tr></thead><tbody>
+  return html`<table class="grid"><thead><tr><th>Name</th><th>Android package</th><th>Icon</th><th>Show</th><th>Admin</th><th></th></tr></thead><tbody>
     ${draft.map((r, i) => html`<tr>
       <td><input type="text" value=${r[0]} onInput=${(e) => edit(i, 0, e.target.value)} /></td>
       <td><input type="text" spellcheck="false" value=${r[1]} placeholder="com.example.app" onInput=${(e) => edit(i, 1, e.target.value)} /></td>
       <td><${IconPicker} value=${r[2] || ''} onChange=${(v) => edit(i, 2, v)} /></td>
-      <td><input type="checkbox" aria-label="Show on the panel" checked=${r[3] !== 'hide'} onChange=${(e) => edit(i, 3, e.target.checked ? '' : 'hide')} /></td>
+      <td><input type="checkbox" aria-label="Show on the panel" checked=${!flag(r, 'hide')} onChange=${(e) => edit(i, 3, flagged(r, 'hide', !e.target.checked))} /></td>
+      <td><input type="checkbox" aria-label="Only usable while the admin is in the room" checked=${flag(r, 'admin')} onChange=${(e) => edit(i, 3, flagged(r, 'admin', e.target.checked))} /></td>
       <td class="actions"><${RowActions} i=${i} n=${draft.length} move=${move} remove=${() => { const n = draft.filter((_, k) => k !== i); setDraft(n); put(n); }} /></td></tr>`)}
     </tbody></table>
     <button type="button" class="small" onClick=${() => setDraft([...draft, ['', '']])}>Add app</button>`;
