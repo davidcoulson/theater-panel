@@ -173,6 +173,11 @@ export async function runAction(ha, body) {
       return ha.callService('input_select', 'select_next', { cycle: true }, { target: { entity_id: e.pictureMode } });
     }
 
+    case 'picture_set': {
+      if (!e.pictureMode) throw new Error('No picture mode entity set');
+      return ha.callService('input_select', 'select_option', { option: String(body.option) }, { target: { entity_id: e.pictureMode } });
+    }
+
     case 'projector_app': {
       // Only apps listed in PROJECTOR_APPS; HA wakes the projector first if it is off.
       const app = config.projectorApps.find((a) => a.package === body.package);

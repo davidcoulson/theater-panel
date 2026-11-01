@@ -1050,3 +1050,9 @@ html.a-thanksgiving header.top .right::before, html.a-christmas header.top .righ
 html.a-thanksgiving header.top .right::before { background-image: url(/assets/turkey-96-atlas.png); }
 html.a-christmas header.top .right::before { background-image: url(/assets/tree-96-atlas.png); }
 .proj .aside.pwr { margin-left: 8px; } .proj .aside.pwr svg { color: var(--acc); }
+.proj .modemenu { position: relative; }
+.proj .aside.mode { white-space: nowrap; }
+.proj .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; min-width: 170px; background: var(--card, #fff); border: 1.5px solid var(--line); border-radius: 16px; padding: 6px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); display: flex; flex-direction: column; }
+.proj .menu button { border: 0; background: none; font: inherit; font-size: 16px; font-weight: 600; color: var(--ink); text-align: left; padding: 10px 12px; border-radius: 10px; white-space: nowrap; }
+.proj .menu button[aria-current="true"] { background: var(--track); }
+.proj .menu button.off { color: #b3261e; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; margin-top: 4px; }
