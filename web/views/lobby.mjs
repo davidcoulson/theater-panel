@@ -323,12 +323,10 @@ function Projector() {
       <button type="button" class=${`aside mode pwr ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
         onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}><${Icon} name="power" size=${18} w=${2.4} />${on ? 'Off' : 'Power on'}</button><//>
     ${on && nowPlaying && html`<div class="muted ellipsis" style="font-size:16px;margin-top:8px">${nowPlaying}</div>`}
-    <div class="label" style="margin:14px 0 8px">Source</div>
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
-    <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
+    <div class="tiles" style="margin-top:12px">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
-    ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:16px 0 8px">Apps</div>
-    <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
+    ${(apps.length > 0 || appShown) && html`<div class="tiles" style="margin-top:10px">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => openApp(a)}>
       <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}
       ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${30} /><span>${appShown}</span></button>`}</div>`}
   </section>`;
