@@ -172,9 +172,9 @@ function build(env) {
   // Apps the Projector card can open on the projector itself (Android, over ADB), as
   // "Name=package" or "Name=package=icon" (e.g. YouTube=org.smarttube.stable=mdi:youtube). The projector is woken first if it is off.
   projectorApps: list(env.PROJECTOR_APPS, ['Plex=com.plexapp.android']).map((pair) => {
-    const [name, pkg, icon] = pair.split('=').map((x) => x.trim());
+    const [name, pkg, icon, flag] = pair.split('=').map((x) => x.trim());
     if (!pkg || !/^(appletv:)?[\w.]+$/.test(pkg)) return null;
-    return { name, package: pkg, ...(icon && /^[a-z0-9-]+:[a-z0-9-]+$|^[a-z]+$/.test(icon) ? { icon } : {}) };
+    return { name, package: pkg, ...(flag === 'hide' ? { hidden: true } : {}), ...(icon && /^[a-z0-9-]+:[a-z0-9-]+$|^[a-z]+$/.test(icon) ? { icon } : {}) };
   }).filter(Boolean),
   // Pre-roll: a deep swell on the theater speakers while the lights go down, before the film
   // starts. The URL has to be one the speaker itself can fetch (the panel serves the sound at
