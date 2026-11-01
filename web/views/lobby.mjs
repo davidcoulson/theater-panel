@@ -301,8 +301,6 @@ function Projector() {
   // switcher's input); the last source picked here only while that is unknown.
   const switcher = useEntity(games?.switcher?.entity);
   const current = picked || (runningApp || appShown ? null : sourceOnWall(showing, games, switcher) || games?.active);
-  const picture = useEntity(ents.pictureMode)?.state;
-  const nowPlaying = useNowPlaying(on, current, tv, games);
 
   async function pickSource(s) {
     setPicked(s.id);
@@ -317,12 +315,8 @@ function Projector() {
   }
 
   return html`<section class="card proj">
-    <${H2} title="Projector">${on && picture && !['unknown', 'unavailable'].includes(picture)
-      ? html`<button type="button" class="aside mode" title="Next picture mode" onClick=${() => act({ action: 'picture_next' })}><span class="dot on"></span>${picture}</button>`
-      : null}
-      <button type="button" class=${`aside mode pwr ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
+    <${H2} title="Projector"><button type="button" class=${`aside mode pwr ${on ? 'on' : ''}`} aria-label=${on ? 'Turn projector off' : 'Turn projector on'}
         onClick=${() => act({ action: 'projector', cmd: on ? 'power_off' : 'power_on' })}><${Icon} name="power" size=${18} w=${2.4} />${on ? 'Off' : 'Power on'}</button><//>
-    ${on && nowPlaying && html`<div class="muted ellipsis" style="font-size:16px;margin-top:8px">${nowPlaying}</div>`}
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
     <div class="tiles" style="margin-top:12px">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
