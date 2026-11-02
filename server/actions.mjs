@@ -58,7 +58,10 @@ export async function runAction(ha, body) {
       if (!body.noPreroll && wantsPreroll(body)) {
         // The theater's speaker is the Apple TV over AirPlay, which is asleep whenever a film
         // plays on the projector. Then the lights still go down and the panel plays the swell.
-        const speaker = config.soundsOnPanel ? '' : e.roomSpeaker;
+        // From standby (picture off) the swell stays on the panel: casting to the bar wakes it, and its
+        // HDMI-CEC wake lights the projector on the Apple TV's input before the film's app is open.
+        const standby = ha.states[e.projectorPictureSwitch]?.state === 'off';
+        const speaker = config.soundsOnPanel || standby ? '' : e.roomSpeaker;
         const url = prerollUrl();
         const onSpeaker = up(ha, speaker);
         await script(ha, 'preroll', { speaker, url: onSpeaker ? url : '' });
