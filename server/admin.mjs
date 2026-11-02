@@ -80,6 +80,12 @@ export const FIELDS = [
   { group: 'Soundbar', key: 'SOUNDBAR_STEP', label: 'Volume step', type: 'text', placeholder: '2', help: 'How much one tap of volume up or down moves the bar (0-100).' },
   { group: 'Soundbar', key: 'SOUNDBAR_MOVIE_SMART', label: 'Movie time turns Smart mode on and Night mode off', type: 'bool', default: true },
   { group: 'Soundbar', key: 'THX_URL', label: 'THX sound URL', type: 'text', placeholder: 'https://home-iot.coulson.io/local/theater/thx.mp3', help: 'The Deep Note, played on the theater speaker after a five-second countdown from the Sound sheet. Blank hides the button.' },
+  { group: 'Soundbar', key: 'THX_PLEX_TITLE', label: 'THX video, by Plex title', type: 'text', placeholder: 'THX Deep Note Genesis', help: 'The THX button plays this clip through Plex on the projector, so it has to be in a Plex library (a Movies-type library on the Pre-Roll folder works). Matched by title. If Plex has no such title the button falls back to the sound URL above.' },
+  { group: 'NeXroll', key: 'NEXROLL_URL', label: 'URL', type: 'text', placeholder: 'http://10.2.6.46:9393', help: 'NeXroll, the pre-roll manager. Blank turns the pre-roll picker and the seasonal switching off.' },
+  { group: 'NeXroll', key: 'NEXROLL_API_KEY', label: 'API key', type: 'secret', help: 'Only if NeXroll has one set; sent as X-Api-Key.' },
+  { group: 'NeXroll', key: 'NEXROLL_SEASON_MAP', label: 'Category for each accent', type: 'text', placeholder: 'halloween=Halloween, thanksgiving=Thanksgiving, christmas=Christmas, default=Default', help: 'Accent id = NeXroll category name (any case). Any accent not listed uses default. Checked at start-up and when the accent changes.' },
+  { group: 'NeXroll', key: 'NEXROLL_AUTOSWITCH', label: 'Switch NeXroll with the accent', type: 'bool', default: false, help: 'Off: the panel only logs what it would switch. On: it tells NeXroll to apply the matching category to Plex. Also lets the picker switch.' },
+  { group: 'NeXroll', key: 'NEXROLL_ALLOW_PICK', label: 'Let the Sound sheet pick a category', type: 'bool', default: false, help: 'Lets the pre-roll picker apply a category to Plex without the calendar switching.' },
   { group: 'Soundbar', key: 'SOUNDBAR_CALIBRATION_SECONDS', label: 'Calibration takes about (seconds)', type: 'text', placeholder: '45', help: 'How long the panel asks the room to keep quiet after Calibrate.' },
   { group: 'Entities', key: 'ENTITY_OCCUPANCY', label: 'Occupancy', type: 'entity', domain: 'binary_sensor' },
   { group: 'Entities', key: 'ENTITY_DOG_SENSORS', label: 'Dog at the door (binary sensors)', type: 'list', domain: 'binary_sensor', help: 'Any of these turning on puts a card on the panel with a camera snapshot - the deck camera\'s barking and animal detections. Blank turns it off.' },
@@ -137,7 +143,7 @@ const BY_KEY = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
 
 // Fields that must hold an http(s) URL. A bare "10.2.3.6:8123" would be saved happily and then
 // make the HA websocket constructor throw on every reconnect, so it is refused here instead.
-const URL_KEYS = new Set(['HA_URL', 'PLEX_URL', 'SEERR_URL', 'SONARR_URL', 'RADARR_URL', 'RADARR4K_URL']);
+const URL_KEYS = new Set(['HA_URL', 'PLEX_URL', 'SEERR_URL', 'NEXROLL_URL', 'SONARR_URL', 'RADARR_URL', 'RADARR4K_URL']);
 function checkUrl(key, s) {
   let u;
   try { u = new URL(s); } catch { u = null; }

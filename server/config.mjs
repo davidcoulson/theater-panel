@@ -215,6 +215,19 @@ function build(env) {
   curtainSeconds: Math.max(0, Math.min(600, Number(env.CURTAIN_SECONDS ?? 90) || 0)),
   // The THX Deep Note, for the button on the Sound sheet: a URL the room's speaker can fetch.
   thxUrl: env.THX_URL || '',
+  // ...or, better, the THX clip as a video in a Plex library: the title to search for. It plays on
+  // the projector like a film; if Plex has no such title the button falls back to THX_URL.
+  thxPlexTitle: env.THX_PLEX_TITLE ?? 'THX Deep Note Genesis',
+  // NeXroll, the pre-roll manager. Blank URL = off. The season map names a NeXroll category per
+  // accent id (see accents.mjs); writing to NeXroll needs AUTOSWITCH (follow the calendar) or
+  // ALLOW_PICK (the picker on the Sound sheet).
+  nexroll: {
+    url: (env.NEXROLL_URL || '').replace(/\/$/, ''),
+    apiKey: env.NEXROLL_API_KEY || '',
+    seasonMap: env.NEXROLL_SEASON_MAP || '',
+    autoswitch: env.NEXROLL_AUTOSWITCH === 'true',
+    allowPick: env.NEXROLL_ALLOW_PICK === 'true',
+  },
   // The soundbar's knobs that are the panel's business rather than the bar's.
   soundbarStep: Math.max(1, Math.min(20, Number(env.SOUNDBAR_STEP ?? 2) || 2)),
   soundbarMovieSmart: env.SOUNDBAR_MOVIE_SMART !== 'false',

@@ -483,6 +483,14 @@ export async function search(query, size = 30) {
   return out.map((m) => mapItem(m));
 }
 
+// A clip in a Plex library by title (the THX video in the Pre-Roll library): the first film whose
+// title contains the words, shortest title first so "THX Deep Note" beats a longer cousin.
+export async function findClip(title) {
+  const want = String(title).toLowerCase();
+  const hits = (await search(title, 20)).filter((m) => m.type === 'movie' && m.title.toLowerCase().includes(want));
+  return hits.sort((a, b) => a.title.length - b.title.length)[0] || null;
+}
+
 // The server's machine identifier (Plezy's play links name the server by it).
 export const machineId = () => cached('identity', 3600e3, async () => (await plex('/identity')).machineIdentifier);
 

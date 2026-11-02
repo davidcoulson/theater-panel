@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import { html, Icon } from '../lib/ui.mjs';
+import { Prerolls } from './prerolls.mjs';
 import { act, useStore, useEntity, toast } from '../lib/api.mjs';
 
 const BANDS = ['125', '250', '500', '1k', '2k', '4k', '8k'];
@@ -28,11 +29,11 @@ export function SoundSheet({ onClose }) {
   const [pending, setPending] = useState({});          // sliders being dragged: id -> value
   const [calibrating, setCalibrating] = useState(0);
   useEffect(() => { if (!calibrating) return; const t = setTimeout(() => setCalibrating((n) => n - 1), 1000); return () => clearTimeout(t); }, [calibrating]);
-  // THX: five seconds to sit down, then the Deep Note on the theater speaker.
+  // THX: five seconds to sit down, then the Deep Note video through Plex, or the sound on the theater speaker.
   const [thx, setThx] = useState(0);
   useEffect(() => {
     if (!thx) return;
-    if (thx === 1) { act({ action: 'thx' }).then((r) => { if (r) toast('The audience is listening'); }); setThx(0); return; }
+    if (thx === 1) { act({ action: 'thx' }).then((r) => { if (r) toast(r.video ? `Starting ${r.video}` : r.fallback ? 'Plex has no THX clip yet: playing the sound instead' : 'The audience is listening'); }); setThx(0); return; }
     const t = setTimeout(() => setThx((n) => n - 1), 1000);
     return () => clearTimeout(t);
   }, [thx]);
@@ -111,6 +112,7 @@ export function SoundSheet({ onClose }) {
             : html`<button type="button" class="btn ghost" style="height:52px" onClick=${() => sound({ cmd: 'calibrate' }).then((r) => { if (r) setCalibrating(knobs.calibrationSeconds || 45); })}><${Icon} name="spk" size=${20} color="#F4F0E8" />Calibrate the room</button>`}
         </div>
       </section>
+      ${knobs.nexroll && html`<${Prerolls} />`}
     </div>
   </div>`;
 }

@@ -33,6 +33,7 @@ import { netList, clientIp } from './net.mjs';
 import { versions } from './version.mjs';
 import * as hass from './hass.mjs';
 import * as gameLights from './gamelights.mjs';
+import * as nexroll from './nexroll.mjs';
 import QRCode from 'qrcode';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -80,6 +81,7 @@ async function applySettings() {
   ha.reconfigure({ url: config.ha.url, token: config.ha.token, entities });
   broadcast('settings', {});
   await hass.apply();
+  nexroll.seasonCheck({ force: true });
 }
 const clients = new Set();
 function broadcast(event, data) {
@@ -277,7 +279,7 @@ get(/^\/api\/state$/, () => ({
   sleep: sleep.get(),
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
-  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl) },
+  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl || config.thxPlexTitle), nexroll: Boolean(config.nexroll.url) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url), calendar: arrs.configured() },
 }));
 
@@ -296,6 +298,9 @@ get(/^\/api\/plex\/episode$/, (m, q) => plex.episodeByTmdb(q.get('tmdb'), q.get(
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
 // The panel's own settings sheet: the harmless knobs, behind the panel's auth like every action.
 get(/^\/api\/tweaks$/, () => admin.tweaks());
+// NeXroll pre-rolls: the picker's view, and applying a category to Plex (when the settings allow).
+get(/^\/api\/nexroll$/, () => nexroll.overview());
+post(/^\/api\/nexroll\/pick$/, (m, q, body) => nexroll.pick(body?.id));
 post(/^\/api\/tweaks$/, async (m, q, body) => { const r = admin.saveTweaks(body?.values); await applySettings(); return r; });
 
 // Continue watching, with who last watched each one (from the server's history), for the
@@ -793,6 +798,7 @@ ha.start();
 pollSessions();
 if (config.plex.url) { plex.warmMovies(); taste.warm(); seasonal.warm(); }
 wrapped.schedule(ha);
+nexroll.start();
 server.listen(config.port, () => {
   console.log(`[panel] theater-panel ${config.build.version}${config.build.time ? ` (${config.build.time})` : ''}`);
   console.log(`[panel] listening on :${config.port}`);

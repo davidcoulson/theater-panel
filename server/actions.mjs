@@ -119,10 +119,14 @@ export async function runAction(ha, body) {
     // The Deep Note: on the theater speaker when it is up, on the panel itself otherwise, the
     // same way the pre-roll and the march travel. The panel counts down before asking.
     case 'thx': {
-      if (!config.thxUrl) throw new Error('No THX sound on the settings page');
+      // The clip itself, through Plex on the projector, when Plex has it; the sound otherwise.
+      const clip = config.thxPlexTitle && config.plex.url ? await plex.findClip(config.thxPlexTitle).catch((err) => { console.warn('[thx] plex:', err.message); return null; }) : null;
+      if (clip) { await runAction(ha, { action: 'play', ratingKey: clip.id, type: 'movie', noPreroll: true }); return { video: clip.title }; }
+      if (!config.thxUrl) throw new Error(config.thxPlexTitle ? `Plex has no "${config.thxPlexTitle}" and there is no THX sound on the settings page` : 'No THX sound on the settings page');
       const speaker = e.roomSpeaker;   // THX always goes through the soundbar, whatever SOUNDS_ON_PANEL says
-      if (up(ha, speaker)) return script(ha, 'snipe', { speaker, url: config.thxUrl });
-      if (panelPath(config.thxUrl)) { toPanels({ url: panelPath(config.thxUrl) }); return { panel: true }; }
+      const fallback = Boolean(config.thxPlexTitle);   // the panel says why it is only the sound
+      if (up(ha, speaker)) { await script(ha, 'snipe', { speaker, url: config.thxUrl }); return { fallback }; }
+      if (panelPath(config.thxUrl)) { toPanels({ url: panelPath(config.thxUrl) }); return { panel: true, fallback }; }
       throw new Error('The theater speaker is not up');
     }
 
