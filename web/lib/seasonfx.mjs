@@ -7,7 +7,7 @@ import { html } from './ui.mjs';
 
 const FORCE = new URLSearchParams(location.search).get('roam');
 const KINDS = {
-  thanksgiving: ['turkey'],
+  thanksgiving: ['turkey', 'pilgrim'],
   christmas: ['elf', 'reindeer', 'thief', 'santa'],
   diehard: ['bear', 'vent', 'vent'],
 };

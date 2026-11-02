@@ -1035,6 +1035,7 @@ html.a-halloween header.top .right::before { content: ''; flex: none; position: 
 .sf-roam { position: absolute; bottom: 0; left: 0; width: 300px; height: 300px; opacity: 0; background-size: 1200% 800%; background-repeat: no-repeat; animation: hw-dance-x 1s steps(12, end) infinite, hw-dance-y 8s steps(8, end) infinite, sf-cross 12s linear forwards; }
 @keyframes sf-cross { 0% { margin-left: -320px; opacity: 0; } 4%, 96% { opacity: 1; } 100% { margin-left: 1920px; opacity: 0; } }
 .sf-turkey { background-image: url(/assets/turkey-96-atlas.png); }
+.sf-pilgrim { background-image: url(/assets/pilgrim-96-atlas.png); }
 .sf-elf { background-image: url(/assets/elf-96-atlas.png); }
 .sf-reindeer { background-image: url(/assets/reindeer-96-atlas.png); }
 .sf-thief { background-image: url(/assets/thief-96-atlas.png); }
