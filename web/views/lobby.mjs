@@ -211,7 +211,7 @@ function Scenes() {
   return html`<section class="scenes tx-maple" aria-label="Scenes">
     <div class="grid">
       ${SCENES.map((s) => html`<button type="button" class="scene" aria-pressed=${s.name === active ? 'true' : 'false'} onClick=${async () => { const ok = await act({ action: 'scene', name: s.name }); if (ok && s.name === 'intermission') go('intermission', { auto: true }); }}>
-        <${Icon} name=${s.icon} size=${30} color=${s.name === active ? 'var(--gold)' : 'var(--acc)'} />
+        <${Icon} name=${s.icon} size=${38} color=${s.name === active ? 'var(--gold)' : 'var(--acc)'} />
         <span><span class="n">${s.label}</span><br /><span class="d">${s.desc}</span></span>
       </button>`)}
     </div>
@@ -344,11 +344,11 @@ function Projector() {
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
     <div class="label" style="margin:22px 0 12px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
-      <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
+      <${Icon} name=${s.icon} size=${38} /><span>${s.name}</span></button>`)}</div>
     ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:26px 0 12px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj || (a.admin && !adminHere)} title=${a.admin && !adminHere ? 'Only when the admin is in the room' : undefined} onClick=${() => openApp(a)}>
-      <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}
-      ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${30} /><span>${appShown}</span></button>`}</div>`}
+      <${Icon} name=${appIcon(a)} size=${38} /><span>${a.name}</span></button>`)}
+      ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${38} /><span>${appShown}</span></button>`}</div>`}
   </section>`;
 }
 
