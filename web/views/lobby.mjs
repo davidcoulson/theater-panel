@@ -284,6 +284,7 @@ function Projector() {
   // What the PC is playing changes; ask again now and then.
   useEffect(() => { if (!games?.pc) return undefined; const t = setInterval(reload, 30000); return () => clearInterval(t); }, [games?.pc != null]);
   const [picked, setPicked] = useState(null);
+  const [pickedApp, setPickedApp] = useState(null);   // an app just tapped, lit until the projector confirms (its Showing sensor lags ~20 s)
   const [menu, setMenu] = useState(false);
   const [want, setWant] = useState(null);   // a picture mode asked for, until the projector reports it
   const menuRef = useRef(null);
@@ -313,7 +314,10 @@ function Projector() {
   // The Showing sensor names an app on the projector ("Plezy"); an input reads "HDMI 2 ..."
   const showing = useEntity(ents.projectorShowing)?.state;
   const appShown = on && showing && !/^(HDMI \d|unknown|unavailable)/.test(showing) ? showing : null;
-  const runningApp = apps.find((a) => a.package === appId) || apps.find((a) => appShown && a.name.toLowerCase() === appShown.toLowerCase());
+  const shownApp = apps.find((a) => a.package === appId) || apps.find((a) => appShown && a.name.toLowerCase() === appShown.toLowerCase());
+  const runningApp = picked ? null : pickedApp || shownApp;
+  useEffect(() => { if (pickedApp && shownApp === pickedApp) setPickedApp(null); }, [shownApp, pickedApp]);
+  useEffect(() => { if (!pickedApp && !picked) return undefined; const t = setTimeout(() => { setPickedApp(null); setPicked(null); }, 25000); return () => clearTimeout(t); }, [pickedApp, picked]);
 
   // In the order set on the admin page.
   const sources = (games?.sources || []).map((s) => ({ ...s, icon: s.icon?.includes(':') ? s.icon : SOURCE_ICONS[s.icon] || (s.via === 'switcher' ? 'pad' : 'screen') }));
@@ -321,16 +325,18 @@ function Projector() {
   // switcher's input); the last source picked here only while that is unknown.
   const switcher = useEntity(games?.switcher?.entity);
   const current = picked || (runningApp || appShown ? null : sourceOnWall(showing, games, switcher) || games?.active);
+  const onWall = shownApp || appShown ? null : sourceOnWall(showing, games, switcher);
+  useEffect(() => { if (picked && onWall === picked) setPicked(null); }, [onWall, picked]);
 
   async function pickSource(s) {
     setPicked(s.id);
     const ok = await act({ action: 'game_source', id: s.id });
-    if (ok) toast(`Projector: ${s.name}`);
-    setPicked(null);
+    if (ok) toast(`Projector: ${s.name}`); else setPicked(null);
     reload();
   }
   async function openApp(a) {
-    if (await act({ action: 'projector_app', package: a.package })) toast(on ? `Opening ${a.name}` : `Waking the projector for ${a.name}`);
+    setPicked(null); setPickedApp(a);
+    if (await act({ action: 'projector_app', package: a.package })) toast(on ? `Opening ${a.name}` : `Waking the projector for ${a.name}`); else setPickedApp(null);
     reload();
   }
 
