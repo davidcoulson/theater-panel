@@ -362,7 +362,7 @@ export async function selectSource(ha, id) {
 // Is the house's admin at this panel? Restart and force-off are only for them.
 export const adminHere = (ha) => {
   const { adminRoomSensor, adminRoom } = config.entities;
-  if (!adminRoomSensor || !adminRoom) return false;
+  if (!adminRoomSensor || !adminRoom || !ha.connected) return false;   // a disconnected HA keeps its last states: not proof
   return String(ha.states[adminRoomSensor]?.state || '').toLowerCase() === adminRoom.toLowerCase();
 };
 // "Windows desktop": the PC on the projector with the room lit for working, not for a film -

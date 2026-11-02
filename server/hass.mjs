@@ -29,7 +29,9 @@ const settingsOf = () => ({ enabled: config.hass.enabled, port: config.hass.port
 export function init(context) { ctx = context; }
 
 // Start (or restart after a settings change) the device. Safe to call at any time.
-export async function apply() {
+let applying = Promise.resolve();
+export const apply = () => (applying = applying.then(applyNow, applyNow));
+async function applyNow() {
   const want = settingsOf();
   if (dev && JSON.stringify(want) === JSON.stringify(running)) { refresh(); return; }
   await stop();

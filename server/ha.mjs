@@ -55,6 +55,8 @@ export class HomeAssistant extends EventEmitter {
       return;
     }
     this.ws = ws;
+    // A socket that opens but never completes auth would otherwise sit there forever.
+    setTimeout(() => { if (this.ws === ws && !this.connected) { console.warn('[ha] no auth in 15 s; reconnecting'); try { ws.close(); } catch {} } }, 15000).unref?.();
     ws.addEventListener('message', (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return console.warn('[ha] unreadable frame'); }
@@ -79,7 +81,7 @@ export class HomeAssistant extends EventEmitter {
 
   // Try again after the current backoff, unless something else has already reconnected.
   #retry() {
-    if (this.configured) setTimeout(() => { if (!this.ws) this.#connect(); }, this.retryMs);
+    if (this.configured) setTimeout(() => { if (this.configured && !this.ws) this.#connect(); }, this.retryMs);
     this.retryMs = Math.min(this.retryMs * 2, 30000);
   }
 

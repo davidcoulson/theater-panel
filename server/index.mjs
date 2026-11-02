@@ -122,7 +122,13 @@ function nudge(cmd) {
 let verdict = null;
 const WATCHED_ENOUGH = 0.8;
 const ASK_FOR = 20 * 60e3;        // how long the card waits for the room's verdict
+let polling = false;
 async function pollSessions() {
+  if (polling) return;   // the running poll sets the next timer
+  polling = true;
+  try { await pollOnce(); } finally { polling = false; }
+}
+async function pollOnce() {
   clearTimeout(pollTimer);
   let next = 30000;
   if (clients.size && config.plex.url) {
