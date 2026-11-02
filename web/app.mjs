@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useErrorBoundary, useRef, useState } from 'preact/hooks';
 import { html, Icon, StrataMark } from './lib/ui.mjs';
-import { report, startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
+import { endsAt, report, startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -425,7 +425,9 @@ function App() {
   const tvState = useStore((s) => playbackState(s));
   const toast = useStore((s) => s.toast);
   const down = useStore((s) => (s.connected === false ? 'Server offline' : s.connected && !s.haConnected ? (s.haConfigured ? 'Home Assistant is offline: the room will not respond' : '') : ''));
-  const banner = down && html`<div class="outage" role="alert">${down}</div>`;
+  const pw = useStore((s) => s.pauseWarn);
+  const banner = html`${down && html`<div class="outage" role="alert">${down}</div>`}
+    ${pw && html`<div class="outage keepon" role="alert">Paused a long while: projector stands by at ${endsAt(pw.at - Date.now())} <button type="button" class="btn" onClick=${() => post('/api/keep-on', {}).catch((e) => toast(e.message, true))}>Keep on</button></div>`}`;
 
   // Playback drives the screen: start playing -> Showtime; stop -> Lobby. If someone leaves
   // Showtime while a movie plays, return there after 90 s without a touch.

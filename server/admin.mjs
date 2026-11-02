@@ -134,6 +134,7 @@ export const FIELDS = [
   { group: 'Year in review', key: 'WRAPPED_NOTIFY', label: 'Send it to', type: 'list', domain: 'notify', help: 'Home Assistant notify entities: phones, the kitchen display. Empty sends nothing.' },
   { group: 'Display', key: 'ARRIVAL_HOURS', label: 'Show new arrivals for (hours)', type: 'text', placeholder: '48' },
   { group: 'Display', key: 'IDLE_MINUTES', label: 'Minutes before the Now Showing screen', type: 'text', placeholder: '8', help: '0 keeps the panel where it is. Any touch brings it straight back.' },
+  { group: 'Display', key: 'PAUSE_STANDBY_MIN', label: 'Minutes paused before the projector stands by', type: 'text', placeholder: '45', help: 'A film left paused this long gets a two-minute warning on the panel (Keep on), then the picture goes off and the Apple TV sleeps. The film stays paused; Play brings the picture back. 0 never does.' },
   { group: 'Display', key: 'CINEMA_MODE', label: 'Dim the panel when the room is dark', type: 'bool', default: true, help: 'Cinema mode: whenever the downlights are off or under a quarter, the panel drops to a dark palette instead of lighting the room from the wall. Showtime and the idle screen are dark already.' },
   { group: 'Display', key: 'SHOW_QUALITY_BADGES', label: '4K / HDR / Dolby Vision labels on posters', type: 'bool', default: true },
   { group: 'Display', key: 'SHOW_NETWORK_BADGES', label: 'Streaming network labels on posters', type: 'bool', default: false },

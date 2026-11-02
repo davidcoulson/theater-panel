@@ -305,6 +305,8 @@ function build(env) {
   arrivalHours: Math.min(Number(env.ARRIVAL_HOURS) || 48, 24 * 14),
   // Minutes without a touch before the panel drifts to the Now Showing screen (0 = never).
   idleMinutes: Number(env.IDLE_MINUTES ?? 8),
+  // Minutes a film may sit paused before the projector goes to standby (0 = never).
+  pauseStandbyMin: Number(env.PAUSE_STANDBY_MIN ?? 45),
   // Which build this is: stamped into the image by `npm run push`.
   build: { version: env.BUILD_VERSION || 'dev', time: env.BUILD_TIME || '' },
   // Favourite light effects shown first in the Moods sheet (up to 8, in order).

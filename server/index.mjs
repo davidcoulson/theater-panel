@@ -18,6 +18,7 @@ import * as seerr from './seerr.mjs';
 import * as arrs from './arrs.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
+import * as pausestandby from './pausestandby.mjs';
 import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
@@ -145,6 +146,7 @@ async function pollOnce() {
       }
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
       tonight.observe(mine).catch((e) => console.warn('[tonight]', e.message));
+      pausestandby.observe(mine);
       if (mine.length) playing = mine[0];
       else if (playing) {
         const done = playing;
@@ -277,6 +279,7 @@ get(/^\/api\/state$/, () => ({
   build: config.build,
   idleMinutes: config.idleMinutes,
   sleep: sleep.get(),
+  pauseWarn: pausestandby.get(),
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl || config.thxPlexTitle), nexroll: Boolean(config.nexroll.url) },
@@ -450,6 +453,7 @@ post(/^\/api\/rate$/, async (m, q, body) => {
 
 // The sleep timer lives on the server so it outlives the panel's own screen.
 get(/^\/api\/sleep$/, () => sleep.get() || { mode: null });
+post(/^\/api\/keep-on$/, () => pausestandby.keepOn());
 post(/^\/api\/sleep$/, (m, q, body) => sleep.set(body || {}) || { mode: null });
 
 post(/^\/api\/vote\/start$/, (m, q, body) => {
@@ -790,6 +794,7 @@ const server = createServer(async (req, res) => {
 });
 
 await initImageCache();
+pausestandby.init({ broadcast, run: (body) => runAction(ha, body) });
 sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
 hass.apply();

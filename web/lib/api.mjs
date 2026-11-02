@@ -137,7 +137,7 @@ let onNavigate = null;
 let bootBuild = null;
 export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
-  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, preroll: s.preroll || {}, intermission: s.intermission || {}, soundbar: s.soundbar || {} })).catch(() => {});
+  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, pauseWarn: s.pauseWarn || null, preroll: s.preroll || {}, intermission: s.intermission || {}, soundbar: s.soundbar || {} })).catch(() => {});
   const loadTonight = () => get('/api/tonight').then((d) => set({ tonight: d?.item ? d : null })).catch(() => {});
   loadSettings();
   get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
@@ -180,6 +180,8 @@ export async function startLive({ navigate } = {}) {
       set({ sleep: d.mode ? d : null });
       if (d.fired) toast(`Room off ${d.fired}`);
     });
+    // A long pause: the projector goes to standby at d.at unless someone says Keep on.
+    es.addEventListener('pausewarn', (e) => { const d = JSON.parse(e.data); set({ pauseWarn: d.at ? d : null }); });
     // "Surprise me" from voice or an automation: the server picked, the panel reveals it.
     es.addEventListener('mystery', (e) => set({ mystery: JSON.parse(e.data) }));
     // A sound the room's speaker could not take (it is asleep): the wall panel plays it.
