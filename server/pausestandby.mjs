@@ -11,7 +11,7 @@ let ctx = null, since = 0, standby = false;
 export function init(context) { ctx = context; }
 
 const limit = () => Math.max(0, Number(config.pauseStandbyMin) || 0) * 60e3;
-export const get = () => (since && !standby && limit() ? { at: since + limit() } : null);
+export const get = () => (since && !standby && limit() && since + limit() - Date.now() <= WARN ? { at: since + limit() } : null);
 
 function publish() { ctx?.broadcast('pausewarn', get() || { at: null }); }
 
