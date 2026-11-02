@@ -176,7 +176,7 @@ function DayShow({ s, now }) {
       <div class="sub">${seasonLabel(s.eps)}${note && html` <span class="pill">${note}</span>`}</div>
       ${facts.length > 0 && html`<div class="times">${icon && html`<${Icon} name=${`cbi:${icon}`} size=${24} />`}${facts.map((f, i) => html`${i > 0 && html`<i>·</i>`}<span>${f}</span>`)}</div>`}
     </div>
-    ${!gone && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#fff" /></button>`}
+    ${!gone && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#000" /></button>`}
   </div>`;
 }
 
