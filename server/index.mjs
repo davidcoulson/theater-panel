@@ -282,7 +282,7 @@ get(/^\/api\/state$/, () => ({
   pauseWarn: pausestandby.get(),
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
-  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.thxUrl || config.thxPlexTitle), nexroll: Boolean(config.nexroll.url) },
+  soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.preroll.url), nexroll: Boolean(config.nexroll.url) },
   services: { plex: Boolean(config.plex.url), seerr: Boolean(config.seerr.url), calendar: arrs.configured() },
 }));
 
