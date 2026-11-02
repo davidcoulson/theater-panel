@@ -508,6 +508,14 @@ script:
                     over HDMI-CEC: check the Apple TV is reachable and ENTITY_PROJECTOR is the projector's ADB entity.
               - stop: Projector did not wake
           - delay: "00:00:03"
+      # Standby is picture off, and the ADB entity then still reads "paused": light the picture too.
+      - if:
+          - condition: template
+            value_template: "{{ is_state('switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture', 'off') }}"
+        then:
+          - action: script.theater_projector_light_on
+            data: { projector: "{{ projector }}" }
+            continue_on_error: true
       - action: androidtv.adb_command
         target: { entity_id: "{{ projector }}" }
         data:

@@ -299,7 +299,8 @@ function Projector() {
   const adminHere = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
   const hasProj = Boolean(ents.projector);
   // Until the projector's own entity exists, the Apple TV's power state stands in for it (CEC).
-  const on = hasProj ? proj && !['off', 'standby', 'unavailable'].includes(proj.state) : tv && !['off', 'standby', 'unavailable'].includes(tv.state);
+  const pictureOff = useEntity(ents.projectorPictureSwitch)?.state === 'off';
+  const on = hasProj ? proj && !pictureOff && !['off', 'standby', 'unavailable'].includes(proj.state) : tv && !['off', 'standby', 'unavailable'].includes(tv.state);
   const pictureEnt = useEntity(ents.pictureMode);
   const picture = pictureEnt?.state;
   const proj_modes = pictureEnt?.attributes?.options;

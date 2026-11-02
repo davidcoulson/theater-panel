@@ -130,6 +130,8 @@ function build(env) {
     // The projector plugin's Showing sensor ("HDMI 2", "HDMI 1 · Apple TV", "Plezy"): what the
     // Projector card names when nothing it knows is playing.
     projectorShowing: env.ENTITY_PROJECTOR_SHOWING || '',
+    // The plugin's Picture switch: off is how the projector stands by (the ADB entity still reads "paused").
+    projectorPictureSwitch: env.ENTITY_PROJECTOR_PICTURE_SWITCH || 'switch.home_theater_aurora_pro_projector_nexigo_aurora_pro_picture',
     // Who is in the room: a room sensor for the house's admin, and the room the panel is in. The
     // Games page's restart and force-off are only offered when that person is in the room.
     adminRoomSensor: env.ENTITY_ADMIN_ROOM || '', adminRoom: env.ADMIN_ROOM || '',
@@ -381,7 +383,7 @@ function aiEntities(loaded) {
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.adminRoomSensor,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.projectorPictureSwitch, e.adminRoomSensor,
     ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.projectorPicture, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar), ...Object.values(e.ai || {}),
     'input_select.theater_scene',
