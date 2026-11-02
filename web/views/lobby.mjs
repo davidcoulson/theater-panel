@@ -342,10 +342,10 @@ function Projector() {
             <button type="button" role="menuitem" class="off" onClick=${() => { setMenu(false); act({ action: 'projector', cmd: 'power_off' }); }}>Off</button></div>`}</span>`
       : html`<button type="button" class="aside mode pwr" aria-label="Turn projector on" onClick=${() => act({ action: 'projector', cmd: 'power_on' })}><${Icon} name="power" size=${18} w=${2.4} />Power on</button>`}<//>
     ${gamesErr && !games && html`<div class="empty" style="padding:6px 0;font-size:15px">Couldn't load the sources: ${gamesErr.message}. Trying again…</div>`}
-    <div class="label" style="margin:18px 0 8px">Source</div>
+    <div class="label" style="margin:22px 0 12px">Source</div>
     <div class="tiles">${sources.map((s) => html`<button type="button" class="tile" aria-pressed=${current === s.id ? 'true' : 'false'} disabled=${!hasProj} onClick=${() => pickSource(s)}>
       <${Icon} name=${s.icon} size=${30} /><span>${s.name}</span></button>`)}</div>
-    ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:16px 0 8px">Apps</div>
+    ${(apps.length > 0 || appShown) && html`<div class="label" style="margin:26px 0 12px">Apps</div>
     <div class="tiles">${apps.map((a) => html`<button type="button" class="tile" aria-pressed=${runningApp === a ? 'true' : 'false'} disabled=${!hasProj || (a.admin && !adminHere)} title=${a.admin && !adminHere ? 'Only when the admin is in the room' : undefined} onClick=${() => openApp(a)}>
       <${Icon} name=${appIcon(a)} size=${30} /><span>${a.name}</span></button>`)}
       ${appShown && !runningApp && html`<button type="button" class="tile" aria-pressed="true" disabled><${Icon} name="app" size=${30} /><span>${appShown}</span></button>`}</div>`}
