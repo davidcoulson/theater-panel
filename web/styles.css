@@ -258,7 +258,7 @@ input.range.thin { height: 40px; }
 .hero .body { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .hero .title { font-family: var(--disp); font-weight: 800; font-size: 42px; line-height: 1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .hero .sub { font-size: 18px; color: var(--on-choc2); }
-.hero p { margin: 0; font-size: 17px; line-height: 1.4; color: var(--on-choc); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 1; min-height: 0; }
+.hero p { margin: 0; font-size: 15px; line-height: 1.3; color: var(--on-choc); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 1; min-height: 0; }
 .hero .times { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 15px; color: var(--on-choc2); margin-top: 8px; white-space: nowrap; }
 .hero .art { max-height: 278px; }
 .hero.swipe { touch-action: pan-y; }
