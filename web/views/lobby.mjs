@@ -176,7 +176,7 @@ function Continue() {
       <p>${it.summary}</p>
       <div style="flex-grow:1"></div>
       <div>
-        <div class="bar"><i style=${`width:${pct}%`}></i></div>
+        <div class="bar" style=${`--p:${pct}`}><i style=${`width:${pct}%`}></i></div>
         <div class="times"><span>${[it.year, it.viewOffset ? `${runtime(left)} left` : runtime(left)].filter(Boolean).join(' · ')}</span><span>ends ${endsAt(left)}</span></div>
       </div>
       ${rewind && html`<div class="rewind"><${Icon} name="moon" size=${18} color="var(--gold)" />${rewind}</div>`}

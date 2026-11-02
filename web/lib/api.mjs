@@ -323,6 +323,9 @@ export function livePosition(st) {
 export function christmasCountdown(now = new Date(), force = false) {
   const m = now.getMonth(), d = now.getDate();
   if (!force && !(m === 10 || (m === 11 && d <= 25))) return null;
+  // Thanksgiving itself (fourth Thursday of November) greets instead of counting.
+  const first = new Date(now.getFullYear(), 10, 1).getDay();
+  if (m === 10 && d === 1 + ((4 - first + 7) % 7) + 21) return { days: 0, text: 'Happy Thanksgiving' };
   const xmas = new Date(now.getFullYear(), 11, 25);
   const today = new Date(now.getFullYear(), m, d);
   const days = Math.round((xmas - today) / 864e5);

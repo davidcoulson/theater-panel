@@ -99,7 +99,7 @@ const ACCENT_IDS = ['halloween', 'thanksgiving', 'christmas', 'newyear', 'valent
 // Idle glow and weather per accent, for a route override (the server sends these with its pick).
 const ACCENT_DEFS = {
   halloween: { id: 'halloween', name: 'Halloween', glow: 'Halloween Eyes' },
-  thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glow: 'Ember Ring', weather: 'leaves' },
+  thanksgiving: { id: 'thanksgiving', name: 'Thanksgiving', glow: 'Ember Ring', weather: 'harvest' },
   christmas: { id: 'christmas', name: 'Christmas', glow: 'Fairytwinkle', weather: 'xmas' },
   newyear: { id: 'newyear', name: 'New Year', glow: 'Fireworks Burst', weather: 'confetti' },
   valentines: { id: 'valentines', name: "Valentine's", glow: 'Heartbeat Pulse', weather: 'hearts' },

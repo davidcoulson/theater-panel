@@ -10,7 +10,7 @@
 // (web/lib/particles.mjs) - snow and leaves settle on the cards, hearts and fireflies drift.
 export const ACCENTS = [
   { id: 'halloween', name: 'Halloween', gold: '#E8731C', glow: 'Halloween Eyes' },
-  { id: 'thanksgiving', name: 'Thanksgiving', gold: '#C8912E', glow: 'Ember Ring', weather: 'leaves' },
+  { id: 'thanksgiving', name: 'Thanksgiving', gold: '#C8912E', glow: 'Ember Ring', weather: 'harvest' },
   { id: 'christmas', name: 'Christmas', gold: '#E3A865', glow: 'Fairytwinkle', weather: 'xmas' },
   { id: 'newyear', name: 'New Year', gold: '#F2D69B', glow: 'Fireworks Burst', weather: 'confetti' },
   { id: 'valentines', name: "Valentine's", gold: '#D9536F', glow: 'Heartbeat Pulse', weather: 'hearts' },

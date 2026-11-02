@@ -13,6 +13,8 @@ const KINDS = {
   // Christmas is snow with a sleigh that crosses now and then.
   xmas: { n: 90, vy: [26, 64], sway: 14, size: [2, 5], land: 'mound', colors: ['#FAF8F2'], men: true, sleigh: true, santa: true },
   leaves: { n: 26, vy: [45, 100], sway: 40, size: [8, 13], land: 'scatter', colors: ['#C75E12', '#E8731C', '#8F4E1C', '#B3372B', '#E3A865'] },
+  // Thanksgiving: the leaves, with acorns, wheat ears and little pumpkins among them, and a pie that rolls along the floor now and then.
+  harvest: { n: 26, vy: [45, 100], sway: 40, size: [8, 13], land: 'scatter', colors: ['#C75E12', '#E8731C', '#8F4E1C', '#B3372B', '#E3A865'], shapes: ['leaf', 'leaf', 'leaf', 'acorn', 'wheat', 'pumpkin'], pie: true },
   petals: { n: 34, vy: [30, 70], sway: 30, size: [5, 8], land: 'scatter', colors: ['#F2A0B2', '#F7C6D0', '#FBE7EC', '#E3A865'] },
   confetti: { n: 60, vy: [80, 160], sway: 36, size: [5, 8], land: 'scatter', colors: ['#D9536F', '#E3A865', '#4E7D3A', '#3F7FB5', '#F2D69B', '#E8731C'], rect: true },
   hearts: { n: 14, vy: [-34, -16], sway: 18, size: [7, 13], land: null, colors: ['#D9536F', '#F2A0B2'] },
@@ -25,7 +27,7 @@ const COL = 6;                                 // width of one column of a snow 
 const MAX_MOUND = 16, MAX_SCATTER = 40;
 
 function spawn(k, fresh) {
-  const p = { x: rnd(0, W), size: rnd(...(k.size || [3, 6])), color: pick(k.colors || ['#fff']), phase: rnd(0, 6.28), rot: rnd(0, 6.28), spin: rnd(-2, 2) };
+  const p = { shape: k.shapes ? pick(k.shapes) : 'leaf', x: rnd(0, W), size: rnd(...(k.size || [3, 6])), color: pick(k.colors || ['#fff']), phase: rnd(0, 6.28), rot: rnd(0, 6.28), spin: rnd(-2, 2) };
   if (k.wander) { p.y = rnd(80, H - 80); p.vx = rnd(-20, 20); p.vy = rnd(-14, 14); p.blink = rnd(0.4, 1.2); return p; }
   if (k.bats) { p.y = rnd(batTop + 24, batTop + 150); p.x = -80 - rnd(0, W); p.vx = rnd(120, 200); p.size = rnd(22, 34); p.flap = rnd(6, 9); return p; }
   p.vy = rnd(...k.vy);
@@ -73,6 +75,32 @@ function land(k, l, p) {
   }
 }
 
+// Harvest bits, drawn around (0,0) at size s: an acorn, a wheat ear, a pumpkin.
+function drawAcorn(ctx, s) {
+  ctx.fillStyle = '#B07A3E'; ctx.beginPath(); ctx.ellipse(0, s * 0.15, s * 0.32, s * 0.42, 0, 0, 6.29); ctx.fill();
+  ctx.fillStyle = '#6B4423'; ctx.beginPath(); ctx.ellipse(0, -s * 0.2, s * 0.4, s * 0.2, 0, Math.PI, 0); ctx.fill();
+  ctx.fillRect(-s * 0.04, -s * 0.5, s * 0.08, s * 0.14);
+}
+function drawWheat(ctx, s) {
+  ctx.strokeStyle = '#B58B2F'; ctx.lineWidth = Math.max(1, s * 0.08);
+  ctx.beginPath(); ctx.moveTo(0, s * 0.55); ctx.lineTo(0, -s * 0.2); ctx.stroke();
+  ctx.fillStyle = '#E3B94E';
+  for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * s * 0.12, -s * 0.2 - i * s * 0.17, s * 0.07, s * 0.14, sx * 0.5, 0, 6.29); ctx.fill(); }
+}
+function drawPumpkin(ctx, s) {
+  ctx.fillStyle = '#E8731C';
+  for (const dx of [-0.2, 0.2, 0]) { ctx.beginPath(); ctx.ellipse(s * dx, 0, s * 0.26, s * 0.36, 0, 0, 6.29); ctx.fill(); }
+  ctx.fillStyle = '#4E7D3A'; ctx.fillRect(-s * 0.05, -s * 0.46, s * 0.1, s * 0.16);
+}
+const SHAPES = { acorn: drawAcorn, wheat: drawWheat, pumpkin: drawPumpkin };
+// A pie on its side rolling along the floor: a crust disc with a slice gone, spinning as it goes.
+function drawPie(ctx, x, y, r, a) {
+  ctx.save(); ctx.translate(x, y - r); ctx.rotate(a);
+  ctx.fillStyle = '#C98A3E'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, 0.6, 6.28 - 0.3 + 0.6 - 0.9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#E8A95A'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r * 0.78, 0.6, 6.28 - 0.3 + 0.6 - 0.9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#7A3E12'; ctx.beginPath(); ctx.arc(0, 0, r * 0.12, 0, 6.29); ctx.fill();
+  ctx.restore();
+}
 function drawHeart(ctx, x, y, s) {
   ctx.beginPath();
   ctx.moveTo(x, y + s * 0.9);
@@ -423,6 +451,7 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
     // Halloween at 50% and up brings out the ghosts: one more for every notch of the slider.
     const ghosts = k.bats ? Array.from({ length: Math.max(0, Math.floor(intensity) - 1) }, () => spawnGhost(true)) : [];
     let ledges = k.land ? findLedges(cv) : [];
+    const pie = k.pie ? { wait: rnd(12, 24), x: 0, dir: 1, r: 34, rolling: false } : null;
     const sleigh = k.sleigh ? { ...newSleigh(), wait: rnd(10, 22) } : null;
     let live = true, last = performance.now(), t = 0, sinceLedges = 0, sinceMelt = 0, sinceMen = 0;
     // Santa: how long since he was last up, and the visit he is in the middle of.
@@ -481,7 +510,12 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
           sleigh.x = sleigh.dir > 0 ? -280 : W + 280;
         }
       }
+      if (pie) {
+        if (pie.rolling) { pie.x += 130 * pie.dir * dt; if (pie.x < -80 || pie.x > W + 80) { pie.rolling = false; pie.wait = rnd(40, 90); } }
+        else if ((pie.wait -= dt) <= 0) { pie.rolling = true; pie.dir = Math.random() < 0.5 ? 1 : -1; pie.x = pie.dir > 0 ? -60 : W + 60; }
+      }
       ctx.clearRect(0, 0, W, H);
+      if (pie?.rolling) drawPie(ctx, pie.x, H - 6, pie.r, (pie.x / pie.r) * 1);
       drawSettled(ctx, k, ledges);
       if (decor === 'tree') drawTree(ctx, W - 210, H - 40, 300, t);
       if (santa) {
@@ -538,6 +572,7 @@ export function Particles({ kind, intensity = 1, decor = '', paused = false }) {
         if (landed || p.y > H + 20 || p.x < -20 || p.x > W + 20) { ps[i] = spawn(k, false); continue; }
         ctx.save(); ctx.translate(p.x, p.y); ctx.fillStyle = p.color;
         if (kind === 'snow') { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, 6.29); ctx.fill(); }
+        else if (SHAPES[p.shape]) { ctx.rotate(p.rot * 0.35); SHAPES[p.shape](ctx, p.size * 1.6); }
         else { ctx.rotate(p.rot); if (k.rect) ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); else { ctx.beginPath(); ctx.ellipse(0, 0, p.size / 2, p.size / 3.2, 0, 0, 6.29); ctx.fill(); } }
         ctx.restore();
       }
