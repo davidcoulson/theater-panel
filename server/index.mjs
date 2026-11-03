@@ -808,7 +808,7 @@ const server = createServer(async (req, res) => {
 
 await initImageCache();
 pausestandby.init({ broadcast, run: (body) => runAction(ha, body) });
-sleep.init({ ha, broadcast, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
+sleep.init({ ha, broadcast, sessions: () => sessions, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
 hass.apply();
 tonight.init({ ha, broadcast, onChange: (plan) => hass.tonight(plan) });

@@ -42,11 +42,13 @@ export function set({ mode, minutes }) {
 }
 
 // The players that count as "the film is running": whichever of them this room plays through.
+// Not the ADB projector entity: it reads "paused" whenever Plezy is idle, so the film never ended.
+// Plezy's own film shows up as a Plex session instead.
 const watched = () => {
   const e = config.entities;
-  return [e.appleTv, e.projector, e.projectorPlexPlayer, e.plexPlayer].filter(Boolean);
+  return [e.appleTv, e.projectorPlexPlayer, e.plexPlayer].filter(Boolean);
 };
-const playing = () => watched().some((id) => ['playing', 'paused', 'buffering'].includes(ctx?.ha.states[id]?.state));
+const playing = () => ctx?.sessions().length > 0 || watched().some((id) => ['playing', 'paused', 'buffering'].includes(ctx?.ha.states[id]?.state));
 
 function check() {
   if (!ctx) return;
