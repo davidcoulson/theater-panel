@@ -79,10 +79,13 @@ export async function runAction(ha, body) {
         // Plezy resumes by itself, so Start over clears the saved position first.
         if (!body.offset) await plex.clearProgress(body.ratingKey).catch((err) => console.warn('[plex] start over', err.message));
         const id = `plezy_${await plex.machineId()}_${Number(body.ratingKey)}`;
-        return script(ha, 'play_projector', {
+        const run = await script(ha, 'play_projector', {
           projector: e.projector, apple_tv: e.appleTv, package: config.plezyPackage,
           uri: `plezy://play?content_id=${id}`,
         });
+        // A Plezy left open and paused (a hand-pressed Off) takes the link without playing: press Play once the picture is up.
+        setTimeout(() => projectorKey(ha, { cmd: 'play' }).catch(() => {}), 8000).unref?.();
+        return run;
       }
       if (config.playTarget === 'plex') {
         // The official Plex app on the projector: open it over ADB, then play through its Plex client.
