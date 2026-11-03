@@ -109,6 +109,7 @@ let playing = null;
 // A transport press shows at once and is held until Plex catches up (the client only reports
 // every few seconds); meanwhile Plex is polled every second.
 let want = null, fastUntil = 0, polledAt = 0;
+let dismissed = null;   // a film left paused when the room was turned off by hand: hidden until it plays again
 function nudge(cmd) {
   const cur = sessions[0];
   const state = cmd === 'pause' ? 'paused' : cmd === 'play' ? 'playing' : cur?.state === 'playing' ? 'paused' : 'playing';
@@ -140,6 +141,9 @@ async function pollOnce() {
       const { sessions: all, streams: everything } = await plex.activity();
       let mine = config.plexPlayerName ? all.filter((s) => s.player === config.plexPlayerName || s.product === config.plexPlayerName) : all;
       polledAt = Date.now();
+      // The pause lands a few seconds after the Off, so the first 20 s hide it whatever its state.
+      if (dismissed && Date.now() - dismissed.at > 20000 && mine[0]?.state !== 'paused') dismissed = null;
+      if (dismissed) mine = mine.filter((s) => String(s.id) !== dismissed.id || (s.state !== 'paused' && Date.now() - dismissed.at > 20000));
       if (want) {
         if (mine[0]?.state === want.state || Date.now() > want.until) want = null;
         else if (mine[0]) mine = [{ ...mine[0], state: want.state, viewOffset: sessions[0]?.viewOffset ?? mine[0].viewOffset }, ...mine.slice(1)];
@@ -605,6 +609,10 @@ post(/^\/api\/navigate$/, (m, q, body) => {
 
 post(/^\/api\/action$/, async (m, q, body) => {
   const r = await runAction(ha, body);
+  // Turning the room off by hand ends the film for the panel; Plex keeps the place.
+  if ((body.action === 'scene' && body.name === 'all_off') || (body.action === 'projector' && ['power_off', 'light_off'].includes(body.cmd))) {
+    if (sessions[0]) { dismissed = { id: String(sessions[0].id), at: Date.now() }; sessions = sessions.slice(1); broadcast('sessions', sessions); hass.sessions(sessions, streams); }
+  }
   if (body.action === 'transport' && ['play_pause', 'play', 'pause'].includes(body.cmd)) nudge(body.cmd);
   // A film is on its way (after the pre-roll, and the projector waking): look for its Plex
   // session sooner than the idle 30 s poll would, so Showtime comes up with the film.
