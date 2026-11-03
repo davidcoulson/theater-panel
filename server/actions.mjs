@@ -31,6 +31,8 @@ export async function runAction(ha, body) {
     case 'scene': {
       if (!SCENES.includes(body.name)) throw new Error('Unknown scene');
       const run = await script(ha, body.name);
+      // All off only sleeps the Apple TV, whose CEC standby no longer reaches a projector showing Plezy: drop the picture too.
+      if (body.name === 'all_off') await runAction(ha, { action: 'projector', cmd: 'light_off' }).catch(() => {});
       // The bar follows the room: a film gets Smart mode and no Night mode, unless told otherwise.
       if (body.name === 'movie_time' && e.soundbar && config.soundbarMovieSmart) {
         soundbar(ha, { cmd: 'smart', on: true }).catch(() => {});
@@ -130,18 +132,20 @@ export async function runAction(ha, body) {
       // no such title the swell below stands in. A Plex hiccup must not break the Demo button.
       // A second press while it is queued or playing would restart the clip: ignore it until it is done.
       if (Date.now() < demoBusyUntil) return { ok: true, busy: true };
+      demoBusyUntil = Date.now() + 120e3; // claimed before the lookup, so two presses at once cannot both get through
       const clip = config.thxPlexTitle && await plex.findClip(config.thxPlexTitle).catch(() => null);
       if (clip) {
         demoBusyUntil = Date.now() + (clip.duration || 70e3) + 25e3; // the clip, plus the projector waking and Plezy opening
         return runAction(ha, { action: 'play', ratingKey: clip.id, noPreroll: true }).catch((e) => { demoBusyUntil = 0; throw e; });
       }
       const url = prerollUrl();
-      if (!url) throw new Error('No pre-roll sound on the settings page');
+      if (!url) { demoBusyUntil = 0; throw new Error('No pre-roll sound on the settings page'); }
       demoBusyUntil = Date.now() + config.preroll.seconds * 1000;
       // From standby the swell stays on the panel: casting to the bar wakes it and its CEC wake lights the projector.
       const speaker = config.soundsOnPanel || ha.states[e.projectorPictureSwitch]?.state === 'off' ? '' : e.roomSpeaker;
       if (up(ha, speaker)) { await script(ha, 'snipe', { speaker, url }); return { ok: true }; }
       if (panelPath(url)) { toPanels({ url: panelPath(url) }); return { panel: true }; }
+      demoBusyUntil = 0;
       throw new Error('The theater speaker is not up');
     }
 

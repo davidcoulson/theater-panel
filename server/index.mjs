@@ -612,8 +612,6 @@ post(/^\/api\/action$/, async (m, q, body) => {
   // Plezy ignores the pause key once the picture is off, so pause first.
   if (off && sessions[0]?.state === 'playing') { await runAction(ha, { action: 'transport', cmd: 'pause' }).catch(() => {}); await new Promise((r) => setTimeout(r, 1500)); }
   const r = await runAction(ha, body);
-  // All off only sleeps the Apple TV, whose CEC standby no longer reaches a projector showing Plezy: drop the picture too.
-  if (body.action === 'scene' && body.name === 'all_off') await runAction(ha, { action: 'projector', cmd: 'light_off' }).catch(() => {});
   // Turning the room off by hand ends the film for the panel; Plex keeps the place.
   if (off) {
     if (sessions[0]) { dismissed = { id: String(sessions[0].id), at: Date.now() }; sessions = sessions.slice(1); broadcast('sessions', sessions); hass.sessions(sessions, streams); }
