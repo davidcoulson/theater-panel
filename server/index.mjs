@@ -156,7 +156,7 @@ async function pollOnce() {
         const done = playing;
         playing = null;
         const pct = done.duration ? done.viewOffset / done.duration : 0;
-        if (config.plexPlayerName && done.type === 'movie' && pct >= WATCHED_ENOUGH) {
+        if (config.plexPlayerName && done.type === 'movie' && !/pre-?roll/i.test(done.library || '') && pct >= WATCHED_ENOUGH) {
           verdict = { id: String(done.id), title: done.title, year: done.year, poster: done.poster, at: Date.now(), votes: [] };
           broadcast('rate', verdict);
         }

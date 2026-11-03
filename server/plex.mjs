@@ -574,6 +574,7 @@ function mapSession(m) {
     transcoding: (m.TranscodeSession?.videoDecision || 'directplay') === 'transcode',
     decision: m.TranscodeSession ? m.TranscodeSession.videoDecision : 'directplay',
     user: m.User?.title,
+    library: m.librarySectionTitle,
   });
 }
 
