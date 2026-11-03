@@ -122,9 +122,13 @@ export async function runAction(ha, body) {
 
     case 'soundbar': return soundbar(ha, body);
 
-    // The Sound sheet's pre-roll demo: the same swell a film is led in with, on the theater speaker
-    // when it is up and on the panel itself otherwise.
+    // The Sound sheet's pre-roll demo: the THX clip on the projector, else the swell a film is led in
+    // with, on the theater speaker when it is up and on the panel itself otherwise.
     case 'preroll_demo': {
+      // The THX clip in Plex plays on the projector like a film, the bar giving the sound over ARC; with
+      // no such title the swell below stands in. A Plex hiccup must not break the Demo button.
+      const clip = config.thxPlexTitle && await plex.findClip(config.thxPlexTitle).catch(() => null);
+      if (clip) return runAction(ha, { action: 'play', ratingKey: clip.id, noPreroll: true });
       const url = prerollUrl();
       if (!url) throw new Error('No pre-roll sound on the settings page');
       // From standby the swell stays on the panel: casting to the bar wakes it and its CEC wake lights the projector.
