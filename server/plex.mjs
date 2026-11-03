@@ -487,7 +487,9 @@ export async function search(query, size = 30) {
 // title contains the words, shortest title first so "THX Deep Note" beats a longer cousin.
 export async function findClip(title) {
   const want = String(title).toLowerCase();
-  const hits = (await search(title, 20)).filter((m) => m.type === 'movie' && m.title.toLowerCase().includes(want));
+  // The library filter, not /hubs/search: search does not index the Pre-Roll library.
+  const mc = await plex('/library/all', { type: '1', title });
+  const hits = (mc.Metadata || []).map((m) => mapItem(m)).filter((m) => m.type === 'movie' && m.title.toLowerCase().includes(want));
   return hits.sort((a, b) => a.title.length - b.title.length)[0] || null;
 }
 
