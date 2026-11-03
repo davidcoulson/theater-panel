@@ -87,7 +87,11 @@ export async function runAction(ha, body) {
           uri: `plezy://play?content_id=${id}`,
         });
         // A Plezy left open and paused (a hand-pressed Off) takes the link without playing: press Play once the picture is up.
-        setTimeout(() => projectorKey(ha, { cmd: 'play' }).catch(() => {}), 8000).unref?.();
+        // Only when nothing is playing by then: a Play key sent to a running Plezy just flashes its play icon over the picture.
+        setTimeout(async () => {
+          const live = await plex.sessions().catch(() => []);
+          if (!live.some((x) => x.state === 'playing')) projectorKey(ha, { cmd: 'play' }).catch(() => {});
+        }, 8000).unref?.();
         return run;
       }
       if (config.playTarget === 'plex') {
