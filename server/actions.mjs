@@ -13,6 +13,7 @@ const SCENES = ['pre_show', 'movie_time', 'intermission', 'lights_up', 'all_off'
 // When the room's speaker is not there, a sound goes to the wall panel instead (it plays it
 // through its own speaker). index.mjs wires this to the live connection.
 let toPanels = () => {};
+let demoBusyUntil = 0; // the Sound sheet's Demo is queued or playing until then
 export const onPanelSound = (fn) => { toPanels = fn; };
 const up = (ha, id) => Boolean(id) && !['unavailable', 'unknown', undefined].includes(ha.states[id]?.state);
 // What the panel plays when no speaker can: its own sounds by path (so the same file plays from
@@ -127,10 +128,16 @@ export async function runAction(ha, body) {
     case 'preroll_demo': {
       // The THX clip in Plex plays on the projector like a film, the bar giving the sound over ARC; with
       // no such title the swell below stands in. A Plex hiccup must not break the Demo button.
+      // A second press while it is queued or playing would restart the clip: ignore it until it is done.
+      if (Date.now() < demoBusyUntil) return { ok: true, busy: true };
       const clip = config.thxPlexTitle && await plex.findClip(config.thxPlexTitle).catch(() => null);
-      if (clip) return runAction(ha, { action: 'play', ratingKey: clip.id, noPreroll: true });
+      if (clip) {
+        demoBusyUntil = Date.now() + (clip.duration || 70e3) + 25e3; // the clip, plus the projector waking and Plezy opening
+        return runAction(ha, { action: 'play', ratingKey: clip.id, noPreroll: true }).catch((e) => { demoBusyUntil = 0; throw e; });
+      }
       const url = prerollUrl();
       if (!url) throw new Error('No pre-roll sound on the settings page');
+      demoBusyUntil = Date.now() + config.preroll.seconds * 1000;
       // From standby the swell stays on the panel: casting to the bar wakes it and its CEC wake lights the projector.
       const speaker = config.soundsOnPanel || ha.states[e.projectorPictureSwitch]?.state === 'off' ? '' : e.roomSpeaker;
       if (up(ha, speaker)) { await script(ha, 'snipe', { speaker, url }); return { ok: true }; }
