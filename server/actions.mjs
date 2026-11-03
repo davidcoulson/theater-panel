@@ -127,7 +127,8 @@ export async function runAction(ha, body) {
     case 'preroll_demo': {
       const url = prerollUrl();
       if (!url) throw new Error('No pre-roll sound on the settings page');
-      const speaker = e.roomSpeaker;
+      // From standby the swell stays on the panel: casting to the bar wakes it and its CEC wake lights the projector.
+      const speaker = config.soundsOnPanel || ha.states[e.projectorPictureSwitch]?.state === 'off' ? '' : e.roomSpeaker;
       if (up(ha, speaker)) { await script(ha, 'snipe', { speaker, url }); return { ok: true }; }
       if (panelPath(url)) { toPanels({ url: panelPath(url) }); return { panel: true }; }
       throw new Error('The theater speaker is not up');
