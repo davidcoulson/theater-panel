@@ -611,6 +611,7 @@ post(/^\/api\/action$/, async (m, q, body) => {
   const r = await runAction(ha, body);
   // Turning the room off by hand ends the film for the panel; Plex keeps the place.
   if ((body.action === 'scene' && body.name === 'all_off') || (body.action === 'projector' && ['power_off', 'light_off'].includes(body.cmd))) {
+    if (sessions[0]?.state === 'playing') await runAction(ha, { action: 'transport', cmd: 'pause' }).catch(() => {});
     if (sessions[0]) { dismissed = { id: String(sessions[0].id), at: Date.now() }; sessions = sessions.slice(1); broadcast('sessions', sessions); hass.sessions(sessions, streams); }
   }
   if (body.action === 'transport' && ['play_pause', 'play', 'pause'].includes(body.cmd)) nudge(body.cmd);
