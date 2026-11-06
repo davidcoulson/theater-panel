@@ -618,7 +618,7 @@ post(/^\/api\/action$/, async (m, q, body) => {
   if (off) {
     if (sessions[0]) { dismissed = { id: String(sessions[0].id), at: Date.now() }; sessions = sessions.slice(1); broadcast('sessions', sessions); hass.sessions(sessions, streams); }
   }
-  if (body.action === 'transport' && ['play_pause', 'play', 'pause'].includes(body.cmd)) nudge(body.cmd);
+  if (body.action === 'transport' && ['play_pause', 'play', 'pause'].includes(body.cmd)) { nudge(body.cmd); appsession.nudge(body.cmd); }
   // A film is on its way (after the pre-roll, and the projector waking): look for its Plex
   // session sooner than the idle 30 s poll would, so Showtime comes up with the film.
   if (body.action === 'play') for (const s of [8, 20, 35, 50]) setTimeout(pollSessions, s * 1000).unref?.();

@@ -4,8 +4,17 @@
 // the entity's adb_response attribute rather than returning it.
 import { config } from './config.mjs';
 
-let current = null;
+let current = null, poll = null, send = null;
 export const get = () => current;
+
+// A play/pause press shows at once and is read back a moment later, rather than at the next tick.
+export function nudge(cmd) {
+  if (!current || !send) return;
+  const state = cmd === 'pause' ? 'paused' : cmd === 'play' ? 'playing' : current.state === 'playing' ? 'paused' : 'playing';
+  current = { ...current, state };
+  send('appsession', current);
+  for (const ms of [800, 3000]) setTimeout(() => poll?.(), ms).unref?.();   // the second catches a key that landed late
+}
 
 // "description=Title, Channel • 41K views • 7 months ago, null": a title may hold commas, the
 // channel line is the one with the bullets.
@@ -43,5 +52,6 @@ export function start({ ha, broadcast, active }) {
     } catch { /* ADB or HA unreachable: keep the last reading until the next tick */ }
     finally { busy = false; }
   };
+  poll = tick; send = broadcast;
   setInterval(tick, 10000).unref?.();
 }
