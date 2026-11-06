@@ -135,7 +135,9 @@ function Continue() {
     const paused = app.state === 'paused';
     return html`<section class="hero dark tx-suede">
       <div class="slide">
-      <div class="art" style="display:flex;align-items:center;justify-content:center"><${Icon} name="youtube" size=${140} color="#F4F0E8" /></div>
+      ${app.thumb
+        ? html`<div class="art"><img src=${app.thumb} alt="" draggable="false" /></div>`
+        : html`<div class="art" style="display:flex;align-items:center;justify-content:center"><${Icon} name="youtube" size=${140} color="#F4F0E8" /></div>`}
       <div class="body">
         <div class="eyebrow" style="white-space:nowrap">${paused ? 'Paused' : 'Now playing'} · ${name}</div>
         <div class="sub clamp3" style="font-size:34px;line-height:1.15">${app.title}</div>
