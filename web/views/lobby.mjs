@@ -125,9 +125,6 @@ function Continue() {
   const apps = useStore((s) => s.projectorApps) || [];
   const swipe = useRef(null);
   const swallowUntil = useRef(0);
-  if (!deck && deckErr) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center">Plex isn't answering, trying again<button type="button" class="btn ghost" onClick=${retry}>Retry now</button></div></section>`;
-  if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
-  if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   // Something from another app (SmartTube) is on the projector and Plex has nothing playing: the card
   // shows it, with the same buttons, rather than the next film on deck.
   if (app && app.state !== 'idle' && !sessions?.[0]) {
@@ -150,6 +147,9 @@ function Continue() {
       </div>
     </section>`;
   }
+  if (!deck && deckErr) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center">Plex isn't answering, trying again<button type="button" class="btn ghost" onClick=${retry}>Retry now</button></div></section>`;
+  if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
+  if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
   const it = deck[i % deck.length];
   // When the theater is already playing this title the card follows the live session, not the deck.
   const live = sessions?.find((x) => String(x.id) === String(it.id));
