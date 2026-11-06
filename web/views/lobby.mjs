@@ -297,7 +297,8 @@ function useNowPlaying(on, current, tv, games) {
   }
   const app = appSession && appSession.state !== 'idle' ? appSession : null;
   if (app) return `${app.state === 'paused' ? 'Paused · ' : ''}${app.title}`;
-  return sourceLine(['unknown', 'unavailable'].includes(showing) ? null : showing, current, games);
+  // The projector's sensor says SmartTube; the panel calls it YouTube.
+  return sourceLine(['unknown', 'unavailable'].includes(showing) ? null : showing?.replace(/smarttube/i, 'YouTube'), current, games);
 }
 
 function Projector() {
