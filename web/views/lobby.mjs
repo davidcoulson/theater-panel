@@ -261,6 +261,7 @@ function useNowPlaying(on, current, tv, games) {
   const showing = useEntity(useStore((s) => s.entities.projectorShowing))?.state;
   const sessions = useStore((s) => s.sessions);
   const own = useStore((s) => s.ui?.theaterSessions);
+  const appSession = useStore((s) => s.appSession);
   if (!on) return null;
   const s = own && sessions?.[0];
   if (s) {
@@ -272,6 +273,8 @@ function useNowPlaying(on, current, tv, games) {
     const a = tv.attributes;
     return `${tv.state === 'paused' ? 'Paused · ' : ''}${a.media_series_title ? `${a.media_series_title} · ` : ''}${a.media_title}`;
   }
+  const app = appSession && appSession.state !== 'idle' ? appSession : null;
+  if (app) return `${app.state === 'paused' ? 'Paused · ' : ''}${app.title}`;
   return sourceLine(['unknown', 'unavailable'].includes(showing) ? null : showing, current, games);
 }
 

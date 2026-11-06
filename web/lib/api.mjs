@@ -137,7 +137,7 @@ let onNavigate = null;
 let bootBuild = null;
 export async function startLive({ navigate } = {}) {
   onNavigate = navigate;
-  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, pauseWarn: s.pauseWarn || null, preroll: s.preroll || {}, intermission: s.intermission || {}, soundbar: s.soundbar || {} })).catch(() => {});
+  const loadSettings = () => get('/api/state').then((s) => set({ entities: s.entities, services: s.services, ui: s.ui || {}, projectorApps: s.projectorApps || [], effectFavourites: s.effectFavourites || [], build: s.build || {}, idleMinutes: s.idleMinutes ?? 8, sleep: s.sleep || null, pauseWarn: s.pauseWarn || null, appSession: s.appSession || null, preroll: s.preroll || {}, intermission: s.intermission || {}, soundbar: s.soundbar || {} })).catch(() => {});
   const loadTonight = () => get('/api/tonight').then((d) => set({ tonight: d?.item ? d : null })).catch(() => {});
   loadSettings();
   get('/api/rate').then((v) => set({ rate: v?.id ? v : null })).catch(() => {});   // one may be waiting from before this panel loaded
@@ -159,7 +159,7 @@ export async function startLive({ navigate } = {}) {
         bootBuild ??= d.build;
         if (d.build !== bootBuild) set({ stale: d.build });
       }
-      set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [], vote: d.vote ?? null });
+      set({ connected: true, haConnected: d.ha.connected, haConfigured: d.ha.configured, states: d.ha.states, sessions: d.sessions, streams: d.streams || [], vote: d.vote ?? null, appSession: d.appSession || null });
     });
     es.addEventListener('states', (e) => {
       const changed = JSON.parse(e.data);
@@ -170,6 +170,7 @@ export async function startLive({ navigate } = {}) {
     es.addEventListener('ha', (e) => set({ haConnected: JSON.parse(e.data).connected }));
     es.addEventListener('sessions', (e) => set({ sessions: JSON.parse(e.data), sessionsAt: Date.now() }));
     // Everything playing on the Plex server, behind the "N streams" pill.
+    es.addEventListener('appsession', (e) => set({ appSession: JSON.parse(e.data) }));
     es.addEventListener('streams', (e) => set({ streams: JSON.parse(e.data) }));
     // Saved on the admin page: pick up the new entities, apps and display options.
     es.addEventListener('settings', loadSettings);

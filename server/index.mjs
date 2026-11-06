@@ -19,6 +19,7 @@ import * as arrs from './arrs.mjs';
 import * as taste from './taste.mjs';
 import * as sleep from './sleep.mjs';
 import * as pausestandby from './pausestandby.mjs';
+import * as appsession from './appsession.mjs';
 import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
@@ -284,6 +285,7 @@ get(/^\/api\/state$/, () => ({
   idleMinutes: config.idleMinutes,
   sleep: sleep.get(),
   pauseWarn: pausestandby.get(),
+  appSession: appsession.get(),
   preroll: { enabled: Boolean(config.preroll.url) && config.preroll.enabled, seconds: config.preroll.seconds, moviesOnly: config.preroll.moviesOnly },
   intermission: { minutes: config.intermission.minutes, sound: Boolean(config.intermission.url) },
   soundbar: { step: config.soundbarStep, calibrationSeconds: config.soundbarCalibrationSeconds, thx: Boolean(config.preroll.url), nexroll: Boolean(config.nexroll.url) },
@@ -712,7 +714,7 @@ const server = createServer(async (req, res) => {
 
     if (path === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' });   // nginx in front passes each event straight on
-      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, vote: vote.state(), build: config.build.version })}\n\n`);   // a panel that reloads mid-vote gets the round (and its QR) back
+      res.write(`event: hello\ndata: ${JSON.stringify({ ha: { connected: ha.connected, configured: ha.configured, states: ha.states }, sessions, streams, appSession: appsession.get(), vote: vote.state(), build: config.build.version })}\n\n`);   // a panel that reloads mid-vote gets the round (and its QR) back
       clients.add(res);
       hass.panelsChanged();
       if (clients.size === 1) pollSessions(); // first viewer: don't wait for the next poll
@@ -806,6 +808,7 @@ const server = createServer(async (req, res) => {
 
 await initImageCache();
 pausestandby.init({ broadcast, run: (body) => runAction(ha, body) });
+appsession.start({ ha, broadcast, active: () => clients.size > 0 });
 sleep.init({ ha, broadcast, sessions: () => sessions, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
 hass.apply();
