@@ -227,7 +227,10 @@ export const useEntity = (id) => useStore((s) => (id ? s.states[id] : undefined)
 export function playbackState(s = state) {
   const session = s.sessions?.[0];
   if (session?.state) return session.state;
-  return s.states[s.entities?.appleTv]?.state;
+  const atv = s.states[s.entities?.appleTv]?.state;
+  // SmartTube / YouTube on the projector, when the Apple TV is not what is playing.
+  if (s.appSession && s.appSession.state !== 'idle' && !['playing', 'paused', 'buffering'].includes(atv)) return s.appSession.state;
+  return atv;
 }
 
 // Load data once per key; returns [data, error, reload].

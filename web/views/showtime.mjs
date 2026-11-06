@@ -38,15 +38,18 @@ export function Showtime() {
 
   const a = tv?.attributes || {};
   const state = useStore((s) => playbackState(s));
+  const app = useStore((s) => (!s.sessions?.[0] && s.appSession?.state !== 'idle' ? s.appSession : null));
+  const appOnly = Boolean(app) && !a.media_title;
   const sessionsAt = useStore((s) => s.sessionsAt) || Date.now();
   const playing = state === 'playing';
-  const title = session?.showTitle || session?.title || a.media_series_title || a.media_title || 'Now showing';
+  const title = session?.showTitle || session?.title || (appOnly && app.title) || a.media_series_title || a.media_title || 'Now showing';
   const sub = session?.showTitle ? `S${session.season} · E${session.episode} ${session.title}` : (a.media_series_title ? a.media_title : '');
   // Position: the Plex session when there is one (it is the film, wherever it plays), carried
   // forward between polls while playing; the Apple TV's own report otherwise.
   const dur = session?.duration ? session.duration / 1000 : a.media_duration || null;
   let pos = null;
   if (session?.viewOffset != null) pos = session.viewOffset / 1000 + (playing ? (Date.now() - sessionsAt) / 1000 : 0);
+  else if (appOnly) pos = app.position / 1000;
   else pos = livePosition(tv);
   const left = dur && pos != null ? dur - pos : null;
   const ends = left != null ? clock(new Date(Date.now() + left * 1000)).hm : '--:--';

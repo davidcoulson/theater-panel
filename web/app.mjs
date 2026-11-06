@@ -468,7 +468,7 @@ function App() {
       // The Apple TV entity gone (unavailable, unknown, missing) for over a minute mid-film: leave
       // Showtime too, or the panel stays dark with the backlight down until someone reloads it.
       // (a Plezy film on the projector keeps Showtime up whatever the Apple TV entity does)
-      const gone = Boolean(entities.appleTv) && !getState().sessions?.[0] && (tv == null || tv === 'unavailable' || tv === 'unknown');
+      const gone = Boolean(entities.appleTv) && !getState().sessions?.[0] && !getState().appSession && (tv == null || tv === 'unavailable' || tv === 'unknown');
       tvGoneSince = gone ? (tvGoneSince || Date.now()) : null;
       if (gone && route.name === 'showtime' && Date.now() - tvGoneSince > 60000) go('lobby', { auto: true });
     }, 5000);

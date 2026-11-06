@@ -121,11 +121,33 @@ function Continue() {
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState(0);
   const sessions = useStore((s) => s.sessions);
+  const app = useStore((s) => s.appSession);
+  const apps = useStore((s) => s.projectorApps) || [];
   const swipe = useRef(null);
   const swallowUntil = useRef(0);
   if (!deck && deckErr) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center">Plex isn't answering, trying again<button type="button" class="btn ghost" onClick=${retry}>Retry now</button></div></section>`;
   if (!deck) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1">Loading Plex…</div></section>`;
   if (!deck.length) return html`<section class="hero dark tx-suede"><div class="empty" style="flex-grow:1;color:#C7B39E">Nothing in progress. Pick something from Watch.</div></section>`;
+  // Something from another app (SmartTube) is on the projector and Plex has nothing playing: the card
+  // shows it, with the same buttons, rather than the next film on deck.
+  if (app && app.state !== 'idle' && !sessions?.[0]) {
+    const name = apps.find((a) => a.package === app.app)?.name || 'Projector';
+    const paused = app.state === 'paused';
+    return html`<section class="hero dark tx-suede">
+      <div class="slide">
+      <div class="art" style="display:flex;align-items:center;justify-content:center"><${Icon} name="youtube" size=${140} color="#F4F0E8" /></div>
+      <div class="body">
+        <div class="eyebrow" style="white-space:nowrap">${paused ? 'Paused' : 'Now playing'} · ${name}</div>
+        <div class="sub clamp3" style="font-size:34px;line-height:1.15">${app.title}</div>
+        <div style="flex-grow:1"></div>
+        <div style="display:flex;gap:12px">
+          <button type="button" class="btn primary" style="height:66px;flex-grow:1" onClick=${() => act({ action: 'transport', cmd: paused ? 'play' : 'pause' })}>${paused ? html`<${Play} />Resume` : html`<${Pause} />Pause`}</button>
+          <button type="button" class="btn ghost" style="height:66px;width:66px;padding:0;flex-shrink:0" aria-label="Stop" onClick=${() => act({ action: 'transport', cmd: 'stop' })}><${Icon} name="x" size=${28} color="#F4F0E8" /></button>
+        </div>
+      </div>
+      </div>
+    </section>`;
+  }
   const it = deck[i % deck.length];
   // When the theater is already playing this title the card follows the live session, not the deck.
   const live = sessions?.find((x) => String(x.id) === String(it.id));
