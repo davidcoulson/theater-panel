@@ -160,7 +160,7 @@ function DayShow({ s, now }) {
   const facts = [s.network, s.year, s.runtime && `${s.runtime}m`].filter(Boolean);
   const icon = netIcon(s.network);
   const start = async () => {
-    const ep = s.eps.find((e) => e.hasFile) || s.eps[0];
+    const ep = s.eps.find((e) => e.hasFile);
     setBusy(true);
     try {
       const it = await get(`/api/plex/episode?tmdb=${s.tmdbId}&season=${ep.season}&episode=${ep.episode}`);
@@ -176,7 +176,7 @@ function DayShow({ s, now }) {
       <div class="sub">${seasonLabel(s.eps)}${note && html` <span class="pill">${note}</span>`}</div>
       ${facts.length > 0 && html`<div class="times">${icon && html`<${Icon} name=${`cbi:${icon}`} size=${24} />`}${facts.map((f, i) => html`${i > 0 && html`<i>·</i>`}<span>${f}</span>`)}</div>`}
     </div>
-    ${!gone && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#000" /></button>`}
+    ${got > 0 && s.tmdbId && html`<button type="button" class="btn primary play" aria-label=${`Play ${s.title}`} disabled=${busy} onClick=${start}><${Play} size=${30} color="#000" /></button>`}
   </div>`;
 }
 
