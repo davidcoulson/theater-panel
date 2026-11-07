@@ -55,10 +55,15 @@ export function parse(out, pkg) {
   return { title, channel, state: ['3', '6'].includes(st[1]) ? 'playing' : st[1] === '2' ? 'paused' : 'idle', position: Number(st[2]) };
 }
 
-export function start({ ha, broadcast, active }) {
+export function start({ ha, broadcast, active, onTick }) {
   let busy = false;
   const tick = async () => {
-    if (busy || !active()) return;
+    if (busy) return;
+    if (!active()) {   // nobody looking and nothing on the projector: forget the last reading
+      if (current) { current = null; broadcast('appsession', null); }
+      onTick?.();
+      return;
+    }
     busy = true;
     try {
       const id = config.entities.projector;
@@ -90,7 +95,7 @@ export function start({ ha, broadcast, active }) {
       }
       if (JSON.stringify(next && { ...next, at: 0 }) !== JSON.stringify(current && { ...current, at: 0 })) { current = next; broadcast('appsession', current); }
     } catch { /* ADB or HA unreachable: keep the last reading until the next tick */ }
-    finally { busy = false; }
+    finally { busy = false; onTick?.(); }
   };
   poll = tick; send = broadcast;
   setInterval(tick, 10000).unref?.();

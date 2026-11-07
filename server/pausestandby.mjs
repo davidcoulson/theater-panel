@@ -1,7 +1,8 @@
 // A film left paused for a long time: warn on the panel, then put the projector in standby (picture
 // off, Apple TV asleep - the same path as the Off button) and leave the Plex session paused.
 // Pressing play brings the picture back. Timed on Plex's own session state for this room: the
-// projector's androidtv entity says "paused" for the whole HDMI input, so it can't be trusted.
+// projector's androidtv entity says "paused" for the whole HDMI input, so it can't be trusted
+// (an app's own media session is read instead, see appsession.mjs).
 
 import { config } from './config.mjs';
 
@@ -15,9 +16,10 @@ export const get = () => (since && !standby && limit() && since + limit() - Date
 
 function publish() { ctx?.broadcast('pausewarn', get() || { at: null }); }
 
-// Called after every Plex poll with this room's sessions.
-export function observe(mine) {
-  const s = mine[0]?.state;
+// Called after every Plex poll with this room's sessions, and by the app session poll with what
+// SmartTube/YouTube is doing on the projector: whichever is playing or paused is timed.
+export function observe(mine, app) {
+  const s = mine[0]?.state || app?.state;
   if (s !== 'paused') {
     // Play after a standby: picture back on. A stopped session stays dark; the next Play does it.
     if (standby && s === 'playing') ctx.run({ action: 'projector', cmd: 'light_on' }).catch((e) => console.warn('[pause-standby] picture on:', e.message));

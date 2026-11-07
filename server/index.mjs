@@ -151,7 +151,7 @@ async function pollOnce() {
       }
       if (JSON.stringify(mine) !== JSON.stringify(sessions)) { sessions = mine; broadcast('sessions', sessions); }
       tonight.observe(mine).catch((e) => console.warn('[tonight]', e.message));
-      pausestandby.observe(mine);
+      pausestandby.observe(mine, appsession.get());
       if (mine.length) playing = mine[0];
       else if (playing) {
         const done = playing;
@@ -808,7 +808,8 @@ const server = createServer(async (req, res) => {
 
 await initImageCache();
 pausestandby.init({ broadcast, run: (body) => runAction(ha, body) });
-appsession.start({ ha, broadcast, active: () => clients.size > 0 });
+// Polled with no panel open too while the projector is on, so a video left paused overnight still times out.
+appsession.start({ ha, broadcast, active: () => clients.size > 0 || ['playing', 'paused'].includes(ha.states[config.entities.projector]?.state), onTick: () => pausestandby.observe(sessions, appsession.get()) });
 sleep.init({ ha, broadcast, sessions: () => sessions, run: (body) => runAction(ha, body), script: (name, vars) => script(ha, name, vars) });
 hass.init({ ha, broadcast, run: (body) => runAction(ha, body), save: async (body) => admin.save(body), applySettings, panels: () => clients.size, voice: (body) => voiceIntent(body) });
 hass.apply();
