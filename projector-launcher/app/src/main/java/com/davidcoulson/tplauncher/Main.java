@@ -61,6 +61,7 @@ public class Main extends Activity {
         lp.bottomMargin = dp(48);
         root.addView(dock, lp);
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
+        corner.addView(cornerBtn("thx", v -> post("{\"action\":\"preroll_demo\"}", "THX demo"))); // the panel's Sound sheet "Demo": plays the THX clip via Plex
         corner.addView(cornerBtn("wall", v -> setWall(1)));
         corner.addView(cornerBtn("proj", v -> { // the projector's own menu: keystone, focus, picture
             Intent i = getPackageManager().getLaunchIntentForPackage("com.xming.xmprojectorsettings");
@@ -102,14 +103,17 @@ public class Main extends Activity {
     }
 
     /** Ask the panel server to switch to an input; it drives the HDMI switcher and the projector input through Home Assistant. */
-    void pick(final String id, final String name) {
+    void pick(final String id, final String name) { post("{\"action\":\"game_source\",\"id\":\"" + id + "\"}", name); }
+
+    /** POST an action to the panel server and toast the outcome. */
+    void post(final String json, final String name) {
         new Thread(() -> {
             String msg;
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(panelUrl("/api/action")).openConnection();
                 c.setRequestMethod("POST"); c.setDoOutput(true); c.setConnectTimeout(5000); c.setReadTimeout(20000);
                 c.setRequestProperty("content-type", "application/json");
-                c.getOutputStream().write(("{\"action\":\"game_source\",\"id\":\"" + id + "\"}").getBytes());
+                c.getOutputStream().write(json.getBytes());
                 int code = c.getResponseCode();
                 msg = code < 300 ? name : name + " failed (" + code + ")";
             } catch (Exception e) { msg = name + " failed: " + e.getMessage(); }
@@ -120,9 +124,9 @@ public class Main extends Activity {
     /** Small icon button in the top-right corner: "wall" cycles the wallpaper, "gear" opens Android settings. */
     View cornerBtn(final String kind, View.OnClickListener click) {
         View v = new View(this) { @Override protected void onDraw(Canvas c) { drawCorner(c, kind, getWidth()); } };
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(52), dp(52)); lp.leftMargin = dp(10);
-        v.setLayoutParams(lp); v.setPadding(dp(8), dp(8), dp(8), dp(8)); v.setFocusable(true); v.setClickable(true);
-        final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(26));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(42), dp(42)); lp.leftMargin = dp(10);
+        v.setLayoutParams(lp); v.setPadding(dp(6), dp(6), dp(6), dp(6)); v.setFocusable(true); v.setClickable(true);
+        final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(21));
         v.setOnFocusChangeListener((x, has) -> x.setBackground(has ? f : null));
         v.setOnClickListener(click); v.setAlpha(.85f); return v;
     }
@@ -131,6 +135,12 @@ public class Main extends Activity {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); p.setColor(Color.WHITE); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * .06f);
         p.setStrokeJoin(Paint.Join.ROUND); p.setStrokeCap(Paint.Cap.ROUND);
         float m = w * .2f, s = w - 2 * m, cx = w / 2f;
+        if (kind.equals("thx")) { // speaker with sound waves, like the panel's Demo button
+            Path t = new Path(); t.moveTo(m, m + s * .36f); t.lineTo(m + s * .26f, m + s * .36f); t.lineTo(m + s * .52f, m + s * .14f); t.lineTo(m + s * .52f, m + s * .86f); t.lineTo(m + s * .26f, m + s * .64f); t.lineTo(m, m + s * .64f); t.close(); c.drawPath(t, p);
+            c.drawArc(new RectF(m + s * .5f, m + s * .3f, m + s * .78f, m + s * .7f), -50, 100, false, p);
+            c.drawArc(new RectF(m + s * .5f, m + s * .12f, m + s * 1.02f, m + s * .88f), -50, 100, false, p);
+            return;
+        }
         if (kind.equals("gear")) {
             for (int i = 0; i < 8; i++) { double a = i * Math.PI / 4; c.drawLine(cx + (float) Math.cos(a) * s * .38f, cx + (float) Math.sin(a) * s * .38f, cx + (float) Math.cos(a) * s * .52f, cx + (float) Math.sin(a) * s * .52f, p); }
             c.drawCircle(cx, cx, s * .38f, p); c.drawCircle(cx, cx, s * .16f, p);
@@ -154,7 +164,7 @@ public class Main extends Activity {
 
     View item(final String[] a) {
         LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL);
-        c.setGravity(Gravity.CENTER_HORIZONTAL); c.setPadding(dp(14), dp(16), dp(14), dp(12));
+        c.setGravity(Gravity.CENTER_HORIZONTAL); c.setPadding(dp(6), dp(14), dp(6), dp(10));
         c.setFocusable(true); c.setClickable(true);
         final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(24));
         c.setOnFocusChangeListener((v, has) -> v.setBackground(has ? f : null));
@@ -162,9 +172,9 @@ public class Main extends Activity {
         View ic = new View(this) {
             @Override protected void onDraw(Canvas cv) { drawIcon(cv, icon, getWidth(), getHeight()); }
         };
-        c.addView(ic, dp(64), dp(64));
-        TextView l = text(15, .9f); l.setGravity(Gravity.CENTER); l.setSingleLine(true); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
-        c.addView(l);
+        c.addView(ic, dp(48), dp(48));
+        TextView l = text(13, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
+        c.addView(l, dp(84), -2);
         c.setOnClickListener(v -> launch(a[1], a[0]));
         return c;
     }
@@ -218,7 +228,7 @@ public class Main extends Activity {
 
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
-        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus()) { corner.getChildAt(2).requestFocus(); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus()) { corner.getChildAt(corner.getChildCount() - 1).requestFocus(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN && corner.hasFocus()) { dock.getChildAt(0).requestFocus(); return true; }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
         return super.onKeyDown(code, e);
