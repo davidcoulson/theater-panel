@@ -1,7 +1,7 @@
 # Projector launcher
 
 Minimal Android TV home screen for the theater projector (NexiGo Aurora Pro, Android TV 9, 32-bit): clock, date,
-weather (Open-Meteo, 44133), a switchable dark wallpaper (Up/Down on the remote), and a dock with YouTube (SmartTube),
+weather (Open-Meteo, 44133), a switchable dark wallpaper (Up from the dock reaches the corner buttons: wallpaper and Android settings), and a dock with YouTube (SmartTube),
 Plex (Plezy) and the inputs from this server's `/api/games` (Apple TV, Windows, the HDMI-switcher consoles). Picking an
 input posts `game_source` to `/api/action`, so the server drives the switcher and projector through Home Assistant.
 

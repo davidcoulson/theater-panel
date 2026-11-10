@@ -31,7 +31,7 @@ public class Main extends Activity {
         {"HDMI 2", "tv:com.mediatek.tvinput/.hdmi.HDMIInputService/HW6", "hdmi"},
     };
     static final String PANEL = "http://10.2.6.45:8787"; // theater-panel server; add ?key= via prefs "key" if the projector isn't a trusted network
-    LinearLayout dock;
+    LinearLayout dock, corner;
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
     SharedPreferences prefs; final Handler h = new Handler();
@@ -60,6 +60,10 @@ public class Main extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         lp.bottomMargin = dp(48);
         root.addView(dock, lp);
+        corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
+        corner.addView(cornerBtn("wall", v -> setWall(1)));
+        corner.addView(cornerBtn("gear", v -> { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Exception e) {} }));
+        root.addView(corner, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
         setContentView(root);
         dock.getChildAt(0).requestFocus();
         setWall(0);
@@ -108,6 +112,30 @@ public class Main extends Activity {
             } catch (Exception e) { msg = name + " failed: " + e.getMessage(); }
             final String m = msg; runOnUiThread(() -> Toast.makeText(this, m, Toast.LENGTH_SHORT).show());
         }).start();
+    }
+
+    /** Small icon button in the top-right corner: "wall" cycles the wallpaper, "gear" opens Android settings. */
+    View cornerBtn(final String kind, View.OnClickListener click) {
+        View v = new View(this) { @Override protected void onDraw(Canvas c) { drawCorner(c, kind, getWidth()); } };
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(52), dp(52)); lp.leftMargin = dp(10);
+        v.setLayoutParams(lp); v.setPadding(dp(8), dp(8), dp(8), dp(8)); v.setFocusable(true); v.setClickable(true);
+        final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(26));
+        v.setOnFocusChangeListener((x, has) -> x.setBackground(has ? f : null));
+        v.setOnClickListener(click); v.setAlpha(.85f); return v;
+    }
+
+    void drawCorner(Canvas c, String kind, int w) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); p.setColor(Color.WHITE); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * .06f);
+        p.setStrokeJoin(Paint.Join.ROUND); p.setStrokeCap(Paint.Cap.ROUND);
+        float m = w * .2f, s = w - 2 * m, cx = w / 2f;
+        if (kind.equals("gear")) {
+            for (int i = 0; i < 8; i++) { double a = i * Math.PI / 4; c.drawLine(cx + (float) Math.cos(a) * s * .38f, cx + (float) Math.sin(a) * s * .38f, cx + (float) Math.cos(a) * s * .52f, cx + (float) Math.sin(a) * s * .52f, p); }
+            c.drawCircle(cx, cx, s * .38f, p); c.drawCircle(cx, cx, s * .16f, p);
+        } else { // picture frame with a hill and a sun
+            c.drawRoundRect(new RectF(m, m + s * .1f, m + s, m + s * .9f), s * .1f, s * .1f, p);
+            Path t = new Path(); t.moveTo(m + s * .08f, m + s * .78f); t.lineTo(m + s * .38f, m + s * .45f); t.lineTo(m + s * .6f, m + s * .65f); t.lineTo(m + s * .72f, m + s * .55f); t.lineTo(m + s * .92f, m + s * .78f); c.drawPath(t, p);
+            c.drawCircle(m + s * .72f, m + s * .3f, s * .07f, p);
+        }
     }
 
     int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density); }
@@ -181,10 +209,10 @@ public class Main extends Activity {
         } catch (Exception e) { Toast.makeText(this, "Can't open: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
     }
 
-    /** UP = next wallpaper, DOWN = previous (focus stays on the dock). */
+    /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
-        if (code == KeyEvent.KEYCODE_DPAD_UP) { setWall(1); return true; }
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN) { setWall(-1); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus()) { corner.getChildAt(1).requestFocus(); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN && corner.hasFocus()) { dock.getChildAt(0).requestFocus(); return true; }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
         return super.onKeyDown(code, e);
     }
