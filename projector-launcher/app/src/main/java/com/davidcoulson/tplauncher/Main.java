@@ -135,11 +135,9 @@ public class Main extends Activity {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); p.setColor(Color.WHITE); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * .06f);
         p.setStrokeJoin(Paint.Join.ROUND); p.setStrokeCap(Paint.Cap.ROUND);
         float m = w * .2f, s = w - 2 * m, cx = w / 2f;
-        if (kind.equals("thx")) { // speaker with sound waves, like the panel's Demo button
-            Path t = new Path(); t.moveTo(m, m + s * .36f); t.lineTo(m + s * .26f, m + s * .36f); t.lineTo(m + s * .52f, m + s * .14f); t.lineTo(m + s * .52f, m + s * .86f); t.lineTo(m + s * .26f, m + s * .64f); t.lineTo(m, m + s * .64f); t.close(); c.drawPath(t, p);
-            c.drawArc(new RectF(m + s * .5f, m + s * .3f, m + s * .78f, m + s * .7f), -50, 100, false, p);
-            c.drawArc(new RectF(m + s * .5f, m + s * .12f, m + s * 1.02f, m + s * .88f), -50, 100, false, p);
-            return;
+        if (kind.equals("thx")) { // the demo: a theater screen with seats (mdi:theater)
+            android.graphics.drawable.Drawable d = getResources().getDrawable(R.drawable.ic_mdi_theater, null);
+            d.setBounds((int) m, (int) m, (int) (w - m), (int) (w - m)); d.draw(c); return;
         }
         if (kind.equals("gear")) {
             for (int i = 0; i < 8; i++) { double a = i * Math.PI / 4; c.drawLine(cx + (float) Math.cos(a) * s * .38f, cx + (float) Math.sin(a) * s * .38f, cx + (float) Math.cos(a) * s * .52f, cx + (float) Math.sin(a) * s * .52f, p); }
