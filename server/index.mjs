@@ -24,7 +24,7 @@ import * as seasonal from './seasonal.mjs';
 import * as wrapped from './wrapped.mjs';
 import { initImageCache, serveImage, extImage } from './images.mjs';
 import { runAction, script, onPanelSound, musicLibrary, musicSearch, musicQueue, musicProviders } from './actions.mjs';
-import { gameEntities, gamesState, hostClock, recordStats, steamLibrary, vmNow } from './games.mjs';
+import { gameEntities, gamesActive, gamesState, hostClock, recordStats, steamLibrary, vmNow } from './games.mjs';
 import * as admin from './admin.mjs';
 import * as icons from './icons.mjs';
 import * as vote from './vote.mjs';
@@ -595,6 +595,17 @@ get(/^\/api\/music\/providers$/, () => musicProviders(ha));
 get(/^\/api\/music\/queue$/, (m, q) => musicQueue(ha, q.get('entity_id')));
 
 get(/^\/api\/games$/, () => gamesState());
+// What the projector launcher (projector-launcher/) needs for its home screen: the holiday accent and the weather,
+// both from this server so the launcher holds no Home Assistant token.
+get(/^\/api\/companion$/, () => {
+  const a = accentNow(), w = ha.states[config.entities.weather];
+  const at = w?.attributes || {};
+  return {
+    accent: { id: a.id, name: a.name, gold: a.gold },
+    weather: w && w.state !== 'unavailable' ? { condition: w.state, temp: at.temperature ?? null, unit: at.temperature_unit || '°F', humidity: at.humidity ?? null } : null,
+    active: gamesActive(),
+  };
+});
 get(/^\/api\/games\/clock$/, () => hostClock());
 get(/^\/api\/games\/vm$/, () => vmNow().catch((e) => ({ state: 'unknown', error: e.message })));
 get(/^\/api\/steam\/library$/, () => steamLibrary());

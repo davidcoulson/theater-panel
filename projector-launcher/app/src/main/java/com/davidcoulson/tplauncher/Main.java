@@ -32,6 +32,7 @@ public class Main extends Activity {
     };
     static final String PANEL = "http://10.2.6.45:8787"; // theater-panel server; add ?key= via prefs "key" if the projector isn't a trusted network
     LinearLayout dock, corner;
+    String accent = "", cond = "", activeId = ""; int gold = 0xFFFFFFFF; long armed = 0;
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
     SharedPreferences prefs; final Handler h = new Handler();
@@ -40,7 +41,7 @@ public class Main extends Activity {
         super.onCreate(b);
         prefs = getSharedPreferences("tp", MODE_PRIVATE);
         try { walls = getAssets().list("wallpapers"); } catch (Exception e) { walls = new String[0]; }
-        wallIdx = prefs.getInt("wall", 0) % Math.max(1, walls.length);
+        wallIdx = Math.min(prefs.getInt("wall", -1), walls.length - 1); // -1 = auto: follows the panel's holiday theme and the weather
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -61,6 +62,9 @@ public class Main extends Activity {
         lp.bottomMargin = dp(48);
         root.addView(dock, lp);
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
+        corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
+            if (System.currentTimeMillis() - armed < 4000) { armed = 0; post("{\"action\":\"scene\",\"name\":\"all_off\"}", "Standby"); }
+            else { armed = System.currentTimeMillis(); Toast.makeText(this, "Press again to turn the room off", Toast.LENGTH_SHORT).show(); } }));
         corner.addView(cornerBtn("thx", v -> post("{\"action\":\"preroll_demo\"}", "THX demo"))); // the panel's Sound sheet "Demo": plays the THX clip via Plex
         corner.addView(cornerBtn("wall", v -> setWall(1)));
         corner.addView(cornerBtn("proj", v -> { // the projector's own menu: keystone, focus, picture
@@ -91,7 +95,9 @@ public class Main extends Activity {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(panelUrl("/api/games")).openConnection();
                 c.setConnectTimeout(5000); c.setReadTimeout(5000);
-                org.json.JSONArray src = new JSONObject(new java.util.Scanner(c.getInputStream()).useDelimiter("\\A").next()).getJSONArray("sources");
+                JSONObject root = new JSONObject(new java.util.Scanner(c.getInputStream()).useDelimiter("\\A").next());
+                activeId = root.optString("active", "");
+                org.json.JSONArray src = root.getJSONArray("sources");
                 final String[][] in = new String[src.length()][];
                 for (int i = 0; i < in.length; i++) {
                     JSONObject o = src.getJSONObject(i); String id = o.getString("id");
@@ -103,7 +109,7 @@ public class Main extends Activity {
     }
 
     /** Ask the panel server to switch to an input; it drives the HDMI switcher and the projector input through Home Assistant. */
-    void pick(final String id, final String name) { post("{\"action\":\"game_source\",\"id\":\"" + id + "\"}", name); }
+    void pick(final String id, final String name) { activeId = id; loadInputs(); post("{\"action\":\"game_source\",\"id\":\"" + id + "\"}", name); }
 
     /** POST an action to the panel server and toast the outcome. */
     void post(final String json, final String name) {
@@ -115,7 +121,9 @@ public class Main extends Activity {
                 c.setRequestProperty("content-type", "application/json");
                 c.getOutputStream().write(json.getBytes());
                 int code = c.getResponseCode();
-                msg = code < 300 ? name : name + " failed (" + code + ")";
+                if (code < 300) msg = name;
+                else { String why = ""; try { why = new JSONObject(new java.util.Scanner(c.getErrorStream()).useDelimiter("\\A").next()).optString("error", ""); } catch (Exception ignored) {}
+                    msg = why.isEmpty() ? name + " failed (" + code + ")" : why; }
             } catch (Exception e) { msg = name + " failed: " + e.getMessage(); }
             final String m = msg; runOnUiThread(() -> Toast.makeText(this, m, Toast.LENGTH_SHORT).show());
         }).start();
@@ -135,6 +143,10 @@ public class Main extends Activity {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); p.setColor(Color.WHITE); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * .06f);
         p.setStrokeJoin(Paint.Join.ROUND); p.setStrokeCap(Paint.Cap.ROUND);
         float m = w * .2f, s = w - 2 * m, cx = w / 2f;
+        if (kind.equals("power")) {
+            c.drawArc(new RectF(m + s * .08f, m + s * .08f, m + s * .92f, m + s * .92f), -60, 300, false, p);
+            c.drawLine(cx, m, cx, m + s * .48f, p); return;
+        }
         if (kind.equals("thx")) { // the demo: a theater screen with seats (mdi:theater)
             android.graphics.drawable.Drawable d = getResources().getDrawable(R.drawable.ic_mdi_theater, null);
             d.setBounds((int) m, (int) m, (int) (w - m), (int) (w - m)); d.draw(c); return;
@@ -165,7 +177,10 @@ public class Main extends Activity {
         c.setGravity(Gravity.CENTER_HORIZONTAL); c.setPadding(dp(6), dp(14), dp(6), dp(10));
         c.setFocusable(true); c.setClickable(true);
         final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(24));
-        c.setOnFocusChangeListener((v, has) -> v.setBackground(has ? f : null));
+        final GradientDrawable on = new GradientDrawable(); on.setColor(0x1AFFFFFF); on.setCornerRadius(dp(24));
+        final boolean live = a[1].equals("panel:" + activeId); // the input the panel last switched to
+        if (live) c.setBackground(on);
+        c.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : live ? on : null); });
         final String icon = a[2];
         View ic = new View(this) {
             @Override protected void onDraw(Canvas cv) { drawIcon(cv, icon, getWidth(), getHeight()); }
@@ -232,13 +247,34 @@ public class Main extends Activity {
         return super.onKeyDown(code, e);
     }
 
+    /** d != 0 steps through Auto, then each wallpaper; Auto picks by the panel's holiday theme, else the weather. */
     void setWall(int d) {
         if (walls.length == 0) return;
-        wallIdx = (wallIdx + d + walls.length) % walls.length;
-        prefs.edit().putInt("wall", wallIdx).apply();
-        try (InputStream in = getAssets().open("wallpapers/" + walls[wallIdx])) {
-            wall.setImageBitmap(BitmapFactory.decodeStream(in));
-        } catch (Exception ignored) {}
+        if (d != 0) {
+            wallIdx += d; if (wallIdx >= walls.length) wallIdx = -1; if (wallIdx < -1) wallIdx = walls.length - 1;
+            prefs.edit().putInt("wall", wallIdx).apply();
+            Toast.makeText(this, wallIdx < 0 ? "Wallpaper: Auto" : "Wallpaper " + (wallIdx + 1) + "/" + walls.length, Toast.LENGTH_SHORT).show();
+        }
+        String name = wallIdx < 0 ? autoWall() : walls[wallIdx];
+        try (InputStream in = getAssets().open("wallpapers/" + name)) { wall.setImageBitmap(BitmapFactory.decodeStream(in)); }
+        catch (Exception ignored) {}
+    }
+
+    /** Holidays win (as on the panel); the plain seasons fall through to the weather. */
+    String autoWall() {
+        switch (accent) {
+            case "halloween": return "w05.jpg";   // ember horizon
+            case "thanksgiving": return "w18.jpg"; // low poly ember
+            case "christmas": return "w07.jpg";   // crimson corners
+            case "newyear": return "w11.jpg";     // star field
+            case "valentines": case "birthday": return "w14.jpg"; // neon orbs
+        }
+        if (cond.equals("snowy") || cond.equals("snowy-rainy") || cond.equals("hail")) return "w15.jpg"; // moonlit slate
+        if (cond.equals("rainy") || cond.equals("pouring") || cond.equals("lightning") || cond.equals("lightning-rainy")) return "w09.jpg"; // ocean floor
+        if (cond.equals("fog")) return "w13.jpg";  // graphite mist
+        if (cond.equals("clear-night")) return "w11.jpg";
+        switch (accent) { case "fall": return "w10.jpg"; case "spring": return "w12.jpg"; case "winter": return "w08.jpg"; }
+        return "w04.jpg";
     }
 
     final Runnable tick = new Runnable() { public void run() {
@@ -249,18 +285,47 @@ public class Main extends Activity {
     }};
     final Runnable weather = new Runnable() { public void run() {
         new Thread(() -> {
-            try {
-                URL u = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON
-                    + "&current=temperature_2m,weather_code&temperature_unit=fahrenheit");
-                HttpURLConnection c = (HttpURLConnection) u.openConnection(); c.setConnectTimeout(8000); c.setReadTimeout(8000);
-                java.util.Scanner s = new java.util.Scanner(c.getInputStream()).useDelimiter("\\A");
-                JSONObject cur = new JSONObject(s.next()).getJSONObject("current");
-                final String t = Math.round(cur.getDouble("temperature_2m")) + "°F · " + cond(cur.getInt("weather_code")) + " · North Royalton";
-                runOnUiThread(() -> wx.setText(t));
+            String line = null;
+            try { // the panel server: Home Assistant's weather plus the holiday accent, no token on this device
+                JSONObject o = new JSONObject(get(panelUrl("/api/companion")));
+                JSONObject a = o.getJSONObject("accent"); final String id = a.getString("id");
+                final int g = Color.parseColor(a.getString("gold"));
+                JSONObject w = o.optJSONObject("weather");
+                if (w != null && !w.isNull("temp")) {
+                    final String c = w.getString("condition");
+                    line = Math.round(w.getDouble("temp")) + w.optString("unit", "°F") + " · " + label(c) + " · North Royalton";
+                    cond = c;
+                }
+                accent = id; gold = g;
             } catch (Exception ignored) {}
+            if (line == null) try { // older panel build or no weather entity: Open-Meteo for 44133
+                JSONObject cur = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON
+                    + "&current=temperature_2m,weather_code&temperature_unit=fahrenheit")).getJSONObject("current");
+                int code = cur.getInt("weather_code");
+                line = Math.round(cur.getDouble("temperature_2m")) + "°F · " + cond(code) + " · North Royalton";
+                cond = code == 0 ? "sunny" : code >= 71 && code < 78 ? "snowy" : code >= 51 && code < 70 ? "rainy" : code >= 80 && code < 90 ? "rainy" : code == 45 || code == 48 ? "fog" : "cloudy";
+            } catch (Exception ignored) {}
+            final String t = line;
+            runOnUiThread(() -> { if (t != null) wx.setText(t); setWall(0); });
         }).start();
-        h.postDelayed(this, 15 * 60000);
+        h.postDelayed(this, 5 * 60000);
     }};
+
+    static String get(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection(); c.setConnectTimeout(6000); c.setReadTimeout(8000);
+        if (c.getResponseCode() >= 300) throw new Exception("HTTP " + c.getResponseCode());
+        return new java.util.Scanner(c.getInputStream()).useDelimiter("\\A").next();
+    }
+
+    /** Home Assistant weather state -> words. */
+    static String label(String c) {
+        switch (c) {
+            case "sunny": return "Sunny"; case "clear-night": return "Clear"; case "partlycloudy": return "Partly cloudy"; case "cloudy": return "Cloudy";
+            case "rainy": return "Rain"; case "pouring": return "Heavy rain"; case "snowy": return "Snow"; case "snowy-rainy": return "Sleet";
+            case "fog": return "Fog"; case "windy": case "windy-variant": return "Windy"; case "hail": return "Hail";
+            case "lightning": case "lightning-rainy": return "Storms"; default: return c;
+        }
+    }
 
     static String cond(int c) {
         if (c == 0) return "Clear"; if (c <= 2) return "Partly cloudy"; if (c == 3) return "Cloudy";

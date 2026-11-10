@@ -144,6 +144,8 @@ function build(env) {
       'light.home_theater_wled',
     ]),
     temperature: env.ENTITY_TEMPERATURE || 'sensor.media_room_temperature',
+    // Outdoor weather for the projector launcher's home screen (a HA weather entity).
+    weather: env.ENTITY_WEATHER || 'weather.forecast_silver_tree_trl',
     occupancy: env.ENTITY_OCCUPANCY || 'binary_sensor.media_room_occupancy',
     tautulli: env.ENTITY_TAUTULLI || 'sensor.tautulli_watching',
     // Accent-light effect speed and intensity helpers (input_number), shown in the effect picker.
@@ -384,7 +386,7 @@ export function watchedEntities() {
   const e = config.entities;
   return [
     e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.projectorPictureSwitch, e.adminRoomSensor,
-    ...e.lights, e.temperature, e.occupancy, e.tautulli, e.pictureMode, e.projectorPicture, e.accentSpeed, e.accentIntensity,
+    ...e.lights, e.temperature, e.weather, e.occupancy, e.tautulli, e.pictureMode, e.projectorPicture, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar), ...Object.values(e.ai || {}),
     'input_select.theater_scene',
   ].filter(Boolean);

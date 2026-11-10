@@ -338,6 +338,7 @@ export async function gamesState() {
 
 // The Projector card's Apple TV button goes through the projector action, not a game source.
 export const setActive = (id) => { active = id; };
+export const gamesActive = () => active;
 
 export async function selectSource(ha, id) {
   const g = await loadGames();
