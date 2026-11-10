@@ -304,6 +304,8 @@ get(/^\/api\/networks$/, () => (config.seerr.url ? seerr.networks() : []));
 get(/^\/api\/plex\/item\/(\d+)$/, (m) => plex.item(m[1]));
 // The calendar's play button: the Plex copy of a Sonarr episode, or null when there is none yet.
 get(/^\/api\/plex\/episode$/, (m, q) => plex.episodeByTmdb(q.get('tmdb'), q.get('season'), q.get('episode')));
+// The same for a Radarr film: its best Plex copy, or null.
+get(/^\/api\/plex\/movie$/, async (m, q) => (await plex.byTmdb([q.get('tmdb')]))[0] || null);
 get(/^\/api\/plex\/episodes\/(\d+)$/, (m) => plex.episodes(m[1]));
 // The panel's own settings sheet: the harmless knobs, behind the panel's auth like every action.
 get(/^\/api\/tweaks$/, () => admin.tweaks());

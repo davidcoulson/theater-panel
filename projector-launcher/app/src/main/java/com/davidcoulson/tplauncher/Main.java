@@ -445,7 +445,7 @@ public class Main extends Activity {
             try {
                 String id = it[3];
                 if (id.isEmpty()) { // a release: find the Plex copy first
-                    String r = get(panelUrl("/api/plex/episode?tmdb=" + it[6] + "&season=" + it[7] + "&episode=" + it[8]));
+                    String r = get(panelUrl(it[4].equals("movie") ? "/api/plex/movie?tmdb=" + it[6] : "/api/plex/episode?tmdb=" + it[6] + "&season=" + it[7] + "&episode=" + it[8]));
                     id = r.trim().equals("null") ? "" : new JSONObject(r).optString("id");
                 }
                 if (id.isEmpty()) { runOnUiThread(() -> Toast.makeText(this, it[1] + " isn't in Plex yet", Toast.LENGTH_LONG).show()); return; }
