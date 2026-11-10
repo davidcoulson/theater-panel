@@ -62,6 +62,9 @@ public class Main extends Activity {
         root.addView(dock, lp);
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
         corner.addView(cornerBtn("wall", v -> setWall(1)));
+        corner.addView(cornerBtn("proj", v -> { // the projector's own menu: keystone, focus, picture
+            Intent i = getPackageManager().getLaunchIntentForPackage("com.xming.xmprojectorsettings");
+            if (i != null) startActivity(i); else Toast.makeText(this, "Projector settings not found", Toast.LENGTH_SHORT).show(); }));
         corner.addView(cornerBtn("gear", v -> { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Exception e) {} }));
         root.addView(corner, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
         setContentView(root);
@@ -131,6 +134,10 @@ public class Main extends Activity {
         if (kind.equals("gear")) {
             for (int i = 0; i < 8; i++) { double a = i * Math.PI / 4; c.drawLine(cx + (float) Math.cos(a) * s * .38f, cx + (float) Math.sin(a) * s * .38f, cx + (float) Math.cos(a) * s * .52f, cx + (float) Math.sin(a) * s * .52f, p); }
             c.drawCircle(cx, cx, s * .38f, p); c.drawCircle(cx, cx, s * .16f, p);
+        } else if (kind.equals("proj")) { // projector body with a lens and a beam
+            c.drawRoundRect(new RectF(m, m + s * .3f, m + s * .7f, m + s * .8f), s * .1f, s * .1f, p);
+            c.drawCircle(m + s * .35f, m + s * .55f, s * .13f, p);
+            c.drawLine(m + s * .8f, m + s * .4f, m + s, m + s * .3f, p); c.drawLine(m + s * .8f, m + s * .55f, m + s, m + s * .55f, p); c.drawLine(m + s * .8f, m + s * .7f, m + s, m + s * .8f, p);
         } else { // picture frame with a hill and a sun
             c.drawRoundRect(new RectF(m, m + s * .1f, m + s, m + s * .9f), s * .1f, s * .1f, p);
             Path t = new Path(); t.moveTo(m + s * .08f, m + s * .78f); t.lineTo(m + s * .38f, m + s * .45f); t.lineTo(m + s * .6f, m + s * .65f); t.lineTo(m + s * .72f, m + s * .55f); t.lineTo(m + s * .92f, m + s * .78f); c.drawPath(t, p);
@@ -211,7 +218,7 @@ public class Main extends Activity {
 
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
-        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus()) { corner.getChildAt(1).requestFocus(); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus()) { corner.getChildAt(2).requestFocus(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN && corner.hasFocus()) { dock.getChildAt(0).requestFocus(); return true; }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
         return super.onKeyDown(code, e);
