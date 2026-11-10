@@ -46,7 +46,7 @@ public class Main extends Activity {
         wallIdx = Math.min(prefs.getInt("wall", -1), walls.length - 1); // -1 = auto: follows the panel's holiday theme and the weather
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(Color.BLACK); root.setClipChildren(false); // the magnified dock grows past its own edge
         wall = new ImageView(this); wall.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(wall, -1, -1);
 
@@ -57,18 +57,19 @@ public class Main extends Activity {
         root.addView(top, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
 
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
-        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(930), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        mp.bottomMargin = dp(160);
+        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        mp.leftMargin = mp.rightMargin = dp(24);
+        mp.bottomMargin = dp(100);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
 
         dock = new LinearLayout(this); dock.setOrientation(LinearLayout.HORIZONTAL);
-        dock.setPadding(dp(20), dp(14), dp(20), dp(14)); dock.setGravity(Gravity.CENTER);
+        dock.setPadding(dp(16), dp(8), dp(16), dp(8)); dock.setClipChildren(false); dock.setClipToPadding(false); dock.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = dp(28);
+        lp.bottomMargin = dp(10);
         root.addView(dock, lp);
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
@@ -183,20 +184,20 @@ public class Main extends Activity {
 
     View item(final String[] a) {
         LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL);
-        c.setGravity(Gravity.CENTER_HORIZONTAL); c.setPadding(dp(6), dp(14), dp(6), dp(10));
+        c.setGravity(Gravity.CENTER_HORIZONTAL); c.setPadding(dp(4), dp(8), dp(4), dp(6));
         c.setFocusable(true); c.setClickable(true);
         final GradientDrawable f = new GradientDrawable(); f.setColor(0x38FFFFFF); f.setCornerRadius(dp(24));
         final GradientDrawable on = new GradientDrawable(); on.setColor(0x1AFFFFFF); on.setCornerRadius(dp(24));
         final boolean live = a[1].equals("panel:" + activeId); // the input the panel last switched to
         if (live) c.setBackground(on);
-        c.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : live ? on : null); });
+        c.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : live ? on : null); h.post(this::magnify); });
         final String icon = a[2];
         View ic = new View(this) {
             @Override protected void onDraw(Canvas cv) { drawIcon(cv, icon, getWidth(), getHeight()); }
         };
-        c.addView(ic, dp(48), dp(48));
-        TextView l = text(13, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
-        c.addView(l, dp(84), -2);
+        c.addView(ic, dp(38), dp(38));
+        TextView l = text(11, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
+        c.addView(l, dp(70), -2);
         c.setOnClickListener(v -> launch(a[1], a[0]));
         return c;
     }
@@ -307,12 +308,13 @@ public class Main extends Activity {
                     if (at >= since && at <= now) hits.add(new Object[]{at, o});
                 }
                 java.util.Collections.sort(hits, (x, y) -> Long.compare((Long) y[0], (Long) x[0]));
-                for (int i = 0, n = 0; i < hits.size() && n < 8; i++) {
+                int nf = 0, nt = 0; // newest six of each
+                for (int i = 0; i < hits.size(); i++) {
                     JSONObject o = (JSONObject) hits.get(i)[1]; boolean tv = o.optString("kind").equals("tv");
                     boolean dup = false; // one tile per title across both groups
                     for (String[] x : items) dup |= x[1].equals(o.optString("title"));
                     if (dup) continue;
-                    n++;
+                    if (tv ? nt++ >= 6 : nf++ >= 6) continue;
                     items.add(new String[]{"NEW SINCE YESTERDAY", o.optString("title"), o.optString("poster"), "", tv ? "episode" : "movie", "0",
                         o.optString("tmdbId"), o.optString("season"), o.optString("episode"), "", "0", "", ""});
                 }
@@ -332,21 +334,18 @@ public class Main extends Activity {
         boolean had = media.hasFocus();
         media.removeAllViews();
         final java.util.List<String[]> deck = new java.util.ArrayList<>(); final java.util.List<Bitmap> stills = new java.util.ArrayList<>();
-        LinearLayout posters = new LinearLayout(this);
+        LinearLayout films = new LinearLayout(this), shows = new LinearLayout(this); // one row each
         for (int i = 0; i < items.size(); i++) {
             final String[] it = items.get(i);
             if (it[0].startsWith("CONTINUE")) { deck.add(it); stills.add(pics[i]); continue; }
             LinearLayout t = new LinearLayout(this); t.setOrientation(LinearLayout.VERTICAL); t.setGravity(Gravity.CENTER_HORIZONTAL);
-            t.setPadding(dp(5), dp(5), dp(5), dp(4)); t.setFocusable(true); t.setClickable(true);
+            t.setPadding(dp(4), dp(4), dp(4), dp(4)); t.setFocusable(true); t.setClickable(true);
             ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(pics[i]);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
-            t.addView(im, dp(92), dp(136));
-            TextView cap = text(12, .85f); cap.setMaxLines(1); cap.setGravity(Gravity.CENTER); cap.setText(it[1]); cap.setPadding(0, dp(3), 0, 0);
-            cap.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            t.addView(cap, dp(92), -2);
+            t.addView(im, dp(62), dp(93)); // the poster says the title; pressing it names it
             focusTint(t, 12);
             t.setOnClickListener(v -> play(it));
-            posters.addView(t);
+            (it[4].equals("movie") ? films : shows).addView(t);
         }
         LinearLayout both = new LinearLayout(this); both.setPadding(dp(18), dp(12), dp(10), dp(6));
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(24)); both.setBackground(bg);
@@ -354,12 +353,12 @@ public class Main extends Activity {
             heroIdx = Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
             TextView hd = text(12, .7f); hd.setText(" "); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
-            final LinearLayout hero = new LinearLayout(this); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
+            final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
-            hero.addView(img, dp(280), dp(158));
-            LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(14), 0, 0, 0);
-            final TextView title = text(26, 1f), sub = text(17, .85f), note = text(14, .65f), dots = text(13, .8f);
+            hero.addView(img, dp(340), dp(191));
+            LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(2), dp(8), 0, 0);
+            final TextView title = text(22, 1f), sub = text(15, .85f), note = text(14, .65f), dots = text(13, .8f);
             title.setMaxLines(2); title.setTypeface(Typeface.DEFAULT_BOLD);
             final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
             GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
@@ -368,7 +367,7 @@ public class Main extends Activity {
             tx.addView(title); tx.addView(sub);
             LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(190), dp(3)); bl.topMargin = dp(8); bl.bottomMargin = dp(4);
             tx.addView(bar, bl); tx.addView(note); tx.addView(dots);
-            hero.addView(tx, dp(230), -2);
+            hero.addView(tx, dp(340), -2);
             final Runnable[] bind = new Runnable[1];
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx);
@@ -387,19 +386,35 @@ public class Main extends Activity {
                 if (k == KeyEvent.KEYCODE_DPAD_LEFT && heroIdx > 0) { heroIdx--; bind[0].run(); return true; }
                 return false;
             });
-            col.addView(hero);
-            both.addView(col);
+            col.addView(hero); col.setGravity(Gravity.CENTER_HORIZONTAL);
+            both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f)); // half the box
         }
-        if (posters.getChildCount() > 0) {
+        if (films.getChildCount() + shows.getChildCount() > 0) {
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
-            TextView hd = text(12, .7f); hd.setText("NEW SINCE YESTERDAY"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
-            HorizontalScrollView sv = new HorizontalScrollView(this); sv.setHorizontalScrollBarEnabled(false); sv.addView(posters);
-            col.addView(sv, dp(300), -2);
-            both.addView(col);
+            TextView hd = text(12, .7f); hd.setText("NEW SINCE YESTERDAY"); hd.setPadding(dp(6), 0, 0, dp(2)); hd.setLetterSpacing(.12f); col.addView(hd);
+            for (int r = 0; r < 2; r++) {
+                LinearLayout row = r == 0 ? films : shows;
+                if (row.getChildCount() == 0) continue;
+                TextView lb = text(11, .55f); lb.setText(r == 0 ? "MOVIES" : "TV"); lb.setPadding(dp(6), dp(2), 0, 0); col.addView(lb);
+                HorizontalScrollView sv = new HorizontalScrollView(this); sv.setHorizontalScrollBarEnabled(false); sv.addView(row);
+                col.addView(sv, -1, -2);
+            }
+            both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f)); // the other half
         }
         if (both.getChildCount() == 0) return;
         media.addView(both, -1, -2);
         if (had) media.requestFocus();
+    }
+
+    /** macOS-style dock: the focused tile grows from its bottom edge, its neighbours a little. */
+    void magnify() {
+        View fc = dock.getFocusedChild(); int fi = fc == null ? -9 : dock.indexOfChild(fc);
+        for (int k = 0; k < dock.getChildCount(); k++) {
+            View c = dock.getChildAt(k); int d = Math.abs(k - fi);
+            float sc = d == 0 ? 1.35f : d == 1 ? 1.14f : d == 2 ? 1.03f : 1f;
+            c.setPivotX(c.getWidth() / 2f); c.setPivotY(c.getHeight());
+            c.animate().scaleX(sc).scaleY(sc).setDuration(130).start();
+        }
     }
 
     void focusTint(View t, int radius) {
