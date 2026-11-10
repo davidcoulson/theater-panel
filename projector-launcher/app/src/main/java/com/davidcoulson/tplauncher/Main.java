@@ -58,7 +58,7 @@ public class Main extends Activity {
 
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
         FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(840), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        mp.bottomMargin = dp(186);
+        mp.bottomMargin = dp(150);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
@@ -68,10 +68,9 @@ public class Main extends Activity {
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = dp(62);
+        lp.bottomMargin = dp(28);
         root.addView(dock, lp);
-        corner = new LinearLayout(this); corner.setPadding(dp(8), dp(4), dp(18), dp(4)); corner.setGravity(Gravity.CENTER_VERTICAL);
-        GradientDrawable cb = new GradientDrawable(); cb.setColor(0x4D1E2630); cb.setCornerRadius(dp(30)); corner.setBackground(cb);
+        corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
             if (System.currentTimeMillis() - armed < 4000) { armed = 0; post("{\"action\":\"scene\",\"name\":\"all_off\"}", "Standby"); }
             else { armed = System.currentTimeMillis(); Toast.makeText(this, "Press again to turn the room off", Toast.LENGTH_SHORT).show(); } }));
@@ -81,9 +80,7 @@ public class Main extends Activity {
             Intent i = getPackageManager().getLaunchIntentForPackage("com.xming.xmprojectorsettings");
             if (i != null) startActivity(i); else Toast.makeText(this, "Projector settings not found", Toast.LENGTH_SHORT).show(); }));
         corner.addView(cornerBtn("gear", v -> { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Exception e) {} }));
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        cp.bottomMargin = dp(8);
-        root.addView(corner, cp);
+        root.addView(corner, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
         setContentView(root);
         dock.getChildAt(0).requestFocus();
         setWall(0);
@@ -254,14 +251,14 @@ public class Main extends Activity {
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
         boolean inMedia = media.hasFocus(), inBar = corner.hasFocus(), hasMedia = media.getChildCount() > 0;
-        if (code == KeyEvent.KEYCODE_DPAD_UP) { // bar -> dock -> posters
-            if (inBar) { dock.getChildAt(0).requestFocus(); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_UP) { // dock -> posters -> corner buttons
+            if (inBar) return true;
             if (!inMedia && hasMedia) { media.requestFocus(); return true; }
-            return true;
+            corner.getChildAt(corner.getChildCount() - 1).requestFocus(); return true;
         }
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN) { // posters -> dock -> bar
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN) { // corner buttons -> posters -> dock
+            if (inBar) { (hasMedia ? media : dock.getChildAt(0)).requestFocus(); return true; }
             if (inMedia) { dock.getChildAt(0).requestFocus(); return true; }
-            if (!inBar) { corner.getChildAt(0).requestFocus(); return true; }
             return true;
         }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
