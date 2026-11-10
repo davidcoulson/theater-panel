@@ -53,7 +53,7 @@ public class Main extends Activity {
         LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(dp(64), dp(40), 0, 0);
         time = text(64, 1f); date = text(22, .8f); wx = text(22, .8f);
-        top.addView(time); top.addView(date); top.addView(wx);
+        top.addView(time); // date and weather hidden for now: top.addView(date); top.addView(wx);
         root.addView(top, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
 
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
@@ -353,7 +353,7 @@ public class Main extends Activity {
         if (!deck.isEmpty()) {
             heroIdx = Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
-            TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
+            TextView hd = text(12, .7f); hd.setText(" "); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
             final LinearLayout hero = new LinearLayout(this); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
@@ -373,7 +373,7 @@ public class Main extends Activity {
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx);
                 img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
-                note.setText(it[12] + (it[11].isEmpty() ? "" : "\nLast watched by " + it[11].split(" ")[0])); // who last played it, as on the panel
+                note.setText(it[12]);
                 FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fill.getLayoutParams(); fl.width = dp(190) * Math.max(0, Math.min(100, Integer.parseInt(it[10]))) / 100; fill.setLayoutParams(fl);
                 StringBuilder d = new StringBuilder(); for (int k = 0; k < deck.size(); k++) d.append(k == heroIdx ? "● " : "○ "); dots.setText(d.toString().trim());
             };
