@@ -350,7 +350,7 @@ public class Main extends Activity {
         if (!deck.isEmpty()) {
             heroIdx = Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
-            TextView hd = text(12, .7f); hd.setText(" "); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
+            TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
             final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
@@ -376,7 +376,9 @@ public class Main extends Activity {
                 StringBuilder d = new StringBuilder(); for (int k = 0; k < deck.size(); k++) d.append(k == heroIdx ? "● " : "○ "); dots.setText(d.toString().trim());
             };
             bind[0].run();
-            focusTint(hero, 14);
+            hero.setOnFocusChangeListener((v, has) -> { // ring the thumbnail, not the whole card
+                GradientDrawable ring = new GradientDrawable(); ring.setColor(0); ring.setCornerRadius(dp(10)); ring.setStroke(dp(4), gold | 0xFF000000);
+                img.setForeground(has ? ring : null); });
             hero.setOnClickListener(v -> play(deck.get(heroIdx)));
             hero.setOnKeyListener((v, k, e) -> { // step through the deck; past either end the D-pad moves on as usual
                 if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
