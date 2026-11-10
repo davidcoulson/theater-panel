@@ -61,7 +61,7 @@ public class Main extends Activity {
         mp.leftMargin = mp.rightMargin = dp(24);
         mp.bottomMargin = dp(90);
         root.addView(media, mp);
-        roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
+        roam = new FrameLayout(this); // seasonal walkers cross here
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
 
         dock = new LinearLayout(this); dock.setOrientation(LinearLayout.HORIZONTAL);
@@ -70,7 +70,7 @@ public class Main extends Activity {
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         lp.bottomMargin = 0;
-        root.addView(dock, lp);
+        root.addView(dock, lp); roam.bringToFront(); // walkers pass in front of the dock, so its tint does not wash them out
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
             if (System.currentTimeMillis() - armed < 4000) { armed = 0; post("{\"action\":\"scene\",\"name\":\"all_off\"}", "Standby"); }
