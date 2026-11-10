@@ -52,7 +52,7 @@ public class Main extends Activity {
 
         LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(dp(64), dp(40), 0, 0);
-        time = text(64, 1f); date = text(22, .8f); wx = text(22, .8f);
+        time = text(28, 1f); date = text(22, .8f); wx = text(22, .8f);
         top.addView(time); // date and weather hidden for now: top.addView(date); top.addView(wx);
         root.addView(top, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
 
