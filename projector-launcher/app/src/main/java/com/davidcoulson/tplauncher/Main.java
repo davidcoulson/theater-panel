@@ -57,7 +57,7 @@ public class Main extends Activity {
         root.addView(top, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
 
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
-        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(900), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(930), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         mp.bottomMargin = dp(160);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
@@ -340,10 +340,10 @@ public class Main extends Activity {
             t.setPadding(dp(5), dp(5), dp(5), dp(4)); t.setFocusable(true); t.setClickable(true);
             ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(pics[i]);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
-            t.addView(im, dp(84), dp(124));
+            t.addView(im, dp(92), dp(136));
             TextView cap = text(12, .85f); cap.setMaxLines(1); cap.setGravity(Gravity.CENTER); cap.setText(it[1]); cap.setPadding(0, dp(3), 0, 0);
             cap.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            t.addView(cap, dp(84), -2);
+            t.addView(cap, dp(92), -2);
             focusTint(t, 12);
             t.setOnClickListener(v -> play(it));
             posters.addView(t);
@@ -357,9 +357,9 @@ public class Main extends Activity {
             final LinearLayout hero = new LinearLayout(this); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
-            hero.addView(img, dp(216), dp(122));
+            hero.addView(img, dp(280), dp(158));
             LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(14), 0, 0, 0);
-            final TextView title = text(22, 1f), sub = text(15, .85f), note = text(14, .65f), dots = text(13, .8f);
+            final TextView title = text(26, 1f), sub = text(17, .85f), note = text(14, .65f), dots = text(13, .8f);
             title.setMaxLines(2); title.setTypeface(Typeface.DEFAULT_BOLD);
             final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
             GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
@@ -373,7 +373,8 @@ public class Main extends Activity {
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx);
                 img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
-                note.setText(it[12]);
+                note.setText(it[12].startsWith("Resume") ? it[12] : ""); note.setVisibility(note.length() > 0 ? View.VISIBLE : View.GONE);
+                bar.setVisibility(Integer.parseInt(it[10]) > 0 ? View.VISIBLE : View.GONE); // nothing to show until it has been started
                 FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fill.getLayoutParams(); fl.width = dp(190) * Math.max(0, Math.min(100, Integer.parseInt(it[10]))) / 100; fill.setLayoutParams(fl);
                 StringBuilder d = new StringBuilder(); for (int k = 0; k < deck.size(); k++) d.append(k == heroIdx ? "● " : "○ "); dots.setText(d.toString().trim());
             };
@@ -393,7 +394,7 @@ public class Main extends Activity {
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
             TextView hd = text(12, .7f); hd.setText("NEW SINCE YESTERDAY"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
             HorizontalScrollView sv = new HorizontalScrollView(this); sv.setHorizontalScrollBarEnabled(false); sv.addView(posters);
-            col.addView(sv, dp(340), -2);
+            col.addView(sv, dp(300), -2);
             both.addView(col);
         }
         if (both.getChildCount() == 0) return;
