@@ -33,7 +33,7 @@ public class Main extends Activity {
     };
     static final String PANEL = "http://10.2.6.45:8787"; // theater-panel server; add ?key= via prefs "key" if the projector isn't a trusted network
     LinearLayout dock, corner;
-    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0;
+    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0; boolean wantHero; // coming home lands on continue watching
     String accent = "", cond = "", activeId = ""; int gold = 0xFFFFFFFF; long armed = 0;
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
@@ -59,7 +59,7 @@ public class Main extends Activity {
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
         FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         mp.leftMargin = mp.rightMargin = dp(24);
-        mp.bottomMargin = dp(100);
+        mp.bottomMargin = dp(90);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
@@ -69,7 +69,7 @@ public class Main extends Activity {
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = dp(10);
+        lp.bottomMargin = 0;
         root.addView(dock, lp);
         corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
@@ -292,12 +292,10 @@ public class Main extends Activity {
                         sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next"});
                 }
             } catch (Exception ignored) {}
-            try { // what came out since yesterday morning and is already in the library
+            try { // newest releases already in the library; two weeks back is enough to fill both rows
                 SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US); f.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-                java.util.Calendar cal = java.util.Calendar.getInstance(); cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
-                cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0);
-                long since = cal.getTimeInMillis(), now = System.currentTimeMillis();
-                JSONArray ev = new JSONObject(get(panelUrl("/api/calendar?back=1&ahead=0"))).getJSONArray("events");
+                long now = System.currentTimeMillis();
+                JSONArray ev = new JSONObject(get(panelUrl("/api/calendar?back=14&ahead=0"))).getJSONArray("events");
                 SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
                 final java.util.List<Object[]> hits = new java.util.ArrayList<>(); // {time, event}
                 for (int i = 0; i < ev.length(); i++) {
@@ -305,7 +303,7 @@ public class Main extends Activity {
                     if (!o.optBoolean("hasFile") || o.optString("poster").isEmpty()) continue;
                     boolean tv = o.optString("kind").equals("tv"); // episodes carry a time, films only a day
                     long at = tv ? f.parse(o.optString("at")).getTime() : day.parse(o.optString("date")).getTime();
-                    if (at >= since && at <= now) hits.add(new Object[]{at, o});
+                    if (at <= now) hits.add(new Object[]{at, o});
                 }
                 java.util.Collections.sort(hits, (x, y) -> Long.compare((Long) y[0], (Long) x[0]));
                 int nf = 0, nt = 0; // newest six of each
@@ -315,7 +313,7 @@ public class Main extends Activity {
                     for (String[] x : items) dup |= x[1].equals(o.optString("title"));
                     if (dup) continue;
                     if (tv ? nt++ >= 6 : nf++ >= 6) continue;
-                    items.add(new String[]{"NEW SINCE YESTERDAY", o.optString("title"), o.optString("poster"), "", tv ? "episode" : "movie", "0",
+                    items.add(new String[]{"NEW", o.optString("title"), o.optString("poster"), "", tv ? "episode" : "movie", "0",
                         o.optString("tmdbId"), o.optString("season"), o.optString("episode"), "", "0", "", ""});
                 }
             } catch (Exception ignored) {}
@@ -391,7 +389,7 @@ public class Main extends Activity {
         }
         if (films.getChildCount() + shows.getChildCount() > 0) {
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
-            TextView hd = text(12, .7f); hd.setText("NEW SINCE YESTERDAY"); hd.setPadding(dp(6), 0, 0, dp(2)); hd.setLetterSpacing(.12f); col.addView(hd);
+            TextView hd = text(12, .7f); hd.setText("NEW"); hd.setPadding(dp(6), 0, 0, dp(2)); hd.setLetterSpacing(.12f); col.addView(hd);
             for (int r = 0; r < 2; r++) {
                 LinearLayout row = r == 0 ? films : shows;
                 if (row.getChildCount() == 0) continue;
@@ -403,7 +401,7 @@ public class Main extends Activity {
         }
         if (both.getChildCount() == 0) return;
         media.addView(both, -1, -2);
-        if (had) media.requestFocus();
+        if (had || wantHero) { media.requestFocus(); wantHero = false; }
     }
 
     /** macOS-style dock: the focused tile grows from its bottom edge, its neighbours a little. */
@@ -567,6 +565,6 @@ public class Main extends Activity {
         if (c < 80) return "Snow"; if (c < 90) return "Showers"; return "Storms";
     }
 
-    @Override protected void onResume() { super.onResume(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
+    @Override protected void onResume() { super.onResume(); wantHero = true; tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
     @Override protected void onPause() { super.onPause(); h.removeCallbacksAndMessages(null); roam.removeAllViews(); }
 }
