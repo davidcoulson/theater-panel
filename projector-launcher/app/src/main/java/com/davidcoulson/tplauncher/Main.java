@@ -58,7 +58,7 @@ public class Main extends Activity {
 
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
         FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(840), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        mp.bottomMargin = dp(172);
+        mp.bottomMargin = dp(186);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here, behind the dock
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
@@ -68,9 +68,10 @@ public class Main extends Activity {
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = dp(48);
+        lp.bottomMargin = dp(62);
         root.addView(dock, lp);
-        corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
+        corner = new LinearLayout(this); corner.setPadding(dp(8), dp(4), dp(18), dp(4)); corner.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable cb = new GradientDrawable(); cb.setColor(0x4D1E2630); cb.setCornerRadius(dp(30)); corner.setBackground(cb);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
             if (System.currentTimeMillis() - armed < 4000) { armed = 0; post("{\"action\":\"scene\",\"name\":\"all_off\"}", "Standby"); }
             else { armed = System.currentTimeMillis(); Toast.makeText(this, "Press again to turn the room off", Toast.LENGTH_SHORT).show(); } }));
@@ -80,7 +81,9 @@ public class Main extends Activity {
             Intent i = getPackageManager().getLaunchIntentForPackage("com.xming.xmprojectorsettings");
             if (i != null) startActivity(i); else Toast.makeText(this, "Projector settings not found", Toast.LENGTH_SHORT).show(); }));
         corner.addView(cornerBtn("gear", v -> { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch (Exception e) {} }));
-        root.addView(corner, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        cp.bottomMargin = dp(8);
+        root.addView(corner, cp);
         setContentView(root);
         dock.getChildAt(0).requestFocus();
         setWall(0);
@@ -250,13 +253,17 @@ public class Main extends Activity {
 
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
-        boolean inMedia = media.hasFocus(), hasMedia = media.getChildCount() > 0;
-        if (code == KeyEvent.KEYCODE_DPAD_UP && !corner.hasFocus() && !(inMedia && !hasMedia)) {
-            if (!inMedia && hasMedia) { media.requestFocus(); return true; } // dock -> posters -> corner buttons
-            corner.getChildAt(corner.getChildCount() - 1).requestFocus(); return true;
+        boolean inMedia = media.hasFocus(), inBar = corner.hasFocus(), hasMedia = media.getChildCount() > 0;
+        if (code == KeyEvent.KEYCODE_DPAD_UP) { // bar -> dock -> posters
+            if (inBar) { dock.getChildAt(0).requestFocus(); return true; }
+            if (!inMedia && hasMedia) { media.requestFocus(); return true; }
+            return true;
         }
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN && corner.hasFocus()) { (hasMedia ? media : dock.getChildAt(0)).requestFocus(); return true; }
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN && inMedia) { dock.getChildAt(0).requestFocus(); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN) { // posters -> dock -> bar
+            if (inMedia) { dock.getChildAt(0).requestFocus(); return true; }
+            if (!inBar) { corner.getChildAt(0).requestFocus(); return true; }
+            return true;
+        }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
         return super.onKeyDown(code, e);
     }
@@ -280,8 +287,11 @@ public class Main extends Activity {
                     String cap = ep ? o.optString("showTitle") : o.optString("title"); boolean dup = false;
                     for (String[] x : items) dup |= x[1].equals(cap);
                     if (dup) continue;
-                    items.add(new String[]{"CONTINUE WATCHING", ep ? o.optString("showTitle") : o.optString("title"), o.optString("poster"),
-                        o.optString("id"), o.optString("type"), String.valueOf(o.optLong("viewOffset")), "", "", ""});
+                    long off = o.optLong("viewOffset"), dur = Math.max(1, o.optLong("duration"));
+                    String sub = ep ? "S" + o.optInt("season") + " · E" + o.optInt("episode") + " · " + o.optString("title") : (o.optInt("year") > 0 ? "" + o.optInt("year") : "");
+                    String still = !o.optString("still").isEmpty() ? o.optString("still") : o.optString("art").isEmpty() ? o.optString("poster") : o.optString("art");
+                    items.add(new String[]{"CONTINUE WATCHING", cap, still, o.optString("id"), o.optString("type"), String.valueOf(off), "", "", "",
+                        sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next"});
                 }
             } catch (Exception ignored) {}
             try { // what came out since yesterday morning and is already in the library
@@ -307,7 +317,7 @@ public class Main extends Activity {
                     if (dup) continue;
                     n++;
                     items.add(new String[]{"NEW SINCE YESTERDAY", o.optString("title"), o.optString("poster"), "", tv ? "episode" : "movie", "0",
-                        o.optString("tmdbId"), o.optString("season"), o.optString("episode")});
+                        o.optString("tmdbId"), o.optString("season"), o.optString("episode"), "", "0", "", ""});
                 }
             } catch (Exception ignored) {}
             final Bitmap[] pics = new Bitmap[items.size()];
@@ -316,41 +326,87 @@ public class Main extends Activity {
         }).start();
     }
 
+    int heroIdx = 0;
+
+    static String clock(long ms) { long m = ms / 60000; return m >= 60 ? (m / 60) + "h " + (m % 60) + "m" : m + " min"; }
+
+    /** Left: the panel's one-at-a-time card (left/right steps through the deck). Right: what's new, as posters. */
     void showMedia(java.util.List<String[]> items, Bitmap[] pics) {
         boolean had = media.hasFocus();
         media.removeAllViews();
-        if (items.isEmpty()) return;
-        LinearLayout groups = new LinearLayout(this); groups.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout row = null, col = null; String sec = "";
+        final java.util.List<String[]> deck = new java.util.ArrayList<>(); final java.util.List<Bitmap> stills = new java.util.ArrayList<>();
+        LinearLayout posters = new LinearLayout(this);
         for (int i = 0; i < items.size(); i++) {
             final String[] it = items.get(i);
-            if (!it[0].equals(sec)) {
-                sec = it[0];
-                col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
-                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2, -2); cp.rightMargin = dp(28);
-                TextView hd = text(12, .7f); hd.setText(sec); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f);
-                col.addView(hd);
-                row = new LinearLayout(this); col.addView(row);
-                groups.addView(col, cp);
-            }
+            if (it[0].startsWith("CONTINUE")) { deck.add(it); stills.add(pics[i]); continue; }
             LinearLayout t = new LinearLayout(this); t.setOrientation(LinearLayout.VERTICAL); t.setGravity(Gravity.CENTER_HORIZONTAL);
             t.setPadding(dp(5), dp(5), dp(5), dp(4)); t.setFocusable(true); t.setClickable(true);
             ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(pics[i]);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
-            t.addView(im, dp(74), dp(111));
+            t.addView(im, dp(68), dp(100));
             TextView cap = text(11, .85f); cap.setMaxLines(1); cap.setGravity(Gravity.CENTER); cap.setText(it[1]); cap.setPadding(0, dp(3), 0, 0);
             cap.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            t.addView(cap, dp(74), -2);
-            final GradientDrawable f = new GradientDrawable(); f.setCornerRadius(dp(12));
-            t.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : null); });
+            t.addView(cap, dp(68), -2);
+            focusTint(t, 12);
             t.setOnClickListener(v -> play(it));
-            row.addView(t);
+            posters.addView(t);
         }
-        HorizontalScrollView sv = new HorizontalScrollView(this); sv.setHorizontalScrollBarEnabled(false); sv.addView(groups);
-        GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(24));
-        sv.setBackground(bg); sv.setPadding(dp(18), dp(12), dp(10), dp(6));
-        media.addView(sv, -1, -2);
+        LinearLayout both = new LinearLayout(this); both.setPadding(dp(18), dp(12), dp(10), dp(6));
+        GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(24)); both.setBackground(bg);
+        if (!deck.isEmpty()) {
+            heroIdx = Math.min(heroIdx, deck.size() - 1);
+            LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
+            TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
+            final LinearLayout hero = new LinearLayout(this); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
+            final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
+            hero.addView(img, dp(170), dp(96));
+            LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(14), 0, 0, 0);
+            final TextView title = text(18, 1f), sub = text(13, .85f), note = text(12, .65f), dots = text(12, .8f);
+            title.setMaxLines(2); title.setTypeface(Typeface.DEFAULT_BOLD);
+            final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
+            GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
+            GradientDrawable fg = new GradientDrawable(); fg.setColor(gold | 0xFF000000); fg.setCornerRadius(dp(2)); fill.setBackground(fg);
+            bar.addView(fill, 0, dp(3));
+            tx.addView(title); tx.addView(sub);
+            LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(150), dp(3)); bl.topMargin = dp(8); bl.bottomMargin = dp(4);
+            tx.addView(bar, bl); tx.addView(note); tx.addView(dots);
+            hero.addView(tx, dp(210), -2);
+            final Runnable[] bind = new Runnable[1];
+            bind[0] = () -> {
+                String[] it = deck.get(heroIdx);
+                img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
+                note.setText(it[12] + (it[11].isEmpty() ? "" : " · " + it[11].split(" ")[0]));
+                FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fill.getLayoutParams(); fl.width = dp(150) * Math.max(0, Math.min(100, Integer.parseInt(it[10]))) / 100; fill.setLayoutParams(fl);
+                StringBuilder d = new StringBuilder(); for (int k = 0; k < deck.size(); k++) d.append(k == heroIdx ? "● " : "○ "); dots.setText(d.toString().trim());
+            };
+            bind[0].run();
+            focusTint(hero, 14);
+            hero.setOnClickListener(v -> play(deck.get(heroIdx)));
+            hero.setOnKeyListener((v, k, e) -> { // step through the deck; past either end the D-pad moves on as usual
+                if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (k == KeyEvent.KEYCODE_DPAD_RIGHT && heroIdx < deck.size() - 1) { heroIdx++; bind[0].run(); return true; }
+                if (k == KeyEvent.KEYCODE_DPAD_LEFT && heroIdx > 0) { heroIdx--; bind[0].run(); return true; }
+                return false;
+            });
+            col.addView(hero);
+            both.addView(col);
+        }
+        if (posters.getChildCount() > 0) {
+            LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
+            TextView hd = text(12, .7f); hd.setText("NEW SINCE YESTERDAY"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
+            HorizontalScrollView sv = new HorizontalScrollView(this); sv.setHorizontalScrollBarEnabled(false); sv.addView(posters);
+            col.addView(sv, dp(300), -2);
+            both.addView(col);
+        }
+        if (both.getChildCount() == 0) return;
+        media.addView(both, -1, -2);
         if (had) media.requestFocus();
+    }
+
+    void focusTint(View t, int radius) {
+        final GradientDrawable f = new GradientDrawable(); f.setCornerRadius(dp(radius));
+        t.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : null); });
     }
 
     /** Press twice, like standby: playing wakes the projector and dims the room. */
