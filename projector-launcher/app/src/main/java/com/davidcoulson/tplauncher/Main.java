@@ -300,8 +300,12 @@ public class Main extends Activity {
                     if (at >= since && at <= now) hits.add(new Object[]{at, o});
                 }
                 java.util.Collections.sort(hits, (x, y) -> Long.compare((Long) y[0], (Long) x[0]));
-                for (int i = 0; i < hits.size() && i < 8; i++) {
+                for (int i = 0, n = 0; i < hits.size() && n < 8; i++) {
                     JSONObject o = (JSONObject) hits.get(i)[1]; boolean tv = o.optString("kind").equals("tv");
+                    boolean dup = false; // one tile per title across both groups
+                    for (String[] x : items) dup |= x[1].equals(o.optString("title"));
+                    if (dup) continue;
+                    n++;
                     items.add(new String[]{"NEW SINCE YESTERDAY", o.optString("title"), o.optString("poster"), "", tv ? "episode" : "movie", "0",
                         o.optString("tmdbId"), o.optString("season"), o.optString("episode")});
                 }
