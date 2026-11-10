@@ -33,7 +33,7 @@ public class Main extends Activity {
     };
     static final String PANEL = "http://10.2.6.45:8787"; // theater-panel server; add ?key= via prefs "key" if the projector isn't a trusted network
     LinearLayout dock, corner;
-    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0; boolean wantHero; // coming home lands on continue watching
+    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0; boolean wantHero; LinearLayout filmRow, showRow; // coming home lands on continue watching
     String accent = "", cond = "", activeId = ""; int gold = 0xFFFFFFFF; long armed = 0;
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
@@ -85,19 +85,19 @@ public class Main extends Activity {
         setContentView(root);
         dock.getChildAt(0).requestFocus();
         setWall(0);
-        loadInputs();
     }
 
     /** Rebuild the dock: the fixed apps, then the given input tiles. Keeps focus on the same slot. */
     void fill(String[][] inputs) {
+        boolean had = dock.hasFocus() || getCurrentFocus() == null;
         int keep = 0; for (int i = 0; i < dock.getChildCount(); i++) if (dock.getChildAt(i).hasFocus()) keep = i;
         dock.removeAllViews();
         for (String[] a : APPS) dock.addView(item(a));
         for (String[] a : inputs) dock.addView(item(a));
-        dock.getChildAt(Math.min(keep, dock.getChildCount() - 1)).requestFocus();
+        if (had) dock.getChildAt(Math.min(keep, dock.getChildCount() - 1)).requestFocus();
     }
 
-    String panelUrl(String path) { String k = prefs.getString("key", ""); return PANEL + path + (k.isEmpty() ? "" : "?key=" + k); }
+    String panelUrl(String path) { String k = prefs.getString("key", ""); return PANEL + path + (k.isEmpty() ? "" : (path.contains("?") ? "&" : "?") + "key=" + android.net.Uri.encode(k)); }
 
     /** Pull the theater panel's input list (Apple TV, Windows, switcher consoles) from its server. */
     void loadInputs() {
@@ -249,16 +249,24 @@ public class Main extends Activity {
         } catch (Exception e) { Toast.makeText(this, "Can't open: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
     }
 
+    /** Focus is in poster row a: move to the poster at the same slot in row b. */
+    boolean rowStep(LinearLayout a, LinearLayout b) {
+        if (a == null || b == null || !a.hasFocus() || b.getChildCount() == 0) return false;
+        return b.getChildAt(Math.min(a.indexOfChild(a.getFocusedChild()), b.getChildCount() - 1)).requestFocus();
+    }
+
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
         boolean inMedia = media.hasFocus(), inBar = corner.hasFocus(), hasMedia = media.getChildCount() > 0;
         if (code == KeyEvent.KEYCODE_DPAD_UP) { // dock -> posters -> corner buttons
             if (inBar) return true;
+            if (inMedia && rowStep(showRow, filmRow)) return true;
             if (!inMedia && hasMedia) { media.requestFocus(); return true; }
             corner.getChildAt(corner.getChildCount() - 1).requestFocus(); return true;
         }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN) { // corner buttons -> posters -> dock
             if (inBar) { (hasMedia ? media : dock.getChildAt(0)).requestFocus(); return true; }
+            if (inMedia && rowStep(filmRow, showRow)) return true;
             if (inMedia) { dock.getChildAt(0).requestFocus(); return true; }
             return true;
         }
@@ -271,7 +279,10 @@ public class Main extends Activity {
     final Runnable mediaTick = new Runnable() { public void run() { loadMedia(); h.postDelayed(this, 10 * 60000); } };
 
     static Bitmap fetchBitmap(String url) {
-        try (InputStream in = new URL(url).openStream()) { return BitmapFactory.decodeStream(in); } catch (Exception e) { return null; }
+        try {
+            java.net.URLConnection c = new URL(url).openConnection(); c.setConnectTimeout(5000); c.setReadTimeout(8000);
+            try (InputStream in = c.getInputStream()) { return BitmapFactory.decodeStream(in); }
+        } catch (Exception e) { return null; }
     }
 
     /** Rows are {section, caption, posterPath, id, type, offsetMs, tmdb, season, episode}. */
@@ -302,7 +313,7 @@ public class Main extends Activity {
                     JSONObject o = ev.getJSONObject(i);
                     if (!o.optBoolean("hasFile") || o.optString("poster").isEmpty()) continue;
                     boolean tv = o.optString("kind").equals("tv"); // episodes carry a time, films only a day
-                    long at = tv ? f.parse(o.optString("at")).getTime() : day.parse(o.optString("date")).getTime();
+                    long at; try { at = tv ? f.parse(o.optString("at")).getTime() : day.parse(o.optString("date")).getTime(); } catch (Exception bad) { continue; }
                     if (at <= now) hits.add(new Object[]{at, o});
                 }
                 java.util.Collections.sort(hits, (x, y) -> Long.compare((Long) y[0], (Long) x[0]));
@@ -332,7 +343,7 @@ public class Main extends Activity {
         boolean had = media.hasFocus();
         media.removeAllViews();
         final java.util.List<String[]> deck = new java.util.ArrayList<>(); final java.util.List<Bitmap> stills = new java.util.ArrayList<>();
-        LinearLayout films = new LinearLayout(this), shows = new LinearLayout(this); // one row each
+        final LinearLayout films = filmRow = new LinearLayout(this), shows = showRow = new LinearLayout(this); // one row each
         for (int i = 0; i < items.size(); i++) {
             final String[] it = items.get(i);
             if (it[0].startsWith("CONTINUE")) { deck.add(it); stills.add(pics[i]); continue; }
@@ -567,6 +578,6 @@ public class Main extends Activity {
         if (c < 80) return "Snow"; if (c < 90) return "Showers"; return "Storms";
     }
 
-    @Override protected void onResume() { super.onResume(); wantHero = true; tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
+    @Override protected void onResume() { super.onResume(); wantHero = true; loadInputs(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
     @Override protected void onPause() { super.onPause(); h.removeCallbacksAndMessages(null); roam.removeAllViews(); }
 }
