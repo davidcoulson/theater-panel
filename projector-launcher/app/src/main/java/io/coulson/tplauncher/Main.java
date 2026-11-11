@@ -346,7 +346,7 @@ public class Main extends Activity {
                     if (dup) continue;
                     long off = o.optLong("viewOffset"), dur = Math.max(1, o.optLong("duration"));
                     String sub = ep ? "S" + o.optInt("season") + " · E" + o.optInt("episode") + " · " + o.optString("title") : (o.optInt("year") > 0 ? "" + o.optInt("year") : "");
-                    String still = !str(o, "still").isEmpty() ? str(o, "still") : str(o, "art").isEmpty() ? str(o, "poster") : str(o, "art");
+                    String still = !str(o, "art").isEmpty() ? str(o, "art") : !str(o, "still").isEmpty() ? str(o, "still") : str(o, "poster"); // same pick as the panel: the show backdrop first
                     items.add(new String[]{"CONTINUE WATCHING", cap, still, o.optString("id"), o.optString("type"), String.valueOf(off), "", "", "",
                         sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next"});
                 }
