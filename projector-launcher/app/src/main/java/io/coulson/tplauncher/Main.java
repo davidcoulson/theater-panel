@@ -50,7 +50,7 @@ public class Main extends Activity {
         wallIdx = Math.min(prefs.getInt("wall", -1), walls.length - 1); // -1 = auto: follows the panel's holiday theme and the weather
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK); root.setClipChildren(false); // the magnified dock grows past its own edge
+        root.setBackgroundColor(Color.BLACK);
         wall = new ImageView(this); wall.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(wall, -1, -1);
 
@@ -69,7 +69,7 @@ public class Main extends Activity {
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
 
         dock = new LinearLayout(this); dock.setOrientation(LinearLayout.HORIZONTAL);
-        dock.setPadding(dp(16), dp(8), dp(16), dp(8)); dock.setClipChildren(false); dock.setClipToPadding(false); dock.setGravity(Gravity.CENTER);
+        dock.setPadding(dp(16), dp(2), dp(16), dp(2)); dock.setClipChildren(false); dock.setClipToPadding(false); dock.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
@@ -198,14 +198,14 @@ public class Main extends Activity {
         final GradientDrawable on = new GradientDrawable(); on.setColor(0x1AFFFFFF); on.setCornerRadius(dp(24));
         final boolean live = a[1].equals("panel:" + activeId); // the input the panel last switched to
         if (live) c.setBackground(on);
-        c.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : live ? on : null); h.post(this::magnify); });
+        c.setOnFocusChangeListener((v, has) -> { f.setColor((gold & 0x00FFFFFF) | 0x59000000); v.setBackground(has ? f : live ? on : null); });
         final String icon = a[2];
         View ic = new View(this) {
             @Override protected void onDraw(Canvas cv) { drawIcon(cv, icon, getWidth(), getHeight()); }
         };
-        c.addView(ic, dp(38), dp(38));
-        TextView l = text(11, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
-        c.addView(l, dp(70), -2);
+        c.addView(ic, dp(54), dp(54)); // the UI layer is 1080p on a 120" screen: size is the only sharpness there is
+        TextView l = text(13, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
+        c.addView(l, dp(84), -2);
         c.setOnClickListener(v -> launch(a[1], a[0]));
         return c;
     }
@@ -429,7 +429,6 @@ public class Main extends Activity {
             if (picks == null) (it[4].equals("movie") ? films : shows).addView(poster(it, pics[i], 62, 93));
         }
         LinearLayout both = new LinearLayout(this); both.setPadding(dp(18), dp(12), dp(10), dp(6));
-        GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(24)); both.setBackground(bg);
         if (now != null) { // something is on: the card and its controls stand in for continue watching
             final boolean paused = now.optString("state").equals("paused"); final long warnAt = now.optLong("warnAt");
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -522,17 +521,6 @@ public class Main extends Activity {
         if (keep != null) keep.requestFocus();
         else if (had || wantHero) { armedKey = null; media.requestFocus(); }
         wantHero = false;
-    }
-
-    /** macOS-style dock: the focused tile grows from its bottom edge, its neighbours a little. */
-    void magnify() {
-        View fc = dock.getFocusedChild(); int fi = fc == null ? -9 : dock.indexOfChild(fc);
-        for (int k = 0; k < dock.getChildCount(); k++) {
-            View c = dock.getChildAt(k); int d = Math.abs(k - fi);
-            float sc = d == 0 ? 1.35f : d == 1 ? 1.14f : d == 2 ? 1.03f : 1f;
-            c.setPivotX(c.getWidth() / 2f); c.setPivotY(c.getHeight());
-            c.animate().scaleX(sc).scaleY(sc).setDuration(130).start();
-        }
     }
 
     void focusTint(View t, int radius) {
