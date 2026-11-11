@@ -157,7 +157,8 @@ svg.strata.busy { animation: strata-breathe 4.2s ease-in-out infinite; transform
 .rail a { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 104px; padding: 16px 0 14px; border-radius: 20px; color: #FFF8EE; text-shadow: 0 1px 4px rgba(0,0,0,.75); text-decoration: none; font-size: 16px; font-weight: 600; }
 .rail a[aria-current] { background: color-mix(in srgb, var(--acc) 88%, transparent); color: #fff; text-shadow: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,0,0,.35); }
 .rail .grow { flex-grow: 1; }
-.rail a.admin-here svg { color: var(--gold); filter: drop-shadow(0 0 6px var(--gold)) drop-shadow(0 0 14px color-mix(in srgb, var(--gold) 60%, transparent)); }
+.rail a.admin-here svg { color: var(--gold); animation: admin-pulse 2.4s ease-in-out infinite; }
+@keyframes admin-pulse { 0%, 100% { filter: drop-shadow(0 0 2px var(--gold)); } 50% { filter: drop-shadow(0 0 7px var(--gold)) drop-shadow(0 0 16px var(--gold)); color: #FFE9BF; } }
 .rail a.to-showtime { border: 1.5px solid rgba(241,237,228,.45); background: rgba(20,16,12,.45); color: var(--gold); }
 .rail .clock { font-family: var(--mono); font-size: 22px; font-weight: 600; color: #FFF8EE; text-shadow: 0 1px 4px rgba(0,0,0,.7); margin-top: 12px; }
 .rail .ampm { font-size: 13px; color: #E4DCD2; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
