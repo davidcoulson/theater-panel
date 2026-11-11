@@ -55,7 +55,7 @@ public class Main extends Activity {
         root.addView(wall, -1, -1);
 
         LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.VERTICAL);
-        top.setPadding(dp(64), dp(40), 0, 0);
+        top.setPadding(dp(64), dp(20), 0, 0);
         time = text(28, 1f); date = text(22, .8f); wx = text(22, .8f);
         top.addView(time); // date and weather hidden for now: top.addView(date); top.addView(wx);
         root.addView(top, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
@@ -63,7 +63,7 @@ public class Main extends Activity {
         media = new LinearLayout(this); media.setOrientation(LinearLayout.VERTICAL);
         FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         mp.leftMargin = mp.rightMargin = dp(24);
-        mp.bottomMargin = dp(90);
+        mp.bottomMargin = dp(104);
         root.addView(media, mp);
         roam = new FrameLayout(this); // seasonal walkers cross here
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
@@ -73,9 +73,9 @@ public class Main extends Activity {
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = 0;
+        lp.bottomMargin = dp(14); // clear of the screen edge
         root.addView(dock, lp); roam.bringToFront(); // walkers pass in front of the dock, so its tint does not wash them out
-        corner = new LinearLayout(this); corner.setPadding(0, dp(36), dp(56), 0);
+        corner = new LinearLayout(this); corner.setPadding(0, dp(16), dp(56), 0);
         corner.addView(cornerBtn("power", v -> { // the panel's all-off scene; press twice so it can't happen by accident
             if (System.currentTimeMillis() - armed < 4000) { armed = 0; post("{\"action\":\"scene\",\"name\":\"all_off\"}", "Standby"); }
             else { armed = System.currentTimeMillis(); Toast.makeText(this, "Press again to turn the room off", Toast.LENGTH_SHORT).show(); } }));
