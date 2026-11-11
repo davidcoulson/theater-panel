@@ -770,10 +770,10 @@ automation:
   # off and on while the Apple TV stayed asleep (2026-09-27), and the old automation here followed it.
 
   # The picture turned on with the Apple TV asleep (the remote, the panel, a restart) on its input
-  # would only show the projector's "No signal" page: open Projectivy, the projector's launcher, instead.
+  # would only show the projector's "No signal" page: open the projector's launcher (the default Home app) instead.
   # The Apple TV waking takes the picture back to HDMI 1 (above).
   - id: theater_projector_home_without_source
-    alias: "Theater: projector shows Projectivy when the Apple TV sleeps"
+    alias: "Theater: projector shows its launcher when the Apple TV sleeps"
     mode: single
     triggers:
       - trigger: state
@@ -798,7 +798,7 @@ automation:
       - action: androidtv.adb_command
         target: { entity_id: media_player.theater_projector }
         data:
-          command: "am start -n com.spocky.projengmenu/.ui.home.MainActivity"
+          command: "am start -a android.intent.action.MAIN -c android.intent.category.HOME"
 
   # The projector stays on the network around the clock (the plugin's stay-on guards), so dropping
   # off it means a standby nobody asked for. Say so when it goes, and when it is back, what HDMI-CEC
@@ -885,7 +885,7 @@ automation:
   # projector stays on the network):
   #   - eye protection up for 25 minutes with the laser cold (~95 °F; lit it runs 130 °F and up):
   #     on 2026-10-21 the flag stuck at 14:15 and the projector sat awake on a dark wall all night;
-  #   - the launcher showing for 20 minutes with no key pressed in that time (Android's power
+  #   - the launcher (ours, or Projectivy before it) showing for 20 minutes with no key pressed in that time (Android's power
   #     manager counts every remote key as user activity);
   #   - the Apple TV's input showing for 10 minutes while the Apple TV is paused or idle (home
   #     screen, screensaver) for an hour, or asleep for 10 minutes. Never the VM on HDMI 3.
@@ -913,7 +913,7 @@ automation:
             {% set quiet_for = (now() - (states('sensor.theater_apple_tv_last_active') | as_datetime(atv.last_changed))).total_seconds() %}
             {{ (eye is not none and eye.state == 'on' and (now() - eye.last_changed).total_seconds() > 1500
                 and states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature') | float(999) < 113)
-               or (showing.state == 'Projectivy' and showing_for > 1200)
+               or (showing.state in ['Projectivy', 'com.davidcoulson.tplauncher'] and showing_for > 1200)
                or (showing.state is match('HDMI 1( |$)') and showing_for > 600
                    and ((atv.state in ['paused', 'idle'] and quiet_for > 3600)
                         or (atv.state == 'off' and atv_for > 600))) }}
@@ -922,7 +922,7 @@ automation:
       - if:
           - condition: state
             entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing
-            state: "Projectivy"
+            state: ["Projectivy", "com.davidcoulson.tplauncher"]
         then:
           # Nothing in HA sees remote presses; ask Android when the last one was. No match
           # (a changed dump, a failed read) parses as 0 ms ago and keeps the projector on.
