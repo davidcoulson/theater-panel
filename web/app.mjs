@@ -5,7 +5,7 @@
 import { render } from 'preact';
 import { useEffect, useErrorBoundary, useRef, useState } from 'preact/hooks';
 import { html, Icon, StrataMark } from './lib/ui.mjs';
-import { endsAt, report, startLive, useStore, useEntity, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
+import { endsAt, report, startLive, useStore, useEntity, useAdminHere, clock, getState, setTheater, subscribe, post, get, useLoad, toast, playbackState, openTweaks, closeTweaks, closeTonight, closeGuest, openSound, closeSound } from './lib/api.mjs';
 import { Emblem } from './lib/emblems.mjs';
 import { Particles } from './lib/particles.mjs';
 import { RailGlow } from './lib/effects.mjs';
@@ -337,13 +337,14 @@ function Rail({ current }) {
   useStore((s) => s.ui?.accent?.id);              // re-render when the server's pick changes
   const hol = currentAccent();
   const lightsOn = accent?.state === 'on';
+  const adminHere = useAdminHere();   // the Home icon glows: the admin tiles are unlocked
   // Strata (the gaming PC's LLM server) thinking: its mark breathes in the glyph's place.
   const thinking = useEntity(useStore((s) => s.entities.ai?.busy))?.state === 'on';
   useEffect(() => { const t = setInterval(() => setNow(clock()), 15000); return () => clearInterval(t); }, []);
   return html`<nav class="rail tx-planks-rail" aria-label="Sections">
     <${RailGlow} name=${route.params.glow || (lightsOn ? accent.attributes?.effect : hol?.glow || null)} speed=${lightsOn ? speed : 0.3}
       opacity=${Number(route.params.glowop) || (theater ? glow * 0.4 : lightsOn ? glow : 0.3)} paused=${theater} />
-    ${NAV.filter(([name]) => name !== 'calendar' || services.calendar).map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined}
+    ${NAV.filter(([name]) => name !== 'calendar' || services.calendar).map(([name, label, icon]) => html`<a href=${`#/${name}`} aria-current=${current === name ? 'page' : undefined} class=${name === 'lobby' && adminHere ? 'admin-here' : undefined}
       onClick=${(e) => { e.preventDefault(); go(name); }}><${Icon} name=${icon} size=${32} /><span>${label}</span></a>`)}
     <a href="#/lobby?mystery=1" title="Mystery box" onClick=${(e) => { e.preventDefault(); go('lobby', { mystery: '1' }); }}><${Icon} name="sparkle" size=${32} /><span>Mystery</span></a>
     <div class="grow"></div>
