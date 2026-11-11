@@ -606,6 +606,9 @@ get(/^\/api\/companion$/, () => {
     accent: { id: a.id, name: a.name, gold: a.gold },
     weather: w && w.state !== 'unavailable' ? { condition: w.state, temp: at.temperature ?? null, unit: at.temperature_unit || '°F', humidity: at.humidity ?? null } : null,
     active: gamesActive(),
+    // What the projector is playing, and the pause-standby warning, so the launcher's card needs one cheap poll.
+    showing: sessions[0] ? { title: sessions[0].title, showTitle: sessions[0].showTitle, poster: sessions[0].poster, art: sessions[0].art || null, state: sessions[0].state, viewOffset: sessions[0].viewOffset, duration: sessions[0].duration } : null,
+    pauseWarn: pausestandby.get(),
   };
 });
 get(/^\/api\/games\/clock$/, () => hostClock());

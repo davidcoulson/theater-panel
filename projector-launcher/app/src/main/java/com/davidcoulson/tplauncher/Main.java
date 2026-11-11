@@ -25,6 +25,7 @@ public class Main extends Activity {
     static final String[][] APPS = {
         {"YouTube", "app:org.smarttube.stable", "yt"},
         {"Plex", "app:com.edde746.plezy", "plex"},
+        {"Movie night", "night:", "night"},
     };
     // Shown until the theater-panel server answers; then its input list (Apple TV, Windows, consoles) replaces them.
     static final String[][] FALLBACK = {
@@ -33,7 +34,10 @@ public class Main extends Activity {
     };
     static final String PANEL = "http://10.2.6.45:8787"; // theater-panel server; add ?key= via prefs "key" if the projector isn't a trusted network
     LinearLayout dock, corner;
-    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0; boolean wantHero; LinearLayout filmRow, showRow; // coming home lands on continue watching
+    LinearLayout media; FrameLayout roam; String armedKey = ""; long armedPlay = 0; boolean wantHero; LinearLayout filmRow, showRow;
+    java.util.List<String[]> lastItems = new java.util.ArrayList<>(); Bitmap[] lastPics = new Bitmap[0];
+    java.util.List<String[]> picks; Bitmap[] pickPics; // Movie night: the panel's picks take over the New half until Back
+    JSONObject now; Bitmap nowPic; String nowKey = "", nowArt = ""; View nowFill; // what the projector is playing // coming home lands on continue watching
     String accent = "", cond = "", activeId = ""; int gold = 0xFFFFFFFF; long armed = 0;
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
@@ -122,11 +126,12 @@ public class Main extends Activity {
     void pick(final String id, final String name) { activeId = id; loadInputs(); post("{\"action\":\"game_source\",\"id\":\"" + id + "\"}", name); }
 
     /** POST an action to the panel server and toast the outcome. */
-    void post(final String json, final String name) {
+    void post(String json, String name) { post("/api/action", json, name); }
+    void post(final String path, final String json, final String name) {
         new Thread(() -> {
             String msg;
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(panelUrl("/api/action")).openConnection();
+                HttpURLConnection c = (HttpURLConnection) new URL(panelUrl(path)).openConnection();
                 c.setRequestMethod("POST"); c.setDoOutput(true); c.setConnectTimeout(5000); c.setReadTimeout(20000);
                 c.setRequestProperty("content-type", "application/json");
                 c.getOutputStream().write(json.getBytes());
@@ -135,7 +140,7 @@ public class Main extends Activity {
                 else { String why = ""; try { why = new JSONObject(new java.util.Scanner(c.getErrorStream()).useDelimiter("\\A").next()).optString("error", ""); } catch (Exception ignored) {}
                     msg = why.isEmpty() ? name + " failed (" + code + ")" : why; }
             } catch (Exception e) { msg = name + " failed: " + e.getMessage(); }
-            final String m = msg; runOnUiThread(() -> Toast.makeText(this, m, Toast.LENGTH_SHORT).show());
+            final String m = msg; if (!m.isEmpty()) runOnUiThread(() -> Toast.makeText(this, m, Toast.LENGTH_SHORT).show());
         }).start();
     }
 
@@ -214,6 +219,11 @@ public class Main extends Activity {
         if (k.equals("yt")) {
             c.drawRoundRect(new RectF(s*.06f, s*.2f, s*.94f, s*.8f), s*.18f, s*.18f, p);
             p.setColor(0xFF1E2630); Path t = new Path(); t.moveTo(s*.42f, s*.36f); t.lineTo(s*.66f, s*.5f); t.lineTo(s*.42f, s*.64f); t.close(); c.drawPath(t, p);
+        } else if (k.equals("night")) { // star: the panel picks tonight's film
+            Path t = new Path();
+            for (int i = 0; i < 10; i++) { double a = Math.PI * i / 5 - Math.PI / 2; float r = s * (i % 2 == 0 ? .46f : .19f);
+                float x = s*.5f + r * (float) Math.cos(a), y = s*.52f + r * (float) Math.sin(a); if (i == 0) t.moveTo(x, y); else t.lineTo(x, y); }
+            t.close(); c.drawPath(t, p);
         } else if (k.equals("plex")) { // Plex-style chevron
             p.setStyle(Paint.Style.FILL); Path t = new Path();
             t.moveTo(s*.22f, s*.08f); t.lineTo(s*.50f, s*.08f); t.lineTo(s*.80f, s*.5f); t.lineTo(s*.50f, s*.92f); t.lineTo(s*.22f, s*.92f); t.lineTo(s*.52f, s*.5f); t.close(); c.drawPath(t, p);
@@ -237,6 +247,7 @@ public class Main extends Activity {
         try {
             Intent i;
             if (target.startsWith("panel:")) { pick(target.substring(6), name); return; }
+            if (target.equals("night:")) { movieNight(); return; }
             if (target.startsWith("tv:")) {
                 i = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(target.substring(3)));
             } else {
@@ -270,6 +281,7 @@ public class Main extends Activity {
             if (inMedia) { dock.getChildAt(0).requestFocus(); return true; }
             return true;
         }
+        if (code == KeyEvent.KEYCODE_BACK && picks != null) { picks = null; showMedia(lastItems, lastPics); return true; }
         if (code == KeyEvent.KEYCODE_BACK) return true; // a launcher has nowhere to go back to
         return super.onKeyDown(code, e);
     }
@@ -338,27 +350,98 @@ public class Main extends Activity {
 
     static String clock(long ms) { long m = ms / 60000; return m >= 60 ? (m / 60) + "h " + (m % 60) + "m" : m + " min"; }
 
+    /** A focusable poster; the poster says the title, pressing it names it. */
+    View poster(final String[] it, Bitmap b, int w, int hgt) {
+        LinearLayout t = new LinearLayout(this); t.setPadding(dp(4), dp(4), dp(4), dp(4)); t.setFocusable(true); t.setClickable(true);
+        ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(b);
+        GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
+        t.addView(im, dp(w), dp(hgt));
+        focusTint(t, 12);
+        t.setOnClickListener(v -> play(it));
+        return t;
+    }
+    /** A small text button for the now-playing card. */
+    View pill(String label, View.OnClickListener click) {
+        TextView t = text(14, 1f); t.setText(label); t.setPadding(dp(12), dp(7), dp(12), dp(7)); t.setFocusable(true); t.setClickable(true);
+        focusTint(t, 16); t.setOnClickListener(click); return t;
+    }
+
+    /** Movie night: three unwatched films from the panel's picker (the season's shelf in the holiday months). */
+    void movieNight() {
+        Toast.makeText(this, "Picking…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                JSONArray a = new JSONObject(get(panelUrl("/api/pick?n=3"))).getJSONArray("items");
+                final java.util.List<String[]> p = new java.util.ArrayList<>();
+                for (int i = 0; i < a.length(); i++) { JSONObject o = a.getJSONObject(i);
+                    p.add(new String[]{"PICK", o.optString("title"), o.optString("poster"), o.optString("id"), "movie", "0", "", "", "", "", "0", "", ""}); }
+                final Bitmap[] b = new Bitmap[p.size()];
+                for (int i = 0; i < b.length; i++) b[i] = fetchBitmap(panelUrl(p.get(i)[2]));
+                runOnUiThread(() -> { picks = p; pickPics = b; showMedia(lastItems, lastPics);
+                    if (filmRow != null && filmRow.getChildCount() > 0) filmRow.getChildAt(0).requestFocus(); });
+            } catch (Exception e) { runOnUiThread(() -> Toast.makeText(this, "Couldn't pick a film", Toast.LENGTH_SHORT).show()); }
+        }).start();
+    }
+
+    /** Every few seconds: what the projector is playing, for the card that takes the left half meanwhile. */
+    final Runnable nowTick = new Runnable() { public void run() {
+        new Thread(() -> {
+            try {
+                JSONObject o = new JSONObject(get(panelUrl("/api/companion")));
+                final JSONObject s = o.optJSONObject("showing"); final JSONObject warn = o.optJSONObject("pauseWarn");
+                if (s != null && warn != null) s.put("warnAt", warn.optLong("at"));
+                String art = s == null ? "" : s.optString("art").isEmpty() || s.isNull("art") ? s.optString("poster") : s.optString("art");
+                final Bitmap pic = s != null && !art.equals(nowArt) ? fetchBitmap(panelUrl(art)) : null;
+                final String key = s == null ? "" : s.optString("title") + s.optString("state") + (warn != null), fa = art;
+                runOnUiThread(() -> {
+                    if (pic != null) { nowPic = pic; nowArt = fa; }
+                    now = s;
+                    if (!key.equals(nowKey)) { nowKey = key; showMedia(lastItems, lastPics); }
+                    else if (s != null && nowFill != null) nowFill.getLayoutParams().width = dp(340) * (int) Math.min(100, s.optLong("viewOffset") * 100 / Math.max(1, s.optLong("duration"))) / 100;
+                    if (nowFill != null) nowFill.requestLayout();
+                });
+            } catch (Exception ignored) {}
+        }).start();
+        h.postDelayed(this, 5000);
+    }};
+
     /** Left: the panel's one-at-a-time card (left/right steps through the deck). Right: what's new, as posters. */
     void showMedia(java.util.List<String[]> items, Bitmap[] pics) {
         boolean had = media.hasFocus();
+        lastItems = items; lastPics = pics; nowFill = null;
         media.removeAllViews();
         final java.util.List<String[]> deck = new java.util.ArrayList<>(); final java.util.List<Bitmap> stills = new java.util.ArrayList<>();
         final LinearLayout films = filmRow = new LinearLayout(this), shows = showRow = new LinearLayout(this); // one row each
         for (int i = 0; i < items.size(); i++) {
             final String[] it = items.get(i);
             if (it[0].startsWith("CONTINUE")) { deck.add(it); stills.add(pics[i]); continue; }
-            LinearLayout t = new LinearLayout(this); t.setOrientation(LinearLayout.VERTICAL); t.setGravity(Gravity.CENTER_HORIZONTAL);
-            t.setPadding(dp(4), dp(4), dp(4), dp(4)); t.setFocusable(true); t.setClickable(true);
-            ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(pics[i]);
-            GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
-            t.addView(im, dp(62), dp(93)); // the poster says the title; pressing it names it
-            focusTint(t, 12);
-            t.setOnClickListener(v -> play(it));
-            (it[4].equals("movie") ? films : shows).addView(t);
+            if (picks == null) (it[4].equals("movie") ? films : shows).addView(poster(it, pics[i], 62, 93));
         }
         LinearLayout both = new LinearLayout(this); both.setPadding(dp(18), dp(12), dp(10), dp(6));
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(24)); both.setBackground(bg);
-        if (!deck.isEmpty()) {
+        if (now != null) { // something is on: the card and its controls stand in for continue watching
+            final boolean paused = now.optString("state").equals("paused"); final long warnAt = now.optLong("warnAt");
+            LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.CENTER_HORIZONTAL);
+            TextView hd = text(12, .7f); hd.setText(paused ? "PAUSED" : "NOW PLAYING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd, dp(352), -2);
+            ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP); img.setImageBitmap(nowPic);
+            GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
+            col.addView(img, dp(340), dp(150));
+            FrameLayout bar = new FrameLayout(this); bar.setBackgroundColor(0x33FFFFFF); nowFill = new View(this); nowFill.setBackgroundColor(gold | 0xFF000000);
+            bar.addView(nowFill, dp(340) * (int) Math.min(100, now.optLong("viewOffset") * 100 / Math.max(1, now.optLong("duration"))) / 100, dp(3));
+            LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(340), dp(3)); bl.topMargin = dp(6); col.addView(bar, bl);
+            TextView title = text(20, 1f); title.setMaxLines(1); title.setTypeface(Typeface.DEFAULT_BOLD); title.setPadding(0, dp(6), 0, 0);
+            String show = now.isNull("showTitle") ? "" : now.optString("showTitle");
+            title.setText(show.isEmpty() ? now.optString("title") : show + " · " + now.optString("title")); col.addView(title, dp(340), -2);
+            if (warnAt > 0) { TextView w = text(13, .8f); w.setText("Picture goes off at " + new SimpleDateFormat("h:mm", Locale.US).format(new Date(warnAt))); col.addView(w, dp(340), -2); }
+            LinearLayout btns = new LinearLayout(this);
+            if (warnAt > 0) btns.addView(pill("Keep on", v -> post("/api/keep-on", "{}", "Staying on")));
+            btns.addView(pill(paused ? "Play" : "Pause", v -> post("{\"action\":\"transport\",\"cmd\":\"play_pause\"}", "")));
+            btns.addView(pill("Vol −", v -> post("{\"action\":\"transport\",\"cmd\":\"vol_down\"}", "")));
+            btns.addView(pill("Vol +", v -> post("{\"action\":\"transport\",\"cmd\":\"vol_up\"}", "")));
+            btns.addView(pill("Late night", v -> post("{\"action\":\"soundbar\",\"cmd\":\"late_night\",\"on\":true}", "Late night sound")));
+            col.addView(btns, dp(352), -2);
+            both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        } else if (!deck.isEmpty()) {
             heroIdx = Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
             TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
@@ -400,7 +483,15 @@ public class Main extends Activity {
             col.addView(hero); col.setGravity(Gravity.CENTER_HORIZONTAL);
             both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f)); // half the box
         }
-        if (films.getChildCount() + shows.getChildCount() > 0) {
+        if (picks != null) { // Movie night: three big posters and a shuffle
+            showRow = null;
+            LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
+            TextView hd = text(12, .7f); hd.setText("MOVIE NIGHT"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
+            for (int i = 0; i < picks.size(); i++) films.addView(poster(picks.get(i), pickPics[i], 104, 156));
+            films.setGravity(Gravity.CENTER_VERTICAL); films.addView(pill("Shuffle", v -> movieNight()));
+            col.addView(films);
+            both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        } else if (films.getChildCount() + shows.getChildCount() > 0) {
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(20), 0, 0, 0);
             TextView hd = text(12, .7f); hd.setText("NEW"); hd.setPadding(dp(6), 0, 0, dp(2)); hd.setLetterSpacing(.12f); col.addView(hd);
             for (int r = 0; r < 2; r++) {
@@ -578,6 +669,6 @@ public class Main extends Activity {
         if (c < 80) return "Snow"; if (c < 90) return "Showers"; return "Storms";
     }
 
-    @Override protected void onResume() { super.onResume(); wantHero = true; loadInputs(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
+    @Override protected void onResume() { super.onResume(); wantHero = true; picks = null; loadInputs(); h.removeCallbacks(nowTick); nowTick.run(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
     @Override protected void onPause() { super.onPause(); h.removeCallbacksAndMessages(null); roam.removeAllViews(); }
 }
