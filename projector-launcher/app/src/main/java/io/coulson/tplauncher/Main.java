@@ -470,12 +470,14 @@ public class Main extends Activity {
             LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(190), dp(3)); bl.topMargin = dp(8); bl.bottomMargin = dp(4);
             tx.addView(bar, bl); tx.addView(note); tx.addView(dots);
             hero.addView(tx, dp(340), -2);
+            // room for the tallest card (two-line title, bar, resume note), so stepping the deck moves nothing else
+            title.setText("A\nA"); tx.measure(View.MeasureSpec.makeMeasureSpec(dp(340), View.MeasureSpec.EXACTLY), 0); tx.setMinimumHeight(tx.getMeasuredHeight());
             final Runnable[] bind = new Runnable[1];
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx);
                 img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
-                note.setText(it[12].startsWith("Resume") ? it[12] : ""); note.setVisibility(note.length() > 0 ? View.VISIBLE : View.GONE);
-                bar.setVisibility(Integer.parseInt(it[10]) > 0 ? View.VISIBLE : View.GONE); // nothing to show until it has been started
+                note.setText(it[12].startsWith("Resume") ? it[12] : ""); note.setVisibility(note.length() > 0 ? View.VISIBLE : View.INVISIBLE);
+                bar.setVisibility(Integer.parseInt(it[10]) > 0 ? View.VISIBLE : View.INVISIBLE); // nothing to show until it has been started
                 FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fill.getLayoutParams(); fl.width = dp(190) * Math.max(0, Math.min(100, Integer.parseInt(it[10]))) / 100; fill.setLayoutParams(fl);
                 StringBuilder d = new StringBuilder(); for (int k = 0; k < deck.size(); k++) d.append(k == heroIdx ? "● " : "○ "); dots.setText(d.toString().trim());
             };
