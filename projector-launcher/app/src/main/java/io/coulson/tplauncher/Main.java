@@ -42,6 +42,10 @@ public class Main extends Activity {
     static final double LAT = 41.3136, LON = -81.7240; // 44133 North Royalton, OH
     ImageView wall; TextView time, date, wx; String[] walls; int wallIdx;
     SharedPreferences prefs; final Handler h = new Handler();
+    volatile int gen; // bumped on every pause and resume: a load that started before that must not publish
+    boolean panelShown; // the dock is showing the server's inputs rather than the local HDMI fallback
+    String heroKey = ""; // which continue-watching item is on the card, by identity rather than slot
+    void ui(final int g, final Runnable r) { runOnUiThread(() -> { if (g == gen && !isFinishing()) r.run(); }); }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -105,20 +109,21 @@ public class Main extends Activity {
 
     /** Pull the theater panel's input list (Apple TV, Windows, switcher consoles) from its server. */
     void loadInputs() {
+        final int g = gen;
         new Thread(() -> {
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(panelUrl("/api/games")).openConnection();
-                c.setConnectTimeout(5000); c.setReadTimeout(5000);
-                JSONObject root = new JSONObject(new java.util.Scanner(c.getInputStream()).useDelimiter("\\A").next());
-                activeId = root.optString("active", "");
+                JSONObject root = new JSONObject(get(panelUrl("/api/games")));
+                final String active = root.optString("active", "");
                 org.json.JSONArray src = root.getJSONArray("sources");
                 final String[][] in = new String[src.length()][];
                 for (int i = 0; i < in.length; i++) {
                     JSONObject o = src.getJSONObject(i); String id = o.getString("id");
                     in[i] = new String[]{o.getString("name"), "panel:" + id, "ic_" + o.optString("icon", "").replace(":", "_").replace("-", "_")};
                 }
-                runOnUiThread(() -> fill(in));
-            } catch (Exception ignored) {} // server unreachable: keep the local HDMI tiles
+                ui(g, () -> { activeId = active; panelShown = true; fill(in); });
+            } catch (Exception ignored) { // server gone: the local HDMI tiles come back, they need no server
+                ui(g, () -> { if (panelShown) { panelShown = false; fill(FALLBACK); } });
+            }
         }).start();
     }
 
@@ -269,6 +274,9 @@ public class Main extends Activity {
         return b.getChildAt(Math.min(a.indexOfChild(a.getFocusedChild()), b.getChildCount() - 1)).requestFocus();
     }
 
+    /** A key press means the user has taken over: a late first answer must not pull focus away from where they went. */
+    @Override public boolean dispatchKeyEvent(KeyEvent e) { if (e.getAction() == KeyEvent.ACTION_DOWN) wantHero = false; return super.dispatchKeyEvent(e); }
+
     /** UP from the dock goes to the corner buttons (wallpaper, settings); DOWN comes back. */
     @Override public boolean onKeyDown(int code, KeyEvent e) {
         boolean inMedia = media.hasFocus(), inBar = corner.hasFocus(), hasMedia = media.getChildCount() > 0;
@@ -293,15 +301,40 @@ public class Main extends Activity {
 
     final Runnable mediaTick = new Runnable() { public void run() { loadMedia(); h.postDelayed(this, 10 * 60000); } };
 
-    static Bitmap fetchBitmap(String url) {
+    /** Whole response with a size cap and a deadline, so a trickling server can hold neither a worker nor the heap. */
+    static byte[] readAll(java.net.URLConnection c, int max, long ms) throws Exception {
+        long end = System.currentTimeMillis() + ms;
+        try (InputStream in = c.getInputStream()) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(); byte[] buf = new byte[16384]; int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
+                if (out.size() > max) throw new Exception("too large");
+                if (System.currentTimeMillis() > end) throw new Exception("too slow");
+            }
+            return out.toByteArray();
+        }
+    }
+
+    /** A picture decoded no larger than about w x h (the size it is shown at), 16-bit: the projector is a 32-bit box with a small heap. */
+    static Bitmap fetchBitmap(String url, int w, int h) {
         try {
             java.net.URLConnection c = new URL(url).openConnection(); c.setConnectTimeout(5000); c.setReadTimeout(8000);
-            try (InputStream in = c.getInputStream()) { return BitmapFactory.decodeStream(in); }
-        } catch (Exception e) { return null; }
+            byte[] d = readAll(c, 6 << 20, 15000);
+            BitmapFactory.Options o = new BitmapFactory.Options(); o.inJustDecodeBounds = true; BitmapFactory.decodeByteArray(d, 0, d.length, o);
+            if (o.outWidth <= 0 || o.outHeight <= 0) return null;
+            int s = 1; while (o.outWidth / (s * 2) >= w && o.outHeight / (s * 2) >= h) s *= 2;
+            o.inJustDecodeBounds = false; o.inSampleSize = s; o.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap b = BitmapFactory.decodeByteArray(d, 0, d.length, o);
+            if (b == null) return null;
+            float k = Math.max((float) w / b.getWidth(), (float) h / b.getHeight()); // still covers w x h, so CENTER_CROP has enough
+            if (k < .8f) { Bitmap t = Bitmap.createScaledBitmap(b, Math.round(b.getWidth() * k), Math.round(b.getHeight() * k), true); if (t != b) b.recycle(); b = t; }
+            return b;
+        } catch (Exception | OutOfMemoryError e) { return null; }
     }
 
     /** Rows are {section, caption, posterPath, id, type, offsetMs, tmdb, season, episode}. */
     void loadMedia() {
+        final int g = gen;
         new Thread(() -> {
             final java.util.List<String[]> items = new java.util.ArrayList<>();
             try {
@@ -344,12 +377,14 @@ public class Main extends Activity {
                 }
             } catch (Exception ignored) {}
             final Bitmap[] pics = new Bitmap[items.size()];
-            for (int i = 0; i < pics.length; i++) pics[i] = fetchBitmap(panelUrl(items.get(i)[2]));
-            runOnUiThread(() -> showMedia(items, pics));
+            for (int i = 0; i < pics.length; i++) pics[i] = items.get(i)[0].startsWith("CONTINUE") ? fetchBitmap(panelUrl(items.get(i)[2]), 840, 472) : fetchBitmap(panelUrl(items.get(i)[2]), 248, 372);
+            ui(g, () -> showMedia(items, pics));
         }).start();
     }
 
     int heroIdx = 0;
+    /** Which media item a row is: Plex id, else type, title and tmdb/season/episode. */
+    static String ident(String[] it) { return it[3] + "|" + it[4] + "|" + it[1] + "|" + it[6] + "|" + it[7] + "|" + it[8]; }
 
     static String clock(long ms) { long m = ms / 60000; return m >= 60 ? (m / 60) + "h " + (m % 60) + "m" : m + " min"; }
 
@@ -374,6 +409,7 @@ public class Main extends Activity {
     /** Movie night: three unwatched films from the panel's picker (the season's shelf in the holiday months). */
     void movieNight() {
         Toast.makeText(this, "Picking…", Toast.LENGTH_SHORT).show();
+        final int g = gen;
         new Thread(() -> {
             try {
                 JSONArray a = new JSONObject(get(panelUrl("/api/pick?n=3"))).getJSONArray("items");
@@ -381,16 +417,17 @@ public class Main extends Activity {
                 for (int i = 0; i < a.length(); i++) { JSONObject o = a.getJSONObject(i);
                     p.add(new String[]{"PICK", o.optString("title"), o.optString("poster"), o.optString("id"), "movie", "0", "", "", "", "", "0", "", ""}); }
                 final Bitmap[] b = new Bitmap[p.size()];
-                for (int i = 0; i < b.length; i++) b[i] = fetchBitmap(panelUrl(p.get(i)[2]));
-                runOnUiThread(() -> { picks = p; pickPics = b; showMedia(lastItems, lastPics);
+                for (int i = 0; i < b.length; i++) b[i] = fetchBitmap(panelUrl(p.get(i)[2]), 312, 468);
+                ui(g, () -> { picks = p; pickPics = b; showMedia(lastItems, lastPics);
                     if (filmRow != null && filmRow.getChildCount() > 0) filmRow.getChildAt(0).requestFocus(); });
-            } catch (Exception e) { runOnUiThread(() -> Toast.makeText(this, "Couldn't pick a film", Toast.LENGTH_SHORT).show()); }
+            } catch (Exception e) { ui(g, () -> Toast.makeText(this, "Couldn't pick a film", Toast.LENGTH_SHORT).show()); }
         }).start();
     }
 
     /** Every few seconds: what the projector is playing, for the card that takes the left half meanwhile. */
     volatile boolean nowBusy; // one poll at a time: a slow panel must not stack up requests
     final Runnable nowTick = new Runnable() { public void run() {
+        final int g = gen;
         if (!nowBusy) { nowBusy = true; new Thread(() -> {
             try {
                 JSONObject o = new JSONObject(get(panelUrl("/api/companion")));
@@ -400,8 +437,8 @@ public class Main extends Activity {
                 final JSONObject s = sh;
                 if (s != null && warn != null) s.put("warnAt", warn.optLong("at"));
                 final String art = s == null ? "" : str(s, "art").isEmpty() ? str(s, "poster") : str(s, "art");
-                final Bitmap pic = !art.isEmpty() && !art.equals(nowArt) ? fetchBitmap(panelUrl(art)) : null;
-                runOnUiThread(() -> {
+                final Bitmap pic = !art.isEmpty() && !art.equals(nowArt) ? fetchBitmap(panelUrl(art), 840, 472) : null;
+                ui(g, () -> {
                     if (pic != null) { nowPic = pic; nowArt = art; }
                     else if (!art.equals(nowArt)) { nowPic = null; nowArt = ""; } // never the last film's picture; the next tick tries again
                     now = s;
@@ -452,7 +489,8 @@ public class Main extends Activity {
             col.addView(btns, dp(352), -2);
             both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
         } else if (!deck.isEmpty()) {
-            heroIdx = Math.min(heroIdx, deck.size() - 1);
+            int at = -1; for (int k = 0; k < deck.size(); k++) if (ident(deck.get(k)).equals(heroKey)) at = k;
+            heroIdx = at >= 0 ? at : Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
             TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
             final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setTag("hero"); hero.setFocusable(true); hero.setClickable(true);
@@ -462,6 +500,7 @@ public class Main extends Activity {
             LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(2), dp(8), 0, 0);
             final TextView title = text(22, 1f), sub = text(15, .85f), note = text(14, .65f), dots = text(13, .8f);
             title.setMaxLines(1); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setTypeface(Typeface.DEFAULT_BOLD);
+            sub.setMaxLines(1); sub.setEllipsize(android.text.TextUtils.TruncateAt.END); note.setMaxLines(1); note.setEllipsize(android.text.TextUtils.TruncateAt.END);
             final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
             GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
             GradientDrawable fg = new GradientDrawable(); fg.setColor(gold | 0xFF000000); fg.setCornerRadius(dp(2)); fill.setBackground(fg);
@@ -473,7 +512,7 @@ public class Main extends Activity {
             hero.addView(tx, dp(420), -2); // one-line title, bar and note keep their space when hidden: stepping the deck moves nothing
             final Runnable[] bind = new Runnable[1];
             bind[0] = () -> {
-                String[] it = deck.get(heroIdx);
+                String[] it = deck.get(heroIdx); heroKey = ident(it);
                 img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
                 note.setText(it[12].startsWith("Resume") ? it[12] : ""); note.setVisibility(note.length() > 0 ? View.VISIBLE : View.INVISIBLE);
                 bar.setVisibility(Integer.parseInt(it[10]) > 0 ? View.VISIBLE : View.INVISIBLE); // nothing to show until it has been started
@@ -514,7 +553,7 @@ public class Main extends Activity {
             }
             both.addView(col, new LinearLayout.LayoutParams(0, -2, 1f)); // the other half
         }
-        if (both.getChildCount() == 0) return;
+        if (both.getChildCount() == 0) { wantHero = false; return; }
         media.addView(both, -1, -2);
         // Focus goes back to the same poster or button; only when that is gone does it fall to the first one,
         // and then a half-made press-twice is dropped rather than landing on something else.
@@ -531,7 +570,7 @@ public class Main extends Activity {
 
     /** Press twice, like standby: playing wakes the projector and dims the room. */
     void play(final String[] it) {
-        String key = it[0] + it[1];
+        String key = it[0] + ident(it);
         if (!key.equals(armedKey) || System.currentTimeMillis() - armedPlay > 4000) {
             armedKey = key; armedPlay = System.currentTimeMillis();
             Toast.makeText(this, "Press again to play " + it[1], Toast.LENGTH_SHORT).show(); return;
@@ -567,7 +606,7 @@ public class Main extends Activity {
 
     void walk(String kind) {
         final Bitmap atlas;
-        try (InputStream in = getAssets().open("sprites/" + kind + ".png")) { atlas = BitmapFactory.decodeStream(in); } catch (Exception e) { return; }
+        try (InputStream in = getAssets().open("sprites/" + kind + ".png")) { atlas = BitmapFactory.decodeStream(in); } catch (Exception | OutOfMemoryError e) { return; }
         final int cell = atlas.getWidth() / 12, size = dp(100);
         final Rect src = new Rect(), dst = new Rect(0, 0, size, size);
         final int[] frame = {0};
@@ -598,7 +637,7 @@ public class Main extends Activity {
         }
         String name = wallIdx < 0 ? autoWall() : walls[wallIdx];
         try (InputStream in = getAssets().open("wallpapers/" + name)) { wall.setImageBitmap(BitmapFactory.decodeStream(in)); }
-        catch (Exception ignored) {}
+        catch (Exception | OutOfMemoryError ignored) {}
     }
 
     /** Holidays win (as on the panel); the plain seasons fall through to the weather. */
@@ -625,29 +664,30 @@ public class Main extends Activity {
         h.postDelayed(this, 10000);
     }};
     final Runnable weather = new Runnable() { public void run() {
+        final int g = gen;
         new Thread(() -> {
-            String line = null;
+            String line = null, newCond = null, newAccent = null; int newGold = 0;
             try { // the panel server: Home Assistant's weather plus the holiday accent, no token on this device
                 JSONObject o = new JSONObject(get(panelUrl("/api/companion")));
                 JSONObject a = o.getJSONObject("accent"); final String id = a.getString("id");
-                final int g = Color.parseColor(a.getString("gold"));
+                final int gd = Color.parseColor(a.getString("gold"));
                 JSONObject w = o.optJSONObject("weather");
                 if (w != null && !w.isNull("temp")) {
                     final String c = w.getString("condition");
                     line = Math.round(w.getDouble("temp")) + w.optString("unit", "°F") + " · " + label(c) + " · North Royalton";
-                    cond = c;
+                    newCond = c;
                 }
-                accent = id; gold = g;
+                newAccent = id; newGold = gd;
             } catch (Exception ignored) {}
             if (line == null) try { // older panel build or no weather entity: Open-Meteo for 44133
                 JSONObject cur = new JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=" + LAT + "&longitude=" + LON
                     + "&current=temperature_2m,weather_code&temperature_unit=fahrenheit")).getJSONObject("current");
                 int code = cur.getInt("weather_code");
                 line = Math.round(cur.getDouble("temperature_2m")) + "°F · " + cond(code) + " · North Royalton";
-                cond = code == 0 ? "sunny" : code >= 71 && code < 78 ? "snowy" : code >= 51 && code < 70 ? "rainy" : code >= 80 && code < 90 ? "rainy" : code == 45 || code == 48 ? "fog" : "cloudy";
+                newCond = code == 0 ? "sunny" : code >= 71 && code < 78 ? "snowy" : code >= 51 && code < 70 ? "rainy" : code >= 80 && code < 90 ? "rainy" : code == 45 || code == 48 ? "fog" : "cloudy";
             } catch (Exception ignored) {}
-            final String t = line;
-            runOnUiThread(() -> { if (t != null) wx.setText(t); setWall(0); });
+            final String t = line, fc = newCond, fa = newAccent; final int fg = newGold;
+            ui(g, () -> { if (fa != null) { accent = fa; gold = fg; } if (fc != null) cond = fc; if (t != null) wx.setText(t); setWall(0); });
         }).start();
         h.postDelayed(this, 5 * 60000);
     }};
@@ -655,7 +695,7 @@ public class Main extends Activity {
     static String get(String url) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection(); c.setConnectTimeout(6000); c.setReadTimeout(8000);
         if (c.getResponseCode() >= 300) throw new Exception("HTTP " + c.getResponseCode());
-        return new java.util.Scanner(c.getInputStream()).useDelimiter("\\A").next();
+        return new String(readAll(c, 4 << 20, 15000), "UTF-8");
     }
 
     /** Home Assistant weather state -> words. */
@@ -674,6 +714,6 @@ public class Main extends Activity {
         if (c < 80) return "Snow"; if (c < 90) return "Showers"; return "Storms";
     }
 
-    @Override protected void onResume() { super.onResume(); wantHero = true; picks = null; loadInputs(); h.removeCallbacks(nowTick); nowTick.run(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
-    @Override protected void onPause() { super.onPause(); h.removeCallbacksAndMessages(null); roam.removeAllViews(); }
+    @Override protected void onResume() { super.onResume(); gen++; wantHero = true; picks = null; loadInputs(); h.removeCallbacks(nowTick); nowTick.run(); tick.run(); weather.run(); h.removeCallbacks(mediaTick); mediaTick.run(); h.removeCallbacks(walker); h.postDelayed(walker, 6000); }
+    @Override protected void onPause() { super.onPause(); gen++; h.removeCallbacksAndMessages(null); roam.removeAllViews(); }
 }
