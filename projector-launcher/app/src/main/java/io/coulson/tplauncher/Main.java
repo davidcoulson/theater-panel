@@ -315,6 +315,22 @@ public class Main extends Activity {
         }
     }
 
+    /** A transparent PNG logo (the server only sends PNG once it knows the f=png option); anything else, or a show without one, is null. */
+    static Bitmap fetchLogo(String url, int w, int h) {
+        try {
+            java.net.URLConnection c = new URL(url).openConnection(); c.setConnectTimeout(5000); c.setReadTimeout(8000);
+            if (!"image/png".equals(c.getContentType())) return null;
+            byte[] d = readAll(c, 2 << 20, 15000);
+            BitmapFactory.Options o = new BitmapFactory.Options(); o.inJustDecodeBounds = true; BitmapFactory.decodeByteArray(d, 0, d.length, o);
+            if (o.outWidth <= 0 || o.outHeight <= 0) return null;
+            int s = 1; while (o.outWidth / (s * 2) >= w && o.outHeight / (s * 2) >= h) s *= 2;
+            o.inJustDecodeBounds = false; o.inSampleSize = s;
+            return BitmapFactory.decodeByteArray(d, 0, d.length, o);
+        } catch (Exception | OutOfMemoryError e) { return null; }
+    }
+
+    java.util.Map<String, Bitmap> logos = new java.util.HashMap<>(); // ident -> the show's logo
+
     /** A picture decoded no larger than about w x h (the size it is shown at), 16-bit: the projector is a 32-bit box with a small heap. */
     static Bitmap fetchBitmap(String url, int w, int h) {
         try {
@@ -348,7 +364,7 @@ public class Main extends Activity {
                     String sub = ep ? "S" + o.optInt("season") + " · E" + o.optInt("episode") + " · " + o.optString("title") : (o.optInt("year") > 0 ? "" + o.optInt("year") : "");
                     String still = !str(o, "art").isEmpty() ? str(o, "art") : !str(o, "still").isEmpty() ? str(o, "still") : str(o, "poster"); // same pick as the panel: the show backdrop first
                     items.add(new String[]{"CONTINUE WATCHING", cap, still, o.optString("id"), o.optString("type"), String.valueOf(off), "", "", "",
-                        sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next"});
+                        sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next", ep ? o.optString("showKey") : o.optString("id")});
                 }
             } catch (Exception ignored) {}
             try { // newest releases already in the library; two weeks back is enough to fill both rows
@@ -378,7 +394,12 @@ public class Main extends Activity {
             } catch (Exception ignored) {}
             final Bitmap[] pics = new Bitmap[items.size()];
             for (int i = 0; i < pics.length; i++) pics[i] = items.get(i)[0].startsWith("CONTINUE") ? fetchBitmap(panelUrl(items.get(i)[2]), 840, 472) : fetchBitmap(panelUrl(items.get(i)[2]), 248, 372);
-            ui(g, () -> showMedia(items, pics));
+            final java.util.Map<String, Bitmap> lg = new java.util.HashMap<>();
+            for (String[] it : items) if (it[0].startsWith("CONTINUE") && it.length > 13 && !it[13].isEmpty()) {
+                Bitmap b = fetchLogo(panelUrl("/img/plex/600x240?f=png&p=" + android.net.Uri.encode("/library/metadata/" + it[13] + "/clearLogo")), 420, 120);
+                if (b != null) lg.put(ident(it), b);
+            }
+            ui(g, () -> { logos = lg; showMedia(items, pics); });
         }).start();
     }
 
@@ -496,24 +517,35 @@ public class Main extends Activity {
             final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setTag("hero"); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
-            hero.addView(img, dp(420), dp(236));
+            final FrameLayout art = new FrameLayout(this); art.setClipToOutline(true); art.setBackground(ph); // the panel puts the show's name over the bottom of the picture
+            art.addView(img, -1, -1);
+            View shade = new View(this); shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xE0140A06, 0}));
+            art.addView(shade, new FrameLayout.LayoutParams(-1, dp(110), Gravity.BOTTOM));
+            final ImageView logo = new ImageView(this); logo.setScaleType(ImageView.ScaleType.FIT_START); logo.setAdjustViewBounds(true);
+            FrameLayout.LayoutParams ll = new FrameLayout.LayoutParams(dp(250), dp(70), Gravity.BOTTOM | Gravity.START); ll.setMargins(dp(16), 0, 0, dp(14)); art.addView(logo, ll);
+            final TextView name = text(26, 1f); name.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD)); name.setAllCaps(true); name.setMaxLines(2);
+            name.setShadowLayer(dp(3), 0, dp(1), 0xCC000000);
+            FrameLayout.LayoutParams nl = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.START); nl.setMargins(dp(16), 0, dp(16), dp(12)); art.addView(name, nl);
+            hero.addView(art, dp(420), dp(236));
             LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(2), dp(8), 0, 0);
             final TextView title = text(22, 1f), sub = text(15, .85f), note = text(14, .65f), dots = text(13, .8f);
-            title.setMaxLines(1); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setTypeface(Typeface.DEFAULT_BOLD);
+            title.setMaxLines(1); title.setEllipsize(android.text.TextUtils.TruncateAt.END); // the name is on the picture; this line is the episode
             sub.setMaxLines(1); sub.setEllipsize(android.text.TextUtils.TruncateAt.END); note.setMaxLines(1); note.setEllipsize(android.text.TextUtils.TruncateAt.END);
             final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
             GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
             GradientDrawable fg = new GradientDrawable(); fg.setColor(gold | 0xFF000000); fg.setCornerRadius(dp(2)); fill.setBackground(fg);
             bar.addView(fill, 0, dp(3));
             LinearLayout trow = new LinearLayout(this); trow.setGravity(Gravity.CENTER_VERTICAL); // page dots sit under the thumbnail's right corner
-            trow.addView(title, new LinearLayout.LayoutParams(0, -2, 1f)); trow.addView(dots); tx.addView(trow); tx.addView(sub);
+            trow.addView(title, new LinearLayout.LayoutParams(0, -2, 1f)); trow.addView(dots); tx.addView(trow);
             LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(190), dp(3)); bl.topMargin = dp(8); bl.bottomMargin = dp(4);
             tx.addView(bar, bl); tx.addView(note);
             hero.addView(tx, dp(420), -2); // one-line title, bar and note keep their space when hidden: stepping the deck moves nothing
             final Runnable[] bind = new Runnable[1];
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx); heroKey = ident(it);
-                img.setImageBitmap(stills.get(heroIdx)); title.setText(it[1]); sub.setText(it[9]);
+                img.setImageBitmap(stills.get(heroIdx)); title.setText(it[9]);
+                Bitmap lb = logos.get(heroKey); logo.setImageBitmap(lb); logo.setVisibility(lb != null ? View.VISIBLE : View.GONE);
+                name.setText(it[1]); name.setVisibility(lb == null ? View.VISIBLE : View.GONE);
                 note.setText(it[12].startsWith("Resume") ? it[12] : ""); note.setVisibility(note.length() > 0 ? View.VISIBLE : View.INVISIBLE);
                 bar.setVisibility(Integer.parseInt(it[10]) > 0 ? View.VISIBLE : View.INVISIBLE); // nothing to show until it has been started
                 FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fill.getLayoutParams(); fl.width = dp(190) * Math.max(0, Math.min(100, Integer.parseInt(it[10]))) / 100; fill.setLayoutParams(fl);

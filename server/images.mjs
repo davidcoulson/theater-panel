@@ -57,7 +57,7 @@ function resolve(url) {
     // Only Plex's own media paths: "//host/x" would make Plex fetch somewhere else entirely.
     if (!p || !/^\/(library|photo|metadata)\/[^/]/.test(p) || !config.plex.url) return null;
     const q = new URLSearchParams({
-      url: p, width: m[1], height: m[2], minSize: '1', upscale: '1', format: 'jpeg', quality: '80',
+      url: p, width: m[1], height: m[2], minSize: '1', upscale: '1', format: u.searchParams.get('f') === 'png' ? 'png' : 'jpeg', quality: '80', // png keeps a logo's transparency
       'X-Plex-Token': config.plex.token,
     });
     return { upstream: `${config.plex.url}/photo/:/transcode?${q}` };
