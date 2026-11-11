@@ -69,7 +69,7 @@ public class Main extends Activity {
         root.addView(roam, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
 
         dock = new LinearLayout(this); dock.setOrientation(LinearLayout.HORIZONTAL);
-        dock.setPadding(dp(16), dp(2), dp(16), dp(2)); dock.setClipChildren(false); dock.setClipToPadding(false); dock.setGravity(Gravity.CENTER);
+        dock.setPadding(dp(16), dp(8), dp(16), dp(8)); dock.setClipChildren(false); dock.setClipToPadding(false); dock.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable(); bg.setColor(0x4D1E2630); bg.setCornerRadius(dp(34)); dock.setBackground(bg);
         fill(FALLBACK);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
@@ -203,9 +203,9 @@ public class Main extends Activity {
         View ic = new View(this) {
             @Override protected void onDraw(Canvas cv) { drawIcon(cv, icon, getWidth(), getHeight()); }
         };
-        c.addView(ic, dp(54), dp(54)); // the UI layer is 1080p on a 120" screen: size is the only sharpness there is
-        TextView l = text(13, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
-        c.addView(l, dp(84), -2);
+        c.addView(ic, dp(38), dp(38));
+        TextView l = text(11, .9f); l.setGravity(Gravity.CENTER); l.setMaxLines(1); l.setText(a[0]); l.setPadding(0, dp(8), 0, 0);
+        c.addView(l, dp(70), -2);
         c.setOnClickListener(v -> launch(a[1], a[0]));
         return c;
     }
