@@ -1,4 +1,4 @@
-package com.davidcoulson.tplauncher;
+package io.coulson.tplauncher;
 
 import android.app.Activity;
 import android.content.Intent;

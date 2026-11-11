@@ -913,7 +913,7 @@ automation:
             {% set quiet_for = (now() - (states('sensor.theater_apple_tv_last_active') | as_datetime(atv.last_changed))).total_seconds() %}
             {{ (eye is not none and eye.state == 'on' and (now() - eye.last_changed).total_seconds() > 1500
                 and states('sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_laser_temperature') | float(999) < 113)
-               or (showing.state in ['Projectivy', 'com.davidcoulson.tplauncher'] and showing_for > 1200)
+               or (showing.state in ['Projectivy', 'io.coulson.tplauncher'] and showing_for > 1200)
                or (showing.state is match('HDMI 1( |$)') and showing_for > 600
                    and ((atv.state in ['paused', 'idle'] and quiet_for > 3600)
                         or (atv.state == 'off' and atv_for > 600))) }}
@@ -922,7 +922,7 @@ automation:
       - if:
           - condition: state
             entity_id: sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing
-            state: ["Projectivy", "com.davidcoulson.tplauncher"]
+            state: ["Projectivy", "io.coulson.tplauncher"]
         then:
           # Nothing in HA sees remote presses; ask Android when the last one was. No match
           # (a changed dump, a failed read) parses as 0 ms ago and keeps the projector on.

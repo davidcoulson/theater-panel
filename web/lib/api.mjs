@@ -219,6 +219,15 @@ export async function startLive({ navigate } = {}) {
 }
 
 export const useEntity = (id) => useStore((s) => (id ? s.states[id] : undefined));
+// Is the house's admin at this panel: their room sensor says so, or one of their devices is within
+// reach of it. The server's games.adminHere is the same rule and the one that is enforced.
+export function useAdminHere() {
+  const e = useStore((s) => s.entities) || {};
+  const at = useEntity(e.adminRoomSensor)?.state;
+  const near = useEntity(e.adminNearSensor)?.state || '';
+  return Boolean(e.adminRoom && at && at.toLowerCase() === e.adminRoom.toLowerCase())
+    || near.split(' ').some((id) => (e.adminNearIds || []).includes(id));
+}
 
 // What the theater is playing, whichever box plays it. Films in Plezy run on the projector's own
 // Android, where the Apple TV sees nothing, so the theater's Plex session (PLEX_PLAYER_NAME) comes

@@ -362,9 +362,11 @@ export async function selectSource(ha, id) {
 
 // Is the house's admin at this panel? Restart and force-off are only for them.
 export const adminHere = (ha) => {
-  const { adminRoomSensor, adminRoom } = config.entities;
-  if (!adminRoomSensor || !adminRoom || !ha.connected) return false;   // a disconnected HA keeps its last states: not proof
-  return String(ha.states[adminRoomSensor]?.state || '').toLowerCase() === adminRoom.toLowerCase();
+  const { adminRoomSensor, adminRoom, adminNearSensor, adminNearIds } = config.entities;
+  if (!ha.connected) return false;   // a disconnected HA keeps its last states: not proof
+  const st = (id) => String((id && ha.states[id]?.state) || '');
+  return Boolean(adminRoom && st(adminRoomSensor).toLowerCase() === adminRoom.toLowerCase())
+    || st(adminNearSensor).split(' ').some((id) => adminNearIds.includes(id));
 };
 // "Windows desktop": the PC on the projector with the room lit for working, not for a film -
 // start the VM if it is off, the projector to the PC's input, lights up. Only for the admin.

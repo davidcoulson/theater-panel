@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { html, Icon, Poster, Header, H2, StrataMark } from '../lib/ui.mjs';
-import { get, post, act, useLoad, useEntity, useStore, toast } from '../lib/api.mjs';
+import { get, post, act, useLoad, useEntity, useStore, useAdminHere, toast } from '../lib/api.mjs';
 import { go } from '../app.mjs';
 
 export function Games() {
@@ -86,9 +86,7 @@ const ICONS = { tv: 'tv', pad: 'pad', joystick: 'joystick', remote: 'remote', mo
 // "Windows desktop": the PC on the wall with the lights up, for the admin only (shown while the
 // admin room sensor puts them at this panel).
 function DesktopChip() {
-  const adminRoom = useStore((s) => s.ui?.adminRoom);
-  const at = useEntity(useStore((s) => s.entities.adminRoomSensor))?.state;
-  if (!adminRoom || !at || at.toLowerCase() !== adminRoom.toLowerCase()) return null;
+  if (!useAdminHere()) return null;
   return html`<button type="button" class="chip" onClick=${() => act({ action: 'game_pc_desktop' })}><${Icon} name="screen" size=${20} />Windows desktop</button>`;
 }
 
@@ -116,8 +114,7 @@ function PcPanel({ pc }) {
   const [vm, setVm] = useState(pc.vm);
   const [menu, setMenu] = useState(false);
   const adminRoom = useStore((s) => s.ui?.adminRoom);
-  const adminAt = useEntity(useStore((s) => s.entities.adminRoomSensor))?.state;
-  const admin = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
+  const admin = useAdminHere();
   useEffect(() => {
     if (!pc.vm) return undefined;
     const read = () => get('/api/games/vm').then(setVm).catch(() => {});
@@ -160,7 +157,7 @@ function PcPanel({ pc }) {
       <button type="button" class="btn" disabled=${!admin || !pc.vm} onClick=${() => run('reboot')}>Restart</button>
       <button type="button" class="btn danger" disabled=${!admin || !pc.vm} onClick=${() => run('forceStop')}>Force off</button>
       <button type="button" class="btn quiet" onClick=${() => setMenu(false)}>Cancel</button>
-      ${!admin && html`<div class="note">Restart and force off need ${adminRoom ? 'the admin in the room' : 'an admin room sensor on the settings page'}.</div>`}
+      ${!admin && html`<div class="note">Restart and force off need ${adminRoom ? 'the admin at the panel' : 'an admin room sensor on the settings page'}.</div>`}
     </div>`}
     ${(vm?.housekeeping ?? pc.housekeeping) && html`<div class="hk"><${Icon} name="alert" size=${18} />${(vm?.housekeeping ?? pc.housekeeping).text}</div>`}
     ${((vm?.downloads ?? pc.downloads) || []).map((d) => html`<div class="dl" key=${d.name}>

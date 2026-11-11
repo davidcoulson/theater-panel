@@ -135,6 +135,8 @@ function build(env) {
     // Who is in the room: a room sensor for the house's admin, and the room the panel is in. The
     // Games page's restart and force-off are only offered when that person is in the room.
     adminRoomSensor: env.ENTITY_ADMIN_ROOM || '', adminRoom: env.ADMIN_ROOM || '',
+    // Or within reach of the panel itself: Kiosk Satellite's ids of the known devices it hears close by.
+    adminNearSensor: env.ENTITY_ADMIN_NEAR || '', adminNearIds: list(env.ADMIN_NEAR_IDS, []),
     // The soundbar (JBL's local integration, jbl_integration): every entity it creates is named
     // from the device name, so one stem on the settings page finds them all.
     soundbar: soundbarIds(env.SOUNDBAR_PREFIX || '', list(env.SOUNDBAR_REARS, ['left', 'right'])),
@@ -385,7 +387,7 @@ function aiEntities(loaded) {
 export function watchedEntities() {
   const e = config.entities;
   return [
-    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.projectorPictureSwitch, e.adminRoomSensor,
+    e.appleTv, e.appleTvRemote, e.plexPlayer, e.projectorPlexPlayer, ...e.musicPlayers, e.roomSpeaker, e.projector, e.projectorShowing, e.projectorPictureSwitch, e.adminRoomSensor, e.adminNearSensor,
     ...e.lights, e.temperature, e.weather, e.occupancy, e.tautulli, e.pictureMode, e.projectorPicture, e.accentSpeed, e.accentIntensity,
     ...e.dogSensors, ...soundbarEntities(e.soundbar), ...Object.values(e.ai || {}),
     'input_select.theater_scene',

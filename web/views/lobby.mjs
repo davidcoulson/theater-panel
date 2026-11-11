@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { html, Icon, Play, Pause, Prev, Next, Skip, Seg, Range, Header, H2 } from '../lib/ui.mjs';
-import { get, act, useLoad, useStore, useEntity, runtime, endsAt, livePosition, mmss, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
+import { get, act, useLoad, useStore, useEntity, useAdminHere, runtime, endsAt, livePosition, mmss, toast, celebrate, clearMystery, christmasCountdown, openTonight, openGuest, openSound } from '../lib/api.mjs';
 import { go, route } from '../app.mjs';
 import { EffectPreview, EffectTile, byMood, familyOf, curated } from '../lib/effects.mjs';
 import { StreamsChip, StreamsSheet } from './streams.mjs';
@@ -323,9 +323,7 @@ function Projector() {
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [menu]);
-  const adminRoom = useStore((s) => s.ui?.adminRoom);
-  const adminAt = useEntity(ents.adminRoomSensor)?.state;
-  const adminHere = Boolean(adminRoom && adminAt && adminAt.toLowerCase() === adminRoom.toLowerCase());
+  const adminHere = useAdminHere();
   const hasProj = Boolean(ents.projector);
   // Until the projector's own entity exists, the Apple TV's power state stands in for it (CEC).
   const pictureOff = useEntity(ents.projectorPictureSwitch)?.state === 'off';
@@ -342,7 +340,7 @@ function Projector() {
   // The Showing sensor names an app on the projector ("Plezy"); an input reads "HDMI 2 ..."
   const showing = useEntity(ents.projectorShowing)?.state;
   const appShown = on && showing && !/^(HDMI \d|unknown|unavailable)/.test(showing) ? showing : null;
-  const shownApp = apps.find((a) => a.package === appId) || apps.find((a) => appShown && a.name.toLowerCase() === appShown.toLowerCase());
+  const shownApp = apps.find((a) => a.package === appId || a.package === appShown) || apps.find((a) => appShown && a.name.toLowerCase() === appShown.toLowerCase());
   const runningApp = picked ? null : pickedApp || shownApp;
   useEffect(() => { if (pickedApp && shownApp === pickedApp) setPickedApp(null); }, [shownApp, pickedApp]);
   useEffect(() => { if (!pickedApp && !picked) return undefined; const t = setTimeout(() => { setPickedApp(null); setPicked(null); }, 25000); return () => clearTimeout(t); }, [pickedApp, picked]);
