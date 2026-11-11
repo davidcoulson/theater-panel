@@ -168,8 +168,8 @@ public class Main extends Activity {
         }
         if (kind.equals("gear")) {
             Path g = new Path(); // one toothed outline: spokes on a ring read as a ship's wheel
-            for (int i = 0; i < 8; i++) for (int j = 0; j < 4; j++) {
-                double a = i * Math.PI / 4 + new double[]{-.24, -.14, .14, .24}[j]; float r = s * (j == 1 || j == 2 ? .52f : .38f);
+            for (int i = 0; i < 6; i++) for (int j = 0; j < 4; j++) {
+                double a = i * Math.PI / 3 + new double[]{-.32, -.19, .19, .32}[j]; float r = s * (j == 1 || j == 2 ? .52f : .38f);
                 float x = cx + (float) Math.cos(a) * r, y = cx + (float) Math.sin(a) * r; if (i + j == 0) g.moveTo(x, y); else g.lineTo(x, y); }
             g.close(); c.drawPath(g, p); c.drawCircle(cx, cx, s * .15f, p);
         } else if (kind.equals("proj")) { // projector body with a lens and a beam
