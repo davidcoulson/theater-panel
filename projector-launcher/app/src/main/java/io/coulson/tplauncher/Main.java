@@ -458,20 +458,19 @@ public class Main extends Activity {
             final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setTag("hero"); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
-            hero.addView(img, dp(340), dp(191));
+            hero.addView(img, dp(420), dp(236));
             LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(2), dp(8), 0, 0);
             final TextView title = text(22, 1f), sub = text(15, .85f), note = text(14, .65f), dots = text(13, .8f);
-            title.setMaxLines(2); title.setTypeface(Typeface.DEFAULT_BOLD);
+            title.setMaxLines(1); title.setEllipsize(android.text.TextUtils.TruncateAt.END); title.setTypeface(Typeface.DEFAULT_BOLD);
             final FrameLayout bar = new FrameLayout(this); final View fill = new View(this);
             GradientDrawable tr = new GradientDrawable(); tr.setColor(0x33FFFFFF); tr.setCornerRadius(dp(2)); bar.setBackground(tr);
             GradientDrawable fg = new GradientDrawable(); fg.setColor(gold | 0xFF000000); fg.setCornerRadius(dp(2)); fill.setBackground(fg);
             bar.addView(fill, 0, dp(3));
-            tx.addView(title); tx.addView(sub);
+            LinearLayout trow = new LinearLayout(this); trow.setGravity(Gravity.CENTER_VERTICAL); // page dots sit under the thumbnail's right corner
+            trow.addView(title, new LinearLayout.LayoutParams(0, -2, 1f)); trow.addView(dots); tx.addView(trow); tx.addView(sub);
             LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(dp(190), dp(3)); bl.topMargin = dp(8); bl.bottomMargin = dp(4);
-            tx.addView(bar, bl); tx.addView(note); tx.addView(dots);
-            hero.addView(tx, dp(340), -2);
-            // room for the tallest card (two-line title, bar, resume note), so stepping the deck moves nothing else
-            title.setText("A\nA"); tx.measure(View.MeasureSpec.makeMeasureSpec(dp(340), View.MeasureSpec.EXACTLY), 0); tx.setMinimumHeight(tx.getMeasuredHeight());
+            tx.addView(bar, bl); tx.addView(note);
+            hero.addView(tx, dp(420), -2); // one-line title, bar and note keep their space when hidden: stepping the deck moves nothing
             final Runnable[] bind = new Runnable[1];
             bind[0] = () -> {
                 String[] it = deck.get(heroIdx);
