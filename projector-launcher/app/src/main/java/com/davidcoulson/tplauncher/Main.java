@@ -167,8 +167,11 @@ public class Main extends Activity {
             d.setBounds((int) m, (int) m, (int) (w - m), (int) (w - m)); d.draw(c); return;
         }
         if (kind.equals("gear")) {
-            for (int i = 0; i < 8; i++) { double a = i * Math.PI / 4; c.drawLine(cx + (float) Math.cos(a) * s * .38f, cx + (float) Math.sin(a) * s * .38f, cx + (float) Math.cos(a) * s * .52f, cx + (float) Math.sin(a) * s * .52f, p); }
-            c.drawCircle(cx, cx, s * .38f, p); c.drawCircle(cx, cx, s * .16f, p);
+            Path g = new Path(); // one toothed outline: spokes on a ring read as a ship's wheel
+            for (int i = 0; i < 8; i++) for (int j = 0; j < 4; j++) {
+                double a = i * Math.PI / 4 + new double[]{-.24, -.14, .14, .24}[j]; float r = s * (j == 1 || j == 2 ? .52f : .38f);
+                float x = cx + (float) Math.cos(a) * r, y = cx + (float) Math.sin(a) * r; if (i + j == 0) g.moveTo(x, y); else g.lineTo(x, y); }
+            g.close(); c.drawPath(g, p); c.drawCircle(cx, cx, s * .15f, p);
         } else if (kind.equals("proj")) { // projector body with a lens and a beam
             c.drawRoundRect(new RectF(m, m + s * .3f, m + s * .7f, m + s * .8f), s * .1f, s * .1f, p);
             c.drawCircle(m + s * .35f, m + s * .55f, s * .13f, p);
