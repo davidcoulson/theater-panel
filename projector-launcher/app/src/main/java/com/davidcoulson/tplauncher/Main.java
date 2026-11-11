@@ -313,7 +313,7 @@ public class Main extends Activity {
                     if (dup) continue;
                     long off = o.optLong("viewOffset"), dur = Math.max(1, o.optLong("duration"));
                     String sub = ep ? "S" + o.optInt("season") + " · E" + o.optInt("episode") + " · " + o.optString("title") : (o.optInt("year") > 0 ? "" + o.optInt("year") : "");
-                    String still = !o.optString("still").isEmpty() ? o.optString("still") : o.optString("art").isEmpty() ? o.optString("poster") : o.optString("art");
+                    String still = !str(o, "still").isEmpty() ? str(o, "still") : str(o, "art").isEmpty() ? str(o, "poster") : str(o, "art");
                     items.add(new String[]{"CONTINUE WATCHING", cap, still, o.optString("id"), o.optString("type"), String.valueOf(off), "", "", "",
                         sub, String.valueOf(off * 100 / dur), o.optString("who"), off > 0 ? "Resume at " + clock(off) : "Up next"});
                 }
@@ -358,15 +358,17 @@ public class Main extends Activity {
         LinearLayout t = new LinearLayout(this); t.setPadding(dp(4), dp(4), dp(4), dp(4)); t.setFocusable(true); t.setClickable(true);
         ImageView im = new ImageView(this); im.setScaleType(ImageView.ScaleType.CENTER_CROP); im.setImageBitmap(b);
         GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(8)); im.setBackground(ph); im.setClipToOutline(true);
-        t.addView(im, dp(w), dp(hgt));
+        t.addView(im, dp(w), dp(hgt)); t.setTag("p" + it[3] + it[1]); // tags let showMedia put focus back after a rebuild
         focusTint(t, 12);
         t.setOnClickListener(v -> play(it));
         return t;
     }
+    /** A JSON string field, with JSON null as empty (optString would say "null"). */
+    static String str(JSONObject o, String k) { return o.isNull(k) ? "" : o.optString(k); }
     /** A small text button for the now-playing card. */
     View pill(String label, View.OnClickListener click) {
         TextView t = text(14, 1f); t.setText(label); t.setPadding(dp(12), dp(7), dp(12), dp(7)); t.setFocusable(true); t.setClickable(true);
-        focusTint(t, 16); t.setOnClickListener(click); return t;
+        focusTint(t, 16); t.setOnClickListener(click); t.setTag("b" + label); return t;
     }
 
     /** Movie night: three unwatched films from the panel's picker (the season's shelf in the holiday months). */
@@ -387,30 +389,36 @@ public class Main extends Activity {
     }
 
     /** Every few seconds: what the projector is playing, for the card that takes the left half meanwhile. */
+    volatile boolean nowBusy; // one poll at a time: a slow panel must not stack up requests
     final Runnable nowTick = new Runnable() { public void run() {
-        new Thread(() -> {
+        if (!nowBusy) { nowBusy = true; new Thread(() -> {
             try {
                 JSONObject o = new JSONObject(get(panelUrl("/api/companion")));
-                final JSONObject s = o.optJSONObject("showing"); final JSONObject warn = o.optJSONObject("pauseWarn");
+                JSONObject sh = o.optJSONObject("showing"); final JSONObject warn = o.optJSONObject("pauseWarn");
+                // A paused app with no Plex session (YouTube) still gets its warning and Keep on.
+                if (sh == null && warn != null) sh = new JSONObject().put("title", "Paused").put("state", "paused");
+                final JSONObject s = sh;
                 if (s != null && warn != null) s.put("warnAt", warn.optLong("at"));
-                String art = s == null ? "" : s.optString("art").isEmpty() || s.isNull("art") ? s.optString("poster") : s.optString("art");
-                final Bitmap pic = s != null && !art.equals(nowArt) ? fetchBitmap(panelUrl(art)) : null;
-                final String key = s == null ? "" : s.optString("title") + s.optString("state") + (warn != null), fa = art;
+                final String art = s == null ? "" : str(s, "art").isEmpty() ? str(s, "poster") : str(s, "art");
+                final Bitmap pic = !art.isEmpty() && !art.equals(nowArt) ? fetchBitmap(panelUrl(art)) : null;
                 runOnUiThread(() -> {
-                    if (pic != null) { nowPic = pic; nowArt = fa; }
+                    if (pic != null) { nowPic = pic; nowArt = art; }
+                    else if (!art.equals(nowArt)) { nowPic = null; nowArt = ""; } // never the last film's picture; the next tick tries again
                     now = s;
+                    String key = s == null ? "" : s.optString("title") + str(s, "showTitle") + s.optString("state") + s.optLong("warnAt") + nowArt;
                     if (!key.equals(nowKey)) { nowKey = key; showMedia(lastItems, lastPics); }
                     else if (s != null && nowFill != null) nowFill.getLayoutParams().width = dp(340) * (int) Math.min(100, s.optLong("viewOffset") * 100 / Math.max(1, s.optLong("duration"))) / 100;
                     if (nowFill != null) nowFill.requestLayout();
                 });
-            } catch (Exception ignored) {}
-        }).start();
+            } catch (Exception ignored) {} finally { nowBusy = false; }
+        }).start(); }
         h.postDelayed(this, 5000);
     }};
 
     /** Left: the panel's one-at-a-time card (left/right steps through the deck). Right: what's new, as posters. */
     void showMedia(java.util.List<String[]> items, Bitmap[] pics) {
         boolean had = media.hasFocus();
+        View was = media.findFocus(); final Object wasTag = was == null ? null : was.getTag();
         lastItems = items; lastPics = pics; nowFill = null;
         media.removeAllViews();
         final java.util.List<String[]> deck = new java.util.ArrayList<>(); final java.util.List<Bitmap> stills = new java.util.ArrayList<>();
@@ -438,7 +446,7 @@ public class Main extends Activity {
             if (warnAt > 0) { TextView w = text(13, .8f); w.setText("Picture goes off at " + new SimpleDateFormat("h:mm", Locale.US).format(new Date(warnAt))); col.addView(w, dp(340), -2); }
             LinearLayout btns = new LinearLayout(this);
             if (warnAt > 0) btns.addView(pill("Keep on", v -> post("/api/keep-on", "{}", "Staying on")));
-            btns.addView(pill(paused ? "Play" : "Pause", v -> post("{\"action\":\"transport\",\"cmd\":\"play_pause\"}", "")));
+            View pp = pill(paused ? "Play" : "Pause", v -> post("{\"action\":\"transport\",\"cmd\":\"play_pause\"}", "")); pp.setTag("bplaypause"); btns.addView(pp);
             btns.addView(pill("Vol −", v -> post("{\"action\":\"transport\",\"cmd\":\"vol_down\"}", "")));
             btns.addView(pill("Vol +", v -> post("{\"action\":\"transport\",\"cmd\":\"vol_up\"}", "")));
             btns.addView(pill("Late night", v -> post("{\"action\":\"soundbar\",\"cmd\":\"late_night\",\"on\":true}", "Late night sound")));
@@ -448,7 +456,7 @@ public class Main extends Activity {
             heroIdx = Math.min(heroIdx, deck.size() - 1);
             LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
             TextView hd = text(12, .7f); hd.setText("CONTINUE WATCHING"); hd.setPadding(dp(6), 0, 0, dp(4)); hd.setLetterSpacing(.12f); col.addView(hd);
-            final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setFocusable(true); hero.setClickable(true);
+            final LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(6), dp(5), dp(10), dp(5)); hero.setTag("hero"); hero.setFocusable(true); hero.setClickable(true);
             final ImageView img = new ImageView(this); img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             GradientDrawable ph = new GradientDrawable(); ph.setColor(0x33FFFFFF); ph.setCornerRadius(dp(10)); img.setBackground(ph); img.setClipToOutline(true);
             hero.addView(img, dp(340), dp(191));
@@ -508,7 +516,12 @@ public class Main extends Activity {
         }
         if (both.getChildCount() == 0) return;
         media.addView(both, -1, -2);
-        if (had || wantHero) { media.requestFocus(); wantHero = false; }
+        // Focus goes back to the same poster or button; only when that is gone does it fall to the first one,
+        // and then a half-made press-twice is dropped rather than landing on something else.
+        View keep = wasTag == null || wantHero ? null : media.findViewWithTag(wasTag);
+        if (keep != null) keep.requestFocus();
+        else if (had || wantHero) { armedKey = null; media.requestFocus(); }
+        wantHero = false;
     }
 
     /** macOS-style dock: the focused tile grows from its bottom edge, its neighbours a little. */

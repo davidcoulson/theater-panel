@@ -136,7 +136,7 @@ async function pollSessions() {
 async function pollOnce() {
   clearTimeout(pollTimer);
   let next = 30000;
-  if (clients.size && config.plex.url) {
+  if ((clients.size || Date.now() - companionAt < 30000) && config.plex.url) {
     try {
       // One call to Plex, read two ways: the theater's own session, and everything on the server.
       const { sessions: all, streams: everything } = await plex.activity();
@@ -599,7 +599,12 @@ get(/^\/api\/music\/queue$/, (m, q) => musicQueue(ha, q.get('entity_id')));
 get(/^\/api\/games$/, () => gamesState());
 // What the projector launcher (projector-launcher/) needs for its home screen: the holiday accent and the weather,
 // both from this server so the launcher holds no Home Assistant token.
+// The launcher's polls count as someone watching, so Plex is asked what is playing with no panel connected.
+let companionAt = 0;
 get(/^\/api\/companion$/, () => {
+  const idle = Date.now() - companionAt > 30000;
+  companionAt = Date.now();
+  if (idle && !clients.size) pollSessions(); // first poll in a while: don't wait out the idle timer
   const a = accentNow(), w = ha.states[config.entities.weather];
   const at = w?.attributes || {};
   return {
