@@ -908,7 +908,9 @@ automation:
   #   - the launcher (ours, or Projectivy before it) showing for 20 minutes with no key pressed in that time (Android's power
   #     manager counts every remote key as user activity);
   #   - the Apple TV's input showing for 10 minutes while the Apple TV is paused or idle (home
-  #     screen, screensaver) for an hour, or asleep for 10 minutes. Never the VM on HDMI 3.
+  #     screen, screensaver) for an hour, or asleep for 10 minutes. Never the VM on HDMI 3;
+  #   - the room's radar (the LD2450; the LD2412 beside it sits on all day, so it is not used) seeing nobody for an
+  #     hour, unless the Apple TV is playing (someone sitting still through a film must not lose the picture).
   - id: theater_projector_idle_standby
     alias: "Theater: projector stands by when nobody can be watching"
     mode: single
@@ -925,6 +927,7 @@ automation:
           {% set showing = states.sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_showing %}
           {% set atv = states.media_player.home_theater %}
           {% set eye = states.binary_sensor.home_theater_nexigo_aurora_pro_nexigo_aurora_pro_eye_protection %}
+          {% set radar = states.binary_sensor.home_theater_apollo_r_pro_1_f5eff0_ld2450_presence %}
           {% if showing is none or showing.state in ['unavailable', 'unknown'] or atv is none %}
             false
           {% else %}
@@ -936,7 +939,9 @@ automation:
                or (showing.state in ['Projectivy', 'io.coulson.tplauncher'] and showing_for > 1200)
                or (showing.state is match('HDMI 1( |$)') and showing_for > 600
                    and ((atv.state in ['paused', 'idle'] and quiet_for > 3600)
-                        or (atv.state == 'off' and atv_for > 600))) }}
+                        or (atv.state == 'off' and atv_for > 600)))
+               or (radar is not none and radar.state == 'off' and (now() - radar.last_changed).total_seconds() > 3600
+                   and atv.state != 'playing') }}
           {% endif %}
     actions:
       - if:
