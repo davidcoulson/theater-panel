@@ -800,6 +800,26 @@ automation:
         data:
           command: "am start -a android.intent.action.MAIN -c android.intent.category.HOME"
 
+  # Kiosk Satellite only hosts the projector's plugin; its dashboard is never wanted on screen (it comes
+  # to the front after a reinstall, a restart or a crash). A watchdog, since for: timers are one-shot.
+  - id: theater_projector_ks_to_launcher
+    alias: "Theater: projector goes back to its launcher if Kiosk Satellite is in front"
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+    conditions:
+      - condition: template
+        value_template: "{{ state_attr('media_player.theater_projector', 'app_id') == 'me.jxl.kiosk_satellite' }}"
+    actions:
+      - delay: "00:00:20"   # a moment in front while something is being set up is fine
+      - condition: template
+        value_template: "{{ state_attr('media_player.theater_projector', 'app_id') == 'me.jxl.kiosk_satellite' }}"
+      - action: androidtv.adb_command
+        target: { entity_id: media_player.theater_projector }
+        data:
+          command: "am start -a android.intent.action.MAIN -c android.intent.category.HOME"
+
   # The projector stays on the network around the clock (the plugin's stay-on guards), so dropping
   # off it means a standby nobody asked for. Say so when it goes, and when it is back, what HDMI-CEC
   # carried just before (the plugin keeps that across the cold boot).
